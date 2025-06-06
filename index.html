@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Traslados Parabarberos</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script type="module" src="index.js" defer></script>
+  <script type="importmap">
+    {
+      "imports": {
+        "react": "https://esm.sh/react@^19.1.0",
+        "react-dom/": "https://esm.sh/react-dom@^19.1.0/",
+        "react/": "https://esm.sh/react@^19.1.0/"
+      }
+    }
+  </script>
+</head>
+<body class="bg-white text-black font-sans">
+  <div class="container mx-auto px-4 py-6">
+    <header class="mb-6 text-center">
+      <h1 class="text-4xl font-bold text-black">Traslados Parabarberos</h1>
+      <div class="mt-4">
+        <label for="roleSelector" class="mr-2 font-medium">Rol:</label>
+        <select id="roleSelector" class="border rounded p-2">
+          <option value="requester">Solicitante</option>
+          <option value="admin">Administrador</option>
+        </select>
+      </div>
+    </header>
+
+    <main>
+      <!-- Sección para el solicitante -->
+      <section id="requesterSection" class="mb-10">
+        <h2 class="text-2xl font-semibold mb-4">Crear Solicitud</h2>
+        <input id="searchInput" type="search" placeholder="Buscar productos..." class="w-full border p-2 mb-4 rounded" />
+        <div id="productList" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mb-6">
+          <!-- Productos renderizados aquí -->
+        </div>
+
+        <div class="bg-gray-50 p-4 rounded shadow">
+          <h3 class="text-xl font-semibold mb-2">Productos Seleccionados</h3>
+          <div id="currentTransferRequest"></div>
+        </div>
+
+        <form id="transferForm" class="mt-6 grid gap-4">
+          <div>
+            <label class="block">Bodega de salida</label>
+            <select id="fromWarehouse" class="w-full border p-2 rounded">
+              <option value="Bodega Principal">Bodega Principal</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block">Bodega de entrada</label>
+            <select id="toWarehouse" class="w-full border p-2 rounded">
+              <option value="Bodega Principal">Bodega Principal</option>
+              <option value="Bodega Cali centro">Bodega Cali centro</option>
+              <option value="Bodega Cali Sur">Bodega Cali Sur</option>
+              <option value="Bodega Pasto">Bodega Pasto</option>
+              <option value="Bodega Tulua">Bodega Tulua</option>
+              <option value="Bodega Medellin">Bodega Medellin</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block">Solicitante</label>
+            <select id="requesterName" class="w-full border p-2 rounded">
+              <option value="Punto de venta Cali centro">Punto de venta Cali centro</option>
+              <option value="Punto de venta Cali sur">Punto de venta Cali sur</option>
+              <option value="Punto de venta Pasto">Punto de venta Pasto</option>
+              <option value="Punto de venta Tulua">Punto de venta Tulua</option>
+              <option value="Punto de venta Medellin">Punto de venta Medellin</option>
+            </select>
+          </div>
+
+          <button type="submit" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">
+            Solicitar traslado
+          </button>
+        </form>
+
+        <h3 class="text-xl font-semibold mt-8 mb-2">Solicitudes Pendientes</h3>
+        <div id="myPendingRequests" class="space-y-3"></div>
+      </section>
+
+      <!-- Sección para el administrador -->
+      <section id="adminSection" class="hidden">
+        <h2 class="text-2xl font-semibold mb-4">Administrar Traslados</h2>
+        <div id="adminTransferRequests" class="mb-6 space-y-3"></div>
+
+        <h3 class="text-xl font-semibold mb-2">Solicitudes Completadas</h3>
+        <div id="adminCompletedRequests" class="mb-6 space-y-3"></div>
+
+        <h3 class="text-xl font-semibold mb-2">Solicitudes Canceladas</h3>
+        <div id="adminCancelledRequests" class="space-y-3"></div>
+      </section>
+    </main>
+  </div>
+</body>
+</html>
