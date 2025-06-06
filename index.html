@@ -85,10 +85,6 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-
-    // ==============================================================================
-    // PASO 1: CONFIGURACIÓN DE FIREBASE (YA ESTÁ LISTA CON TUS DATOS)
-    // ==============================================================================
     const firebaseConfig = {
       apiKey: "AIzaSyBmmNg525KrnOTsebzAV9dzfsKiq3o-0iQ",
       authDomain: "base-de-datos-traslados.firebaseapp.com",
@@ -440,7 +436,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- CARGA DE DATOS DE PRODUCTOS ---
     function loadAndTransformProducts() {
         const rawData = [
-           {
+            {
   "738678000984 - DAILY CLEANS SHAMPOO AMERICAN CREW X 250ML": "669316222034 - BALSAMO AMERICAN CREW 170 ML"
  },
  {
@@ -5719,7 +5715,7 @@ document.addEventListener('DOMContentLoaded', () => {
  },
  {
   "738678000984 - DAILY CLEANS SHAMPOO AMERICAN CREW X 250ML": "RegistroManual - Registro manual"
- }
+ },
         ];
 
         if (!rawData || rawData.length === 0) {
