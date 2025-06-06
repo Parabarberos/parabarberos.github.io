@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Traslados Parabarberos</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-firestore-compat.js"></script>
 </head>
 <body class="bg-gray-100 font-sans">
 <div class="container mx-auto p-4">
@@ -93,13 +95,29 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {
+    // 1. Pega aquí tu objeto firebaseConfig
+    const firebaseConfig = {
+      apiKey: "AIzaSyBmmNg525KrnOTsebzAV9dzfsKiq3o-0iQ",
+      authDomain: "base-de-datos-traslados.firebaseapp.com",
+      projectId: "base-de-datos-traslados",
+      storageBucket: "base-de-datos-traslados.appspot.com",
+      messagingSenderId: "569583717634",
+      appId: "1:569583717634:web:f7baa7aaf66a639624461b",
+      measurementId: "G-9CSBCGJRGS"
+    };
+
+    // 2. Inicializa Firebase y la base de datos
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+    const transfersCollection = db.collection("transferencias"); // Nombre de la colección en la BD
+
     // --- ESTADO GLOBAL DE LA APLICACIÓN ---
     let allProducts = [];
     let productsToShowInitially = 30;
     let productsToAddOnScroll = 15;
     let currentProductOffset = 0;
     let currentTransferItems = [];
-    let allTransferRequests = loadTransferRequestsFromLocalStorage();
+    let allTransferRequests = []; // Se vacía porque ahora los datos vienen de Firebase en tiempo real
     let currentUserRole = localStorage.getItem('userRole') || 'requester';
 
     // --- ACCESO A ELEMENTOS DEL HTML (DOM) ---
@@ -363,89 +381,101 @@ document.addEventListener('DOMContentLoaded', () => {
         saveCurrentTransferToLocalStorage();
     }
 
-    function handleSubmitTransferForm(event) {
-        event.preventDefault();
-        if (currentTransferItems.length === 0) {
-            alert("Agrega productos antes de enviar.");
-            return;
-        }
-        const newReq = {
-            id: `TR-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
-            items: JSON.parse(JSON.stringify(currentTransferItems)),
-            fromWarehouse: fromWarehouseSelect.value,
-            toWarehouse: toWarehouseSelect.value,
-            requesterName: requesterNameSelect.value,
-            status: 'pending',
-            timestamp: Date.now()
-        };
-        allTransferRequests.push(newReq);
-        saveTransferRequestsToLocalStorage();
+// VERSIÓN NUEVA (USA FIREBASE)
+async function handleSubmitTransferForm(event) {
+    event.preventDefault();
+    if (currentTransferItems.length === 0) {
+        alert("Agrega productos antes de enviar.");
+        return;
+    }
+    const newReq = {
+        items: currentTransferItems,
+        fromWarehouse: fromWarehouseSelect.value,
+        toWarehouse: toWarehouseSelect.value,
+        requesterName: requesterNameSelect.value,
+        status: 'pending',
+        timestamp: firebase.firestore.FieldValue.serverTimestamp() // Usa la hora del servidor
+    };
+
+    try {
+        await transfersCollection.add(newReq); // <-- Envía a Firebase
         currentTransferItems = [];
+        localStorage.removeItem('currentTransferDraft'); // Limpia el borrador local
         renderCurrentTransfer();
-        saveCurrentTransferToLocalStorage();
-        renderAllRequesterSections();
-        if (currentUserRole === 'admin') renderAllAdminSections();
-        alert("Solicitud enviada con éxito.");
+        alert("¡Solicitud enviada a la nube con éxito!");
+    } catch (error) {
+        console.error("Error al guardar en Firebase: ", error);
+        alert("Error al enviar la solicitud. Revisa la consola (F12).");
     }
+}
 
-    function handleDeleteMyRequest(event) {
-        const requestId = event.currentTarget.dataset.requestId;
-        if (confirm("¿Eliminar esta solicitud?")) {
-            allTransferRequests = allTransferRequests.filter(req => req.id !== requestId);
-            saveTransferRequestsToLocalStorage();
-            renderAllRequesterSections();
+   // VERSIÓN NUEVA (USA FIREBASE)
+async function handleDeleteMyRequest(event) {
+    const requestId = event.currentTarget.dataset.requestId;
+    if (confirm("¿Eliminar esta solicitud de la nube?")) {
+        try {
+            await transfersCollection.doc(requestId).delete(); // <-- Borra en Firebase
+            // No es necesario llamar a render, el listener onSnapshot lo hará automáticamente.
+        } catch (error) {
+            console.error("Error al eliminar: ", error);
+            alert("No se pudo eliminar la solicitud.");
         }
     }
+}
 
-    function handleMarkItemAvailability(event) {
-        const button = event.currentTarget;
-        const { requestId, itemIndex, available } = button.dataset;
-        const request = allTransferRequests.find(r => r.id === requestId);
-        if (request && request.items[itemIndex]) {
-            request.items[itemIndex].available = (available === 'true');
-            if (request.status === 'pending') {
-                request.status = 'processing_partial_items';
+   // VERSIÓN NUEVA (USA FIREBASE)
+async function handleMarkItemAvailability(event) {
+    const { requestId, itemIndex, available } = event.currentTarget.dataset;
+    const reqRef = transfersCollection.doc(requestId);
+    
+    try {
+        const doc = await reqRef.get();
+        if (doc.exists) {
+            let reqData = doc.data();
+            reqData.items[itemIndex].available = (available === 'true');
+            if(reqData.status === 'pending') {
+                reqData.status = 'processing_partial_items';
             }
-            saveTransferRequestsToLocalStorage();
-            renderAllAdminSections();
+            // Actualiza el documento completo en Firebase
+            await reqRef.update({ items: reqData.items, status: reqData.status });
         }
-    }
+    } catch(e) { console.error("Error al marcar el ítem:", e); }
+}
 
-    function handleAdminAction(event) {
-        const btn = event.currentTarget;
-        const { requestId, action } = btn.dataset;
-        const req = allTransferRequests.find(r => r.id === requestId);
-        if (!req) return;
+  async function handleAdminAction(event) {
+    const { requestId, action } = event.currentTarget.dataset;
+    const reqRef = transfersCollection.doc(requestId);
 
-        switch (action) {
+    try {
+        const doc = await reqRef.get();
+        if (!doc.exists) return;
+        const currentData = doc.data();
+        const currentNotes = currentData.notes || "";
+        let updateData = {};
+
+        switch(action) {
             case 'start_processing':
-                req.items.forEach(item => item.available = undefined);
-                req.status = 'processing_partial_items';
-                req.notes = "Revisión iniciada.";
+                updateData = { status: 'processing_partial_items', notes: 'Revisión iniciada.' };
                 break;
             case 'completed':
-                if (req.items.some(item => item.available === false) && !confirm("Hay ítems faltantes. ¿Completar igual?")) return;
-                req.status = 'completed';
-                req.notes = (req.notes || "") + " Traslado completado.";
+                if (currentData.items.some(item => item.available === false) && !confirm("Hay ítems faltantes. ¿Completar igual?")) return;
+                updateData = { status: 'completed', notes: currentNotes + " Traslado completado." };
                 break;
             case 'revert_to_pending':
                 if (confirm("¿Revertir a Pendiente?")) {
-                    req.status = 'pending';
-                    req.items.forEach(item => item.available = undefined);
-                    req.notes = "Revertido a pendiente.";
-                }
+                    const resetItems = currentData.items.map(i => ({ ...i, available: null }));
+                    updateData = { status: 'pending', notes: 'Revertido a pendiente.', items: resetItems };
+                } else return;
                 break;
             case 'cancel':
                 if (confirm("¿Cancelar esta solicitud?")) {
-                    req.status = 'cancelled';
-                    req.notes = (req.notes || "") + " Solicitud cancelada.";
-                }
+                    updateData = { status: 'cancelled', notes: currentNotes + " Solicitud cancelada." };
+                } else return;
                 break;
         }
-        saveTransferRequestsToLocalStorage();
-        renderAllAdminSections();
-        renderAllRequesterSections();
-    }
+        await reqRef.update(updateData); // <-- Actualiza en Firebase
+    } catch(e) { console.error("Error al actualizar la solicitud:", e); }
+}
 
     function handleSearchInput() {
         const searchTerm = searchInput.value.toLowerCase().trim();
@@ -5785,18 +5815,34 @@ document.addEventListener('DOMContentLoaded', () => {
         return Array.from(productsMap.values()).sort((a, b) => a.name.localeCompare(b.name));
     }
 
-    // --- INICIALIZACIÓN DE LA APP ---
-    function initializeApp() {
-        allProducts = loadAndTransformProducts();
-        loadCurrentTransferFromLocalStorage();
-        displayInitialProducts();
-        renderCurrentTransfer();
-        roleSelector.onchange = handleRoleChange;
-        requesterNameSelect.onchange = renderAllRequesterSections;
-        transferForm.onsubmit = handleSubmitTransferForm;
-        searchInput.oninput = handleSearchInput;
+// REEMPLAZA TU FUNCIÓN initializeApp CON ESTA
+function initializeApp() {
+    allProducts = loadAndTransformProducts();
+    currentTransferItems = JSON.parse(localStorage.getItem('currentTransferDraft')) || [];
+    displayInitialProducts();
+    renderCurrentTransfer();
+
+    // Listeners de la interfaz
+    roleSelector.onchange = () => {
+        currentUserRole = roleSelector.value;
         updateUserRoleView();
-    }
+    };
+    requesterNameSelect.onchange = renderAllSections;
+    transferForm.onsubmit = handleSubmitTransferForm;
+    searchInput.oninput = handleSearchInput;
+    
+    // Listener de Firebase (la magia en tiempo real)
+    transfersCollection.orderBy("timestamp", "desc").onSnapshot(snapshot => {
+        console.log("Datos recibidos de Firebase!");
+        allTransferRequests = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        renderAllSections();
+    }, error => {
+        console.error("Error al conectar con Firebase: ", error);
+        alert("No se pudo conectar a la base de datos. Asegúrate de que tus claves de Firebase son correctas y que las reglas de la base de datos están en modo de prueba.")
+    });
+
+    updateUserRoleView();
+}
 
     initializeApp();
 });
