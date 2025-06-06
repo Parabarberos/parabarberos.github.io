@@ -3,14 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Traslados Parabarberos (v2)</title>
+    <title>Traslados Parabarberos (En la Nube)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-firestore-compat.js"></script>
 </head>
 <body class="bg-gray-100 font-sans">
-    <!-- El HTML del cuerpo de la página (<body>) no necesita cambios, es el mismo que el anterior. -->
-    <!-- Lo incluyo aquí por si acaso, para que sea un solo bloque de copiar y pegar. -->
     <div class="container mx-auto p-4">
         <header class="mb-6">
             <h1 class="text-4xl font-bold text-center text-gray-800">Traslados Parabarberos</h1>
@@ -24,10 +22,12 @@
         </header>
 
         <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <!-- Sección de Solicitante -->
             <div id="requesterSection" class="md:col-span-2 bg-white p-6 rounded-lg shadow-lg">
                 <h2 class="text-2xl font-semibold mb-4 text-gray-700">Crear Nueva Solicitud de Traslado</h2>
                 <div class="mb-4">
-                    <input type="search" id="searchInput" placeholder="Buscar producto por nombre o ID..." class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm">
+                    <input type="search" id="searchInput" placeholder="Buscar producto por nombre o ID..."
+                           class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
                 </div>
                 <div id="productList" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6 min-h-[200px] max-h-[60vh] overflow-y-auto p-2 bg-gray-50 rounded"></div>
                 <h3 class="text-xl font-semibold mb-2 text-gray-700">Solicitud Actual</h3>
@@ -69,6 +69,7 @@
                 <h3 class="text-xl font-semibold mt-8 mb-4 text-gray-700">Mi Historial de Solicitudes</h3>
                 <div id="myHistoryRequests" class="space-y-3"></div>
             </div>
+            <!-- Sección de Administrador -->
             <div id="adminSection" class="bg-white p-6 rounded-lg shadow-lg" style="display: none;">
                 <h2 class="text-2xl font-semibold mb-4 text-gray-700">Administrar Solicitudes Activas</h2>
                 <div id="adminTransferRequests" class="space-y-4"></div>
@@ -84,6 +85,9 @@
     <script>
     document.addEventListener('DOMContentLoaded', () => {
 
+        // ==============================================================================
+        // CONFIGURACIÓN DE FIREBASE (CON TUS DATOS)
+        // ==============================================================================
         const firebaseConfig = {
           apiKey: "AIzaSyBmmNg525KrnOTsebzAV9dzfsKiq3o-0iQ",
           authDomain: "base-de-datos-traslados.firebaseapp.com",
@@ -98,6 +102,7 @@
         const db = firebase.firestore();
         const transfersCollection = db.collection("transferencias");
 
+        // --- ESTADO GLOBAL Y ELEMENTOS DEL DOM ---
         let allProducts = [];
         let currentTransferItems = JSON.parse(localStorage.getItem('currentTransferDraft')) || [];
         let allTransferRequests = [];
@@ -106,118 +111,220 @@
         const productListDiv = document.getElementById('productList');
         const currentTransferRequestDiv = document.getElementById('currentTransferRequest');
         const transferForm = document.getElementById('transferForm');
+        const fromWarehouseSelect = document.getElementById('fromWarehouse');
+        const toWarehouseSelect = document.getElementById('toWarehouse');
         const requesterNameSelect = document.getElementById('requesterName');
         const searchInput = document.getElementById('searchInput');
         const roleSelector = document.getElementById('roleSelector');
+        const requesterSection = document.getElementById('requesterSection');
+        const adminSection = document.getElementById('adminSection');
+        const myPendingRequestsDiv = document.getElementById('myPendingRequests');
+        const myHistoryRequestsDiv = document.getElementById('myHistoryRequests');
+        const adminTransferRequestsDiv = document.getElementById('adminTransferRequests');
+        const adminCompletedRequestsDiv = document.getElementById('adminCompletedRequests');
+        const adminCancelledRequestsDiv = document.getElementById('adminCancelledRequests');
         
         // --- HELPERS ---
         const getRequestStatusColor = (s) => ({'pending':'bg-yellow-50 border-yellow-400','processing_all_items':'bg-blue-50 border-blue-400','processing_partial_items':'bg-orange-50 border-orange-400','completed':'bg-green-100 border-green-500','cancelled':'bg-red-100 border-red-400'}[s]||'bg-gray-50 border-gray-300');
         const translateStatus = (s) => ({'pending':'Pendiente','processing_all_items':'En Revisión (Todo OK)','processing_partial_items':'En Revisión (Parcial)','completed':'Realizado','cancelled':'Cancelado'}[s]||s);
 
-        // --- RENDERIZADO Y LÓGICA DE VISTAS ---
+        // --- FUNCIONES DE RENDERIZADO Y LÓGICA DE VISTAS ---
+        function updateUserRoleView() {
+            localStorage.setItem('userRole', currentUserRole);
+            roleSelector.value = currentUserRole;
+            requesterSection.style.display = (currentUserRole === 'requester') ? 'block' : 'none';
+            adminSection.style.display = (currentUserRole === 'admin') ? 'block' : 'none';
+            renderAllSections();
+        }
+        
         function renderAllSections() {
-            const sections = [
-                'myPendingRequests', 'myHistoryRequests', 
-                'adminTransferRequests', 'adminCompletedRequests', 'adminCancelledRequests'
-            ];
-            const renderMap = {
-                'myPendingRequests': () => allTransferRequests.filter(r => r.requesterName === requesterNameSelect.value && (r.status === 'pending' || r.status.startsWith('processing'))),
-                'myHistoryRequests': () => allTransferRequests.filter(r => r.requesterName === requesterNameSelect.value && (r.status === 'completed' || r.status === 'cancelled')) ,
-                'adminTransferRequests': () => allTransferRequests.filter(r => r.status === 'pending' || r.status.startsWith('processing')),
-                'adminCompletedRequests': () => allTransferRequests.filter(r => r.status === 'completed'),
-                'adminCancelledRequests': () => allTransferRequests.filter(r => r.status === 'cancelled')
-            };
-            const roleForSection = (sectionName) => sectionName.startsWith('admin') ? 'admin' : 'requester';
-            
-            sections.forEach(sectionId => {
-                const div = document.getElementById(sectionId);
-                const data = renderMap[sectionId]().sort((a,b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0));
-                div.innerHTML = '';
-                if (data.length === 0) {
-                    div.innerHTML = `<p class="text-gray-500 italic">No hay solicitudes para mostrar.</p>`;
-                } else {
-                    data.forEach(req => div.appendChild(createRequestCard(req, roleForSection(sectionId))));
-                }
+            renderMyPendingRequests();
+            renderMyHistoryRequests();
+            renderAdminRequests();
+            renderAdminHistoryRequests();
+        }
+
+        function renderProducts(productsToRender) {
+            productListDiv.innerHTML = '';
+            if (!productsToRender || productsToRender.length === 0) {
+                productListDiv.innerHTML = '<p class="text-gray-500 col-span-full text-center">No se encontraron productos.</p>';
+                return;
+            }
+            const fragment = document.createDocumentFragment();
+            productsToRender.forEach(product => {
+                const card = document.createElement('div');
+                card.className = 'border p-2 rounded-md shadow hover:shadow-lg transition-shadow bg-white flex flex-col justify-between';
+                const safeId = product.id.replace(/[^a-zA-Z0-9-_]/g, '');
+                card.innerHTML = `
+                    <div>
+                        <h3 class="text-sm font-semibold text-blue-600" title="${product.description}">${product.name.length > 40 ? product.name.substring(0, 37) + '...' : product.name}</h3>
+                        <p class="text-xs text-gray-400 mb-1">ID: ${product.id}</p>
+                    </div>
+                    <div class="flex items-center space-x-1 mt-auto pt-1">
+                        <input type="number" min="1" value="1" id="qty-${safeId}" class="w-12 border-gray-300 rounded-md shadow-sm text-xs p-1">
+                        <button data-product-id="${product.id}" class="add-to-transfer-btn bg-blue-500 hover:bg-blue-700 text-white text-xs font-bold py-1 px-2 rounded">Add</button>
+                    </div>`;
+                fragment.appendChild(card);
             });
+            productListDiv.appendChild(fragment);
+            productListDiv.querySelectorAll('.add-to-transfer-btn').forEach(b => {
+                b.onclick = handleAddToTransfer;
+            });
+        }
+
+        function displayInitialProducts() {
+            renderProducts(allProducts.slice(0, 50));
+        }
+        
+        function renderCurrentTransfer() {
+            currentTransferRequestDiv.innerHTML = '';
+            if (currentTransferItems.length === 0) {
+                currentTransferRequestDiv.innerHTML = '<p class="text-gray-500 italic">Selecciona productos.</p>';
+                return;
+            }
+            const ul = document.createElement('ul');
+            ul.className = 'space-y-2';
+            currentTransferItems.forEach((item, index) => {
+                const li = document.createElement('li');
+                li.className = 'flex justify-between items-center p-2 bg-white rounded shadow-sm';
+                li.innerHTML = `
+                    <div>
+                        <span class="font-medium">${item.productName}</span> <span class="text-sm text-gray-500">(ID: ${item.productId})</span>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <input type="number" min="1" value="${item.quantity}" data-item-index="${index}" class="w-16 p-1 border rounded item-quantity-input text-sm">
+                        <button data-item-index="${index}" class="remove-item-btn text-red-500 hover:text-red-700 font-semibold text-xs">Quitar</button>
+                    </div>`;
+                ul.appendChild(li);
+            });
+            currentTransferRequestDiv.appendChild(ul);
+            document.querySelectorAll('.item-quantity-input').forEach(input => input.onchange = handleUpdateItemQuantity);
+            document.querySelectorAll('.remove-item-btn').forEach(button => button.onclick = handleRemoveItem);
+        }
+        
+        function renderMyPendingRequests() {
+            const selectedRequester = requesterNameSelect.value;
+            const myRequests = allTransferRequests.filter(r => r.requesterName === selectedRequester && (r.status === 'pending' || r.status.startsWith('processing'))).sort((a,b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0));
+            myPendingRequestsDiv.innerHTML = '';
+            if (myRequests.length === 0) {
+                myPendingRequestsDiv.innerHTML = '<p class="text-gray-500 italic">No hay solicitudes activas.</p>';
+            } else {
+                myRequests.forEach(req => myPendingRequestsDiv.appendChild(createRequestCard(req, 'requester')));
+            }
+        }
+
+        function renderMyHistoryRequests() {
+            const selectedRequester = requesterNameSelect.value;
+            const myRequests = allTransferRequests.filter(r => r.requesterName === selectedRequester && (r.status === 'completed' || r.status === 'cancelled')).sort((a,b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0));
+            myHistoryRequestsDiv.innerHTML = '';
+            if (myRequests.length === 0) {
+                myHistoryRequestsDiv.innerHTML = '<p class="text-gray-500 italic">No hay historial.</p>';
+            } else {
+                myRequests.forEach(req => myHistoryRequestsDiv.appendChild(createRequestCard(req, 'requester')));
+            }
+        }
+
+        function renderAdminRequests() {
+            const active = allTransferRequests.filter(r => r.status === 'pending' || r.status.startsWith('processing')).sort((a,b) => (a.timestamp?.seconds || 0) - (b.timestamp?.seconds || 0));
+            adminTransferRequestsDiv.innerHTML = '';
+            if (active.length === 0) {
+                adminTransferRequestsDiv.innerHTML = '<p class="text-gray-500 italic">No hay solicitudes activas.</p>';
+            } else {
+                active.forEach(req => adminTransferRequestsDiv.appendChild(createRequestCard(req, 'admin')));
+            }
+        }
+
+        function renderAdminHistoryRequests() {
+            const completed = allTransferRequests.filter(r => r.status === 'completed').sort((a,b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0));
+            const cancelled = allTransferRequests.filter(r => r.status === 'cancelled').sort((a,b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0));
+            
+            adminCompletedRequestsDiv.innerHTML = completed.length === 0 ? '<p class="text-gray-500 italic">No hay completadas.</p>' : '';
+            completed.forEach(req => adminCompletedRequestsDiv.appendChild(createRequestCard(req, 'admin')));
+
+            adminCancelledRequestsDiv.innerHTML = cancelled.length === 0 ? '<p class="text-gray-500 italic">No hay canceladas.</p>' : '';
+            cancelled.forEach(req => adminCancelledRequestsDiv.appendChild(createRequestCard(req, 'admin')));
         }
         
         function createRequestCard(req, role) {
-            const card = document.createElement('div');
-            card.className = `p-4 border rounded-md shadow-sm mb-3 ${getRequestStatusColor(req.status)}`;
-            
-            // Lógica para mostrar items
-            const itemsHtml = (req.items || []).map((item, index) => {
-                const requestedQty = item.quantity;
-                const sentQty = (item.sentQuantity === undefined) ? item.quantity : item.sentQuantity;
-                const isProcessing = req.status.startsWith('processing');
-                
-                let quantityDisplay = `Solicitado: <b>${requestedQty}</b>`;
-                let statusClasses = '';
-                
-                if (isProcessing || req.status === 'completed' || req.status === 'cancelled') {
-                    if (sentQty < requestedQty) {
-                        quantityDisplay += `<span class="ml-2 font-bold text-orange-600">Enviado: ${sentQty} (Faltan: ${requestedQty - sentQty})</span>`;
-                        statusClasses = 'bg-orange-50';
-                    } else {
-                        quantityDisplay += `<span class="ml-2 font-bold text-green-600">✓ Enviado: ${sentQty}</span>`;
-                        statusClasses = 'bg-green-50';
-                    }
-                }
-                
-                const adminInput = (role === 'admin' && isProcessing)
-                    ? `<input type="number" value="${sentQty}" data-request-id="${req.id}" data-item-index="${index}" class="admin-qty-input w-16 p-1 border rounded-md text-center">`
-                    : ``;
-
-                return `<li class="p-2 rounded-md ${statusClasses} flex justify-between items-center">
-                            <div>
-                                <span class="font-medium">${item.productName}</span>
-                                <div class="text-xs text-gray-600">${quantityDisplay}</div>
-                            </div>
-                            ${adminInput}
-                        </li>`;
-            }).join('');
-            
-            // Lógica para mostrar botones de acción
-            let adminActionsHtml = '', requesterActionsHtml = '';
-            if (role === 'admin' && (req.status === 'pending' || req.status.startsWith('processing'))) {
-                let buttons = '';
-                if (req.status === 'pending') buttons += `<button data-request-id="${req.id}" data-action="start_processing" class="action-btn bg-blue-500 hover:bg-blue-600 text-white text-xs py-1 px-2 rounded mr-1">Iniciar Revisión</button>`;
-                if (req.status.startsWith('processing')) {
-                    buttons += `<button data-request-id="${req.id}" data-action="completed" class="action-btn bg-teal-500 hover:bg-teal-600 text-white text-xs py-1 px-2 rounded">Marcar Realizado</button>`;
-                    buttons += `<button data-request-id="${req.id}" data-action="revert_to_pending" class="action-btn bg-gray-400 hover:bg-gray-500 text-white text-xs py-1 px-2 rounded ml-1">Revertir</button>`;
-                }
-                buttons += `<button data-request-id="${req.id}" data-action="cancel" class="action-btn bg-red-500 hover:bg-red-600 text-white text-xs py-1 px-2 rounded ml-1">Cancelar</button>`;
-                adminActionsHtml = `<div class="mt-3">${buttons}</div>`;
+    const card = document.createElement('div');
+    card.className = `p-4 border rounded-md shadow-sm mb-3 ${getRequestStatusColor(req.status)}`;
+    
+    // Lógica para mostrar items (¡NUEVA!)
+    const itemsHtml = (req.items || []).map((item, index) => {
+        const requestedQty = item.quantity;
+        // Si sentQuantity no existe, se asume que es igual a la solicitada.
+        const sentQty = (item.sentQuantity === undefined) ? item.quantity : item.sentQuantity;
+        const isProcessing = req.status.startsWith('processing');
+        
+        let quantityDisplay = `Solicitado: <b>${requestedQty}</b>`;
+        let statusClasses = '';
+        
+        // Muestra el estado del envío si ya no está pendiente
+        if (req.status !== 'pending') {
+            if (sentQty < requestedQty) {
+                quantityDisplay += `<span class="ml-2 font-bold text-orange-600">Enviado: ${sentQty} (Faltan: ${requestedQty - sentQty})</span>`;
+                statusClasses = 'bg-orange-50';
+            } else {
+                quantityDisplay += `<span class="ml-2 font-bold text-green-600">✓ Enviado: ${sentQty}</span>`;
+                statusClasses = 'bg-green-50';
             }
-            if (role === 'requester' && req.status === 'pending') {
-                 requesterActionsHtml = `<button data-request-id="${req.id}" class="delete-my-request-btn bg-red-500 hover:bg-red-700 text-white text-xs py-1 px-2 rounded">Eliminar</button>`;
-            }
-
-            card.innerHTML = `
-                <div class="flex justify-between items-start">
-                    <div>
-                        <h4 class="font-semibold text-md">ID: ${req.id.substring(0, 8)}</h4>
-                        <p class="text-sm">De: ${req.fromWarehouse} → A: <strong>${req.toWarehouse}</strong></p>
-                        <p class="text-sm">Solicitante: ${req.requesterName}</p>
-                        <p class="text-sm">Estado: <span class="font-medium">${translateStatus(req.status)}</span></p>
-                        ${req.notes ? `<p class="text-sm text-orange-600 mt-1"><em>Notas Admin: ${req.notes}</em></p>` : ''}
-                    </div>
-                    ${requesterActionsHtml}
-                </div>
-                <p class="text-sm mt-2 font-medium">Items:</p>
-                <ul class="space-y-1 mt-1">${itemsHtml}</ul>
-                ${adminActionsHtml}
-            `;
-            card.querySelectorAll('.action-btn').forEach(b => b.onclick = handleAdminAction);
-            card.querySelectorAll('.delete-my-request-btn').forEach(b => b.onclick = handleDeleteMyRequest);
-            card.querySelectorAll('.admin-qty-input').forEach(i => i.onchange = handleAdminQuantityChange);
-            return card;
         }
+        
+        // Muestra el campo de entrada solo para el admin y si se está procesando
+        const adminInput = (role === 'admin' && isProcessing)
+            ? `<input type="number" value="${sentQty}" data-request-id="${req.id}" data-item-index="${index}" class="admin-qty-input w-16 p-1 border rounded-md text-center">`
+            : ``;
+
+        return `<li class="p-2 rounded-md ${statusClasses} flex justify-between items-center">
+                    <div>
+                        <span class="font-medium">${item.productName}</span>
+                        <div class="text-xs text-gray-600">${quantityDisplay}</div>
+                    </div>
+                    ${adminInput}
+                </li>`;
+    }).join('');
+    
+    // El resto de la función (botones de acción) permanece igual
+    let adminActionsHtml = '', requesterActionsHtml = '';
+    if (role === 'admin' && req.status !== 'completed' && req.status !== 'cancelled') {
+        let buttons = '';
+        if (req.status === 'pending') buttons += `<button data-request-id="${req.id}" data-action="start_processing" class="action-btn bg-blue-500 hover:bg-blue-600 text-white text-xs py-1 px-2 rounded mr-1">Iniciar Revisión</button>`;
+        if (req.status.startsWith('processing')) {
+             buttons += `<button data-request-id="${req.id}" data-action="completed" class="action-btn bg-teal-500 hover:bg-teal-600 text-white text-xs py-1 px-2 rounded">Marcar Realizado</button>`;
+             buttons += `<button data-request-id="${req.id}" data-action="revert_to_pending" class="action-btn bg-gray-400 hover:bg-gray-500 text-white text-xs py-1 px-2 rounded ml-1">Revertir</button>`;
+        }
+        buttons += `<button data-request-id="${req.id}" data-action="cancel" class="action-btn bg-red-500 hover:bg-red-600 text-white text-xs py-1 px-2 rounded ml-1">Cancelar</button>`;
+        adminActionsHtml = `<div class="mt-3">${buttons}</div>`;
+    }
+    if (role === 'requester' && req.status === 'pending') {
+         requesterActionsHtml = `<button data-request-id="${req.id}" class="delete-my-request-btn bg-red-500 hover:bg-red-700 text-white text-xs py-1 px-2 rounded">Eliminar</button>`;
+    }
+
+    card.innerHTML = `
+        <div class="flex justify-between items-start">
+            <div>
+                <h4 class="font-semibold text-md">ID: ${req.id.substring(0, 8)}</h4>
+                <p class="text-sm">De: ${req.fromWarehouse} → A: <strong>${req.toWarehouse}</strong></p>
+                <p class="text-sm">Solicitante: ${req.requesterName}</p>
+                <p class="text-sm">Estado: <span class="font-medium">${translateStatus(req.status)}</span></p>
+                ${req.notes ? `<p class="text-sm text-orange-600 mt-1"><em>Notas Admin: ${req.notes}</em></p>` : ''}
+            </div>
+            ${requesterActionsHtml}
+        </div>
+        <p class="text-sm mt-2 font-medium">Items:</p>
+        <ul class="space-y-1 mt-1">${itemsHtml}</ul>
+        ${adminActionsHtml}
+    `;
+    card.querySelectorAll('.action-btn').forEach(b => b.onclick = handleAdminAction);
+    card.querySelectorAll('.delete-my-request-btn').forEach(b => b.onclick = handleDeleteMyRequest);
+    // Añadimos el listener para el nuevo input
+    card.querySelectorAll('.admin-qty-input').forEach(i => i.onchange = handleAdminQuantityChange);
+    return card;
+}
 
         // --- MANEJADORES DE EVENTOS ---
         function handleRoleChange() {
             currentUserRole = roleSelector.value;
-            localStorage.setItem('userRole', currentUserRole);
             updateUserRoleView();
         }
 
@@ -229,8 +336,11 @@
             const quantity = parseInt(qtyInput.value, 10);
             if (isNaN(quantity) || quantity < 1) { alert("Cantidad inválida."); return; }
             const existingItem = currentTransferItems.find(i => i.productId === product.id);
-            if (existingItem) existingItem.quantity += quantity;
-            else currentTransferItems.push({ productId: product.id, productName: product.name, quantity, sentQuantity: quantity });
+            if (existingItem) {
+                existingItem.quantity += quantity;
+            } else {
+                currentTransferItems.push({ productId: product.id, productName: product.name, quantity });
+            }
             qtyInput.value = "1";
             localStorage.setItem('currentTransferDraft', JSON.stringify(currentTransferItems));
             renderCurrentTransfer();
@@ -240,12 +350,11 @@
             const input = event.currentTarget;
             const itemIndex = parseInt(input.dataset.itemIndex, 10);
             const newQuantity = parseInt(input.value, 10);
-            if (isNaN(newQuantity) || newQuantity < 1) {
+            if(isNaN(newQuantity) || newQuantity < 1) {
                 input.value = currentTransferItems[itemIndex].quantity;
                 return;
             }
             currentTransferItems[itemIndex].quantity = newQuantity;
-            currentTransferItems[itemIndex].sentQuantity = newQuantity; // Sincronizar al inicio
             localStorage.setItem('currentTransferDraft', JSON.stringify(currentTransferItems));
         }
 
@@ -256,13 +365,6 @@
             renderCurrentTransfer();
         }
         
-        function handleSearchInput() {
-            const searchTerm = searchInput.value.toLowerCase().trim();
-            const filtered = allProducts.filter(p => p.name.toLowerCase().includes(searchTerm) || p.description.toLowerCase().includes(searchTerm) || p.id.toLowerCase().includes(searchTerm));
-            renderProducts(filtered);
-        }
-
-        // --- LÓGICA DE BASE DE DATOS (FIREBASE) ---
         async function handleSubmitTransferForm(event) {
             event.preventDefault();
             if (currentTransferItems.length === 0) {
@@ -270,9 +372,9 @@
                 return;
             }
             const newReq = {
-                items: currentTransferItems,
-                fromWarehouse: document.getElementById('fromWarehouse').value,
-                toWarehouse: document.getElementById('toWarehouse').value,
+                items: currentTransferItems.map(item => ({ ...item, sentQuantity: item.quantity })),
+                fromWarehouse: fromWarehouseSelect.value,
+                toWarehouse: toWarehouseSelect.value,
                 requesterName: requesterNameSelect.value,
                 status: 'pending',
                 timestamp: firebase.firestore.FieldValue.serverTimestamp()
@@ -292,14 +394,18 @@
         async function handleDeleteMyRequest(event) {
             const requestId = event.currentTarget.dataset.requestId;
             if (confirm("¿Eliminar esta solicitud de la nube?")) {
-                try { await transfersCollection.doc(requestId).delete(); } 
-                catch (error) { console.error("Error al eliminar: ", error); }
+                try {
+                    await transfersCollection.doc(requestId).delete();
+                } catch (error) {
+                    console.error("Error al eliminar: ", error);
+                }
             }
         }
 
         async function handleAdminAction(event) {
             const { requestId, action } = event.currentTarget.dataset;
             const reqRef = transfersCollection.doc(requestId);
+            
             try {
                 const doc = await reqRef.get();
                 if (!doc.exists) return;
@@ -312,13 +418,12 @@
                         updateData = { status: 'processing_partial_items', notes: 'Revisión iniciada.' };
                         break;
                     case 'completed':
-                        const hasMissingItems = currentData.items.some(item => item.sentQuantity < item.quantity);
-                        if (hasMissingItems && !confirm("Hay ítems faltantes. ¿Completar el traslado de todas formas?")) return;
+                        if (currentData.items.some(item => item.available === false) && !confirm("Hay ítems faltantes. ¿Completar igual?")) return;
                         updateData = { status: 'completed', notes: currentNotes + " Traslado completado." };
                         break;
                     case 'revert_to_pending':
-                        if (confirm("¿Revertir a Pendiente? Se perderán las cantidades enviadas.")) {
-                            const resetItems = currentData.items.map(i => ({ ...i, sentQuantity: i.quantity }));
+                        if (confirm("¿Revertir a Pendiente?")) {
+                            const resetItems = currentData.items.map(i => ({ ...i, available: null }));
                             updateData = { status: 'pending', notes: 'Revertido a pendiente.', items: resetItems };
                         } else return;
                         break;
@@ -332,49 +437,59 @@
             } catch(e) { console.error("Error al actualizar la solicitud:", e); }
         }
         
-        async function handleAdminQuantityChange(event) {
-            const input = event.currentTarget;
-            const { requestId, itemIndex } = input.dataset;
-            const newSentQuantity = parseInt(input.value, 10);
-
-            if (isNaN(newSentQuantity) || newSentQuantity < 0) {
-                alert("Cantidad inválida.");
-                return;
-            }
-
+        async function handleMarkItemAvailability(event) {
+            const { requestId, itemIndex, available } = event.currentTarget.dataset;
             const reqRef = transfersCollection.doc(requestId);
+            
             try {
                 const doc = await reqRef.get();
                 if (doc.exists) {
-                    let items = doc.data().items;
-                    items[itemIndex].sentQuantity = newSentQuantity;
-                    await reqRef.update({ items: items });
+                    let reqData = doc.data();
+                    if (reqData.items && reqData.items[itemIndex]) {
+                        reqData.items[itemIndex].available = (available === 'true');
+                        if (reqData.status === 'pending') {
+                            reqData.status = 'processing_partial_items';
+                        }
+                        await reqRef.update({ items: reqData.items, status: reqData.status });
+                    }
                 }
-            } catch(e) { console.error("Error al actualizar cantidad:", e); }
+            } catch(e) { console.error("Error al marcar el ítem:", e); }
         }
         
-        // --- INICIALIZACIÓN ---
-        function initializeApp() {
-            allProducts = loadAndTransformProducts();
-            displayInitialProducts();
-            renderCurrentTransfer();
+        function handleSearchInput() {
+            const searchTerm = searchInput.value.toLowerCase().trim();
+            const filtered = allProducts.filter(p => p.name.toLowerCase().includes(searchTerm) || p.description.toLowerCase().includes(searchTerm) || p.id.toLowerCase().includes(searchTerm));
+            renderProducts(filtered);
+        }
+        
+        async function handleAdminQuantityChange(event) {
+        const input = event.currentTarget;
+        const { requestId, itemIndex } = input.dataset;
+        const newSentQuantity = parseInt(input.value, 10);
 
-            roleSelector.onchange = handleRoleChange;
-            requesterNameSelect.onchange = renderAllSections;
-            transferForm.onsubmit = handleSubmitTransferForm;
-            searchInput.oninput = handleSearchInput;
-            
-            transfersCollection.orderBy("timestamp", "desc").onSnapshot(snapshot => {
-                allTransferRequests = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                renderAllSections();
-            }, error => {
-                console.error("Error al conectar con Firebase: ", error);
-                alert("No se pudo conectar a la base de datos. Verifica la configuración de Firebase y las reglas de seguridad.");
-            });
-
-            updateUserRoleView();
+        if (isNaN(newSentQuantity) || newSentQuantity < 0) {
+            alert("Cantidad inválida. Debe ser un número igual o mayor a cero.");
+            // Opcional: revertir al valor anterior si es inválido
+            return;
         }
 
+        const reqRef = transfersCollection.doc(requestId);
+        try {
+            const doc = await reqRef.get();
+            if (doc.exists) {
+                let items = doc.data().items;
+                // Asegurarse de que el ítem exista
+                if (items && items[itemIndex]) {
+                    items[itemIndex].sentQuantity = newSentQuantity;
+                    await reqRef.update({ items: items }); // Actualiza solo el array de ítems en Firebase
+                }
+            }
+        } catch(e) {
+            console.error("Error al actualizar la cantidad:", e);
+            alert("No se pudo actualizar la cantidad.");
+        }
+    }
+        
         function loadAndTransformProducts() {
             const rawData = [
                 {
@@ -5682,6 +5797,29 @@
                 productsMap.set(finalId, { id: finalId, name: namePart, description: fullProductName });
             });
             return Array.from(productsMap.values()).sort((a, b) => a.name.localeCompare(b.name));
+        }
+
+        function initializeApp() {
+            allProducts = loadAndTransformProducts();
+            displayInitialProducts();
+            renderCurrentTransfer();
+
+            // Listeners de la interfaz
+            roleSelector.onchange = handleRoleChange;
+            requesterNameSelect.onchange = renderAllSections;
+            transferForm.onsubmit = handleSubmitTransferForm;
+            searchInput.oninput = handleSearchInput;
+            
+            // Listener de Firebase (la magia en tiempo real)
+            transfersCollection.orderBy("timestamp", "desc").onSnapshot(snapshot => {
+                allTransferRequests = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                renderAllSections();
+            }, error => {
+                console.error("Error al conectar con Firebase: ", error);
+                alert("No se pudo conectar a la base de datos. Revisa la consola (F12).")
+            });
+
+            updateUserRoleView();
         }
 
         initializeApp();
