@@ -1,10 +1,11 @@
 <!DOCTYPE html>
 <html lang="es">
-<head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Traslados Parabarberos</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-firestore-compat.js"></script>
 </head>
 <body class="bg-gray-100 font-sans">
 <div class="container mx-auto p-4">
@@ -93,13 +94,26 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {
+    const firebaseConfig = {
+      apiKey: "AIzaSyBmmNg525KrnOTsebzAV9dzfsKiq3o-0iQ",
+      authDomain: "base-de-datos-traslados.firebaseapp.com",
+      projectId: "base-de-datos-traslados",
+      storageBucket: "base-de-datos-traslados.appspot.com",
+      messagingSenderId: "569583717634",
+      appId: "1:569583717634:web:f7baa7aaf66a639624461b",
+      measurementId: "G-9CSBCGJRGS"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+    const transfersCollection = db.collection("transferencias");
     // --- ESTADO GLOBAL DE LA APLICACIÓN ---
     let allProducts = [];
     let productsToShowInitially = 30;
     let productsToAddOnScroll = 15;
     let currentProductOffset = 0;
     let currentTransferItems = [];
-    let allTransferRequests = loadTransferRequestsFromLocalStorage();
+    let allTransferRequests = [];
     let currentUserRole = localStorage.getItem('userRole') || 'requester';
 
     // --- ACCESO A ELEMENTOS DEL HTML (DOM) ---
@@ -133,11 +147,10 @@ document.addEventListener('DOMContentLoaded', () => {
         localStorage.setItem('userRole', currentUserRole);
         roleSelector.value = currentUserRole;
     }
-
     function handleRoleChange() {
-        currentUserRole = roleSelector.value;
-        updateUserRoleView();
-    }
+    currentUserRole = roleSelector.value;
+    updateUserRoleView();
+}
 
     // --- RENDERIZADO (DIBUJAR EN PANTALLA) ---
     function renderProducts(productsToRender, append = false) {
@@ -220,35 +233,34 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function renderMyPendingRequests() {
-        const selectedRequesterName = requesterNameSelect.value;
-        const myRequests = allTransferRequests.filter(req => req.requesterName === selectedRequesterName && (req.status === 'pending' || req.status.startsWith('processing')));
-        myPendingRequestsDiv.innerHTML = myRequests.length === 0 ? `<p class="text-gray-500 italic">No tienes solicitudes activas.</p>` : '';
-        myRequests.forEach(req => myPendingRequestsDiv.appendChild(createRequestCard(req, 'requester')));
-    }
-
+    const selectedRequester = requesterNameSelect.value;
+    const myRequests = allTransferRequests.filter(r => r.requesterName === selectedRequester && (r.status === 'pending' || r.status.startsWith('processing'))).sort((a,b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0));
+    myPendingRequestsDiv.innerHTML = myRequests.length === 0 ? '<p class="text-gray-500 italic">No hay solicitudes activas.</p>' : '';
+    myRequests.forEach(req => myPendingRequestsDiv.appendChild(createRequestCard(req, 'requester')));
+}
     function renderMyHistoryRequests() {
-        const selectedRequesterName = requesterNameSelect.value;
-        const myRequests = allTransferRequests.filter(req => req.requesterName === selectedRequesterName && (req.status === 'completed' || req.status === 'cancelled')).sort((a, b) => b.timestamp - a.timestamp);
-        myHistoryRequestsDiv.innerHTML = myRequests.length === 0 ? `<p class="text-gray-500 italic">No tienes solicitudes en el historial.</p>` : '';
-        myRequests.forEach(req => myHistoryRequestsDiv.appendChild(createRequestCard(req, 'requester')));
-    }
+    const selectedRequester = requesterNameSelect.value;
+    const myRequests = allTransferRequests.filter(r => r.requesterName === selectedRequester && (r.status === 'completed' || r.status === 'cancelled')).sort((a,b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0));
+    myHistoryRequestsDiv.innerHTML = myRequests.length === 0 ? '<p class="text-gray-500 italic">No hay historial.</p>' : '';
+    myRequests.forEach(req => myHistoryRequestsDiv.appendChild(createRequestCard(req, 'requester')));
+}
 
     function renderAdminRequests() {
-        const activeRequests = allTransferRequests.filter(req => req.status === 'pending' || req.status.startsWith('processing')).sort((a,b) => a.timestamp - b.timestamp);
-        adminTransferRequestsDiv.innerHTML = activeRequests.length === 0 ? '<p class="text-gray-500 italic">No hay solicitudes activas para administrar.</p>' : '';
-        activeRequests.forEach(req => adminTransferRequestsDiv.appendChild(createRequestCard(req, 'admin')));
-    }
+    const active = allTransferRequests.filter(r => r.status === 'pending' || r.status.startsWith('processing')).sort((a,b) => (a.timestamp?.seconds || 0) - (b.timestamp?.seconds || 0));
+    adminTransferRequestsDiv.innerHTML = active.length === 0 ? '<p class="text-gray-500 italic">No hay solicitudes activas.</p>' : '';
+    active.forEach(req => adminTransferRequestsDiv.appendChild(createRequestCard(req, 'admin')));
+}
 
     function renderAdminHistoryRequests() {
-        const completed = allTransferRequests.filter(req => req.status === 'completed').sort((a, b) => b.timestamp - a.timestamp);
-        const cancelled = allTransferRequests.filter(req => req.status === 'cancelled').sort((a, b) => b.timestamp - a.timestamp);
-        
-        adminCompletedRequestsDiv.innerHTML = completed.length > 0 ? '' : '<p class="text-gray-500 italic">No hay solicitudes completadas.</p>';
-        completed.forEach(req => adminCompletedRequestsDiv.appendChild(createRequestCard(req, 'admin')));
+    const completed = allTransferRequests.filter(r => r.status === 'completed').sort((a,b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0));
+    const cancelled = allTransferRequests.filter(r => r.status === 'cancelled').sort((a,b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0));
+    
+    adminCompletedRequestsDiv.innerHTML = completed.length === 0 ? '<p class="text-gray-500 italic">No hay completadas.</p>' : '';
+    completed.forEach(req => adminCompletedRequestsDiv.appendChild(createRequestCard(req, 'admin')));
 
-        adminCancelledRequestsDiv.innerHTML = cancelled.length > 0 ? '' : '<p class="text-gray-500 italic">No hay solicitudes canceladas.</p>';
-        cancelled.forEach(req => adminCancelledRequestsDiv.appendChild(createRequestCard(req, 'admin')));
-    }
+    adminCancelledRequestsDiv.innerHTML = cancelled.length === 0 ? '<p class="text-gray-500 italic">No hay canceladas.</p>' : '';
+    cancelled.forEach(req => adminCancelledRequestsDiv.appendChild(createRequestCard(req, 'admin')));
+}
 
     function createRequestCard(req, role) {
         const card = document.createElement('div');
@@ -363,90 +375,92 @@ document.addEventListener('DOMContentLoaded', () => {
         saveCurrentTransferToLocalStorage();
     }
 
-    function handleSubmitTransferForm(event) {
-        event.preventDefault();
-        if (currentTransferItems.length === 0) {
-            alert("Agrega productos antes de enviar.");
-            return;
-        }
-        const newReq = {
-            id: `TR-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
-            items: JSON.parse(JSON.stringify(currentTransferItems)),
-            fromWarehouse: fromWarehouseSelect.value,
-            toWarehouse: toWarehouseSelect.value,
-            requesterName: requesterNameSelect.value,
-            status: 'pending',
-            timestamp: Date.now()
-        };
-        allTransferRequests.push(newReq);
-        saveTransferRequestsToLocalStorage();
+    async function handleSubmitTransferForm(event) {
+    event.preventDefault();
+    if (currentTransferItems.length === 0) {
+        alert("Agrega productos antes de enviar.");
+        return;
+    }
+    const newReq = {
+        items: currentTransferItems,
+        fromWarehouse: fromWarehouseSelect.value,
+        toWarehouse: toWarehouseSelect.value,
+        requesterName: requesterNameSelect.value,
+        status: 'pending',
+        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+    };
+    try {
+        await transfersCollection.add(newReq);
         currentTransferItems = [];
+        localStorage.removeItem('currentTransferDraft');
         renderCurrentTransfer();
-        saveCurrentTransferToLocalStorage();
-        renderAllRequesterSections();
-        if (currentUserRole === 'admin') renderAllAdminSections();
-        alert("Solicitud enviada con éxito.");
+        alert("¡Solicitud enviada a la nube con éxito!");
+    } catch (error) {
+        console.error("Error al guardar en Firebase: ", error);
+        alert("Error al enviar la solicitud. Revisa la consola (F12).");
     }
-
-    function handleDeleteMyRequest(event) {
-        const requestId = event.currentTarget.dataset.requestId;
-        if (confirm("¿Eliminar esta solicitud?")) {
-            allTransferRequests = allTransferRequests.filter(req => req.id !== requestId);
-            saveTransferRequestsToLocalStorage();
-            renderAllRequesterSections();
+}
+    async function handleDeleteMyRequest(event) {
+    const requestId = event.currentTarget.dataset.requestId;
+    if (confirm("¿Eliminar esta solicitud de la nube?")) {
+        try {
+            await transfersCollection.doc(requestId).delete();
+        } catch (error) {
+            console.error("Error al eliminar: ", error);
         }
     }
+}
 
-    function handleMarkItemAvailability(event) {
-        const button = event.currentTarget;
-        const { requestId, itemIndex, available } = button.dataset;
-        const request = allTransferRequests.find(r => r.id === requestId);
-        if (request && request.items[itemIndex]) {
-            request.items[itemIndex].available = (available === 'true');
-            if (request.status === 'pending') {
-                request.status = 'processing_partial_items';
+    async function handleMarkItemAvailability(event) {
+    const { requestId, itemIndex, available } = event.currentTarget.dataset;
+    const reqRef = transfersCollection.doc(requestId);
+    try {
+        const doc = await reqRef.get();
+        if (doc.exists) {
+            let reqData = doc.data();
+            if (reqData.items && reqData.items[itemIndex]) {
+                reqData.items[itemIndex].available = (available === 'true');
+                if (reqData.status === 'pending') {
+                    reqData.status = 'processing_partial_items';
+                }
+                await reqRef.update({ items: reqData.items, status: reqData.status });
             }
-            saveTransferRequestsToLocalStorage();
-            renderAllAdminSections();
         }
-    }
-
-    function handleAdminAction(event) {
-        const btn = event.currentTarget;
-        const { requestId, action } = btn.dataset;
-        const req = allTransferRequests.find(r => r.id === requestId);
-        if (!req) return;
+    } catch(e) { console.error("Error al marcar el ítem:", e); }
+}
+    async function handleAdminAction(event) {
+    const { requestId, action } = event.currentTarget.dataset;
+    const reqRef = transfersCollection.doc(requestId);
+    try {
+        const doc = await reqRef.get();
+        if (!doc.exists) return;
+        const currentData = doc.data();
+        const currentNotes = currentData.notes || "";
+        let updateData = {};
 
         switch (action) {
             case 'start_processing':
-                req.items.forEach(item => item.available = undefined);
-                req.status = 'processing_partial_items';
-                req.notes = "Revisión iniciada.";
+                updateData = { status: 'processing_partial_items', notes: 'Revisión iniciada.' };
                 break;
             case 'completed':
-                if (req.items.some(item => item.available === false) && !confirm("Hay ítems faltantes. ¿Completar igual?")) return;
-                req.status = 'completed';
-                req.notes = (req.notes || "") + " Traslado completado.";
+                if (currentData.items.some(item => item.available === false) && !confirm("Hay ítems faltantes. ¿Completar igual?")) return;
+                updateData = { status: 'completed', notes: currentNotes + " Traslado completado." };
                 break;
             case 'revert_to_pending':
                 if (confirm("¿Revertir a Pendiente?")) {
-                    req.status = 'pending';
-                    req.items.forEach(item => item.available = undefined);
-                    req.notes = "Revertido a pendiente.";
-                }
+                    const resetItems = currentData.items.map(i => ({ ...i, available: null }));
+                    updateData = { status: 'pending', notes: 'Revertido a pendiente.', items: resetItems };
+                } else return;
                 break;
             case 'cancel':
                 if (confirm("¿Cancelar esta solicitud?")) {
-                    req.status = 'cancelled';
-                    req.notes = (req.notes || "") + " Solicitud cancelada.";
-                }
+                    updateData = { status: 'cancelled', notes: currentNotes + " Solicitud cancelada." };
+                } else return;
                 break;
         }
-        saveTransferRequestsToLocalStorage();
-        renderAllAdminSections();
-        renderAllRequesterSections();
-    }
-
+        await reqRef.update(updateData);
+    } catch(e) { console.error("Error al actualizar la solicitud:", e); }
+}
     function handleSearchInput() {
         const searchTerm = searchInput.value.toLowerCase().trim();
         if (searchTerm === "") {
@@ -460,10 +474,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- LOCALSTORAGE Y HELPERS ---
-    function saveTransferRequestsToLocalStorage() { localStorage.setItem('transferRequests', JSON.stringify(allTransferRequests)); }
-    function loadTransferRequestsFromLocalStorage() { const d = localStorage.getItem('transferRequests'); return d ? JSON.parse(d) : []; }
-    function saveCurrentTransferToLocalStorage() { localStorage.setItem('currentTransferDraft', JSON.stringify(currentTransferItems)); }
-    function loadCurrentTransferFromLocalStorage() { const d = localStorage.getItem('currentTransferDraft'); currentTransferItems = d ? JSON.parse(d) : []; }
     function getRequestStatusColor(s) { return {'pending':'bg-yellow-50 border-yellow-400','processing_all_items':'bg-blue-50 border-blue-400','processing_partial_items':'bg-orange-50 border-orange-400','completed':'bg-green-100 border-green-500','cancelled':'bg-red-100 border-red-400'}[s]||'bg-gray-50 border-gray-300'; }
     function translateStatus(s) { return {'pending':'Pendiente','processing_all_items':'En Revisión (Todo OK)','processing_partial_items':'En Revisión (Parcial)','completed':'Realizado','cancelled':'Cancelado'}[s]||s; }
 
@@ -511,17 +521,28 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         return Array.from(productsMap.values()).sort((a, b) => a.name.localeCompare(b.name));
     }
-
-    // --- INICIALIZACIÓN DE LA APP ---
     function initializeApp() {
         allProducts = loadAndTransformProducts();
-        loadCurrentTransferFromLocalStorage();
+        currentTransferItems = JSON.parse(localStorage.getItem('currentTransferDraft')) || [];
         displayInitialProducts();
         renderCurrentTransfer();
+
+        // Listeners de la interfaz
         roleSelector.onchange = handleRoleChange;
-        requesterNameSelect.onchange = renderAllRequesterSections;
+        requesterNameSelect.onchange = renderAllSections;
         transferForm.onsubmit = handleSubmitTransferForm;
         searchInput.oninput = handleSearchInput;
+        
+        // Listener de Firebase (la magia en tiempo real)
+        transfersCollection.orderBy("timestamp", "desc").onSnapshot(snapshot => {
+            console.log("Datos recibidos de Firebase!");
+            allTransferRequests = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            renderAllSections();
+        }, error => {
+            console.error("Error al conectar con Firebase: ", error);
+            alert("No se pudo conectar a la base de datos. Revisa la consola (F12).")
+        });
+
         updateUserRoleView();
     }
 
