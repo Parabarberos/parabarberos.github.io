@@ -3,8 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Traslados Parabarberos</title>
+    <title>Traslados Parabarberos (En la Nube)</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Scripts de Firebase (versión compat para funcionar sin 'import') -->
     <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-firestore-compat.js"></script>
 </head>
@@ -29,15 +30,9 @@
                 <input type="search" id="searchInput" placeholder="Buscar producto por nombre o ID..."
                        class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
             </div>
-            <div id="productList" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6 min-h-[200px] max-h-[60vh] overflow-y-auto p-2 bg-gray-50 rounded">
-                <!-- Productos se cargarán aquí -->
-            </div>
-
+            <div id="productList" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6 min-h-[200px] max-h-[60vh] overflow-y-auto p-2 bg-gray-50 rounded"></div>
             <h3 class="text-xl font-semibold mb-2 text-gray-700">Solicitud Actual</h3>
-            <div id="currentTransferRequest" class="space-y-3 mb-6 min-h-[100px] border p-4 rounded-md bg-gray-50">
-                <p class="text-gray-500 italic">Selecciona productos para agregar a la solicitud.</p>
-            </div>
-
+            <div id="currentTransferRequest" class="space-y-3 mb-6 min-h-[100px] border p-4 rounded-md bg-gray-50"></div>
             <form id="transferForm" class="space-y-4">
                 <div>
                     <label for="fromWarehouse" class="block text-sm font-medium text-gray-700">Desde Bodega:</label>
@@ -70,23 +65,18 @@
                     Solicitar Traslado
                 </button>
             </form>
-
             <h3 class="text-xl font-semibold mt-8 mb-4 text-gray-700">Mis Solicitudes Activas</h3>
             <div id="myPendingRequests" class="space-y-3"></div>
-             <h3 class="text-xl font-semibold mt-8 mb-4 text-gray-700">Mi Historial de Solicitudes</h3>
+            <h3 class="text-xl font-semibold mt-8 mb-4 text-gray-700">Mi Historial de Solicitudes</h3>
             <div id="myHistoryRequests" class="space-y-3"></div>
         </div>
-
         <!-- Sección de Administrador -->
         <div id="adminSection" class="bg-white p-6 rounded-lg shadow-lg" style="display: none;">
             <h2 class="text-2xl font-semibold mb-4 text-gray-700">Administrar Solicitudes Activas</h2>
             <div id="adminTransferRequests" class="space-y-4"></div>
-
             <h2 class="text-2xl font-semibold mt-8 mb-4 text-gray-700">Historial de Traslados</h2>
-            
             <h3 class="text-lg font-semibold mb-2 text-gray-600">Completadas</h3>
             <div id="adminCompletedRequests" class="space-y-4 mb-4"></div>
-
             <h3 class="text-lg font-semibold mb-2 text-gray-600">Canceladas</h3>
             <div id="adminCancelledRequests" class="space-y-4"></div>
         </div>
@@ -95,7 +85,10 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-    // 1. Pega aquí tu objeto firebaseConfig
+
+    // ==============================================================================
+    // PASO 1: CONFIGURACIÓN DE FIREBASE (YA ESTÁ LISTA CON TUS DATOS)
+    // ==============================================================================
     const firebaseConfig = {
       apiKey: "AIzaSyBmmNg525KrnOTsebzAV9dzfsKiq3o-0iQ",
       authDomain: "base-de-datos-traslados.firebaseapp.com",
@@ -106,21 +99,18 @@ document.addEventListener('DOMContentLoaded', () => {
       measurementId: "G-9CSBCGJRGS"
     };
 
-    // 2. Inicializa Firebase y la base de datos
+    // Inicializa Firebase
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
-    const transfersCollection = db.collection("transferencias"); // Nombre de la colección en la BD
+    const transfersCollection = db.collection("transferencias");
 
     // --- ESTADO GLOBAL DE LA APLICACIÓN ---
     let allProducts = [];
-    let productsToShowInitially = 30;
-    let productsToAddOnScroll = 15;
-    let currentProductOffset = 0;
-    let currentTransferItems = [];
-    let allTransferRequests = []; // Se vacía porque ahora los datos vienen de Firebase en tiempo real
+    let currentTransferItems = JSON.parse(localStorage.getItem('currentTransferDraft')) || [];
+    let allTransferRequests = []; // Se carga desde Firebase
     let currentUserRole = localStorage.getItem('userRole') || 'requester';
 
-    // --- ACCESO A ELEMENTOS DEL HTML (DOM) ---
+    // --- DOM Elements ---
     const productListDiv = document.getElementById('productList');
     const currentTransferRequestDiv = document.getElementById('currentTransferRequest');
     const transferForm = document.getElementById('transferForm');
@@ -136,37 +126,38 @@ document.addEventListener('DOMContentLoaded', () => {
     const adminTransferRequestsDiv = document.getElementById('adminTransferRequests');
     const adminCompletedRequestsDiv = document.getElementById('adminCompletedRequests');
     const adminCancelledRequestsDiv = document.getElementById('adminCancelledRequests');
-
+    
     // --- LÓGICA DE ROLES Y VISTAS ---
     function updateUserRoleView() {
+        localStorage.setItem('userRole', currentUserRole);
+        roleSelector.value = currentUserRole;
         if (currentUserRole === 'requester') {
             requesterSection.style.display = 'block';
             adminSection.style.display = 'none';
-            renderAllRequesterSections();
         } else {
             requesterSection.style.display = 'none';
             adminSection.style.display = 'block';
-            renderAllAdminSections();
         }
-        localStorage.setItem('userRole', currentUserRole);
-        roleSelector.value = currentUserRole;
+        renderAllSections();
     }
-
-    function handleRoleChange() {
-        currentUserRole = roleSelector.value;
-        updateUserRoleView();
+    
+    function renderAllSections() {
+        if (currentUserRole === 'requester') {
+            renderMyPendingRequests();
+            renderMyHistoryRequests();
+        } else {
+            renderAdminRequests();
+            renderAdminHistoryRequests();
+        }
     }
 
     // --- RENDERIZADO (DIBUJAR EN PANTALLA) ---
-    function renderProducts(productsToRender, append = false) {
-        if (!append) {
-            productListDiv.innerHTML = '';
-        }
-        if (productsToRender.length === 0 && !append) {
+    function renderProducts(productsToRender) {
+        productListDiv.innerHTML = '';
+        if (productsToRender.length === 0) {
             productListDiv.innerHTML = '<p class="text-gray-500 col-span-full text-center">No se encontraron productos.</p>';
             return;
         }
-
         const fragment = document.createDocumentFragment();
         productsToRender.forEach(product => {
             const card = document.createElement('div');
@@ -183,28 +174,22 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>`;
             fragment.appendChild(card);
         });
-
         productListDiv.appendChild(fragment);
-        productListDiv.querySelectorAll('.add-to-transfer-btn:not([data-listener-attached])').forEach(b => {
+        productListDiv.querySelectorAll('.add-to-transfer-btn').forEach(b => {
              b.onclick = handleAddToTransfer;
-             b.setAttribute('data-listener-attached', 'true');
         });
     }
 
     function displayInitialProducts() {
-        currentProductOffset = 0;
-        const productsToDisplay = allProducts.slice(0, productsToShowInitially);
-        renderProducts(productsToDisplay, false);
-        currentProductOffset = productsToDisplay.length;
+        renderProducts(allProducts.slice(0, 50));
     }
-
+    
     function renderCurrentTransfer() {
         currentTransferRequestDiv.innerHTML = '';
         if (currentTransferItems.length === 0) {
-            currentTransferRequestDiv.innerHTML = '<p class="text-gray-500 italic">Selecciona productos para agregar a la solicitud.</p>';
+            currentTransferRequestDiv.innerHTML = '<p class="text-gray-500 italic">Selecciona productos.</p>';
             return;
         }
-
         const ul = document.createElement('ul');
         ul.className = 'space-y-2';
         currentTransferItems.forEach((item, index) => {
@@ -212,78 +197,63 @@ document.addEventListener('DOMContentLoaded', () => {
             li.className = 'flex justify-between items-center p-2 bg-white rounded shadow-sm';
             li.innerHTML = `
                 <div>
-                    <span class="font-medium">${item.productName}</span>
-                    <span class="text-sm text-gray-500">(ID: ${item.productId})</span>
+                    <span class="font-medium">${item.productName}</span> <span class="text-sm text-gray-500">(ID: ${item.productId})</span>
                 </div>
                 <div class="flex items-center space-x-2">
-                    <input type="number" min="1" value="${item.quantity}" data-item-index="${index}" class="w-16 p-1 border-gray-300 rounded-md shadow-sm item-quantity-input text-sm">
+                    <input type="number" min="1" value="${item.quantity}" data-item-index="${index}" class="w-16 p-1 border rounded item-quantity-input text-sm">
                     <button data-item-index="${index}" class="remove-item-btn text-red-500 hover:text-red-700 font-semibold text-xs">Quitar</button>
                 </div>`;
             ul.appendChild(li);
         });
         currentTransferRequestDiv.appendChild(ul);
-
         document.querySelectorAll('.item-quantity-input').forEach(input => input.onchange = handleUpdateItemQuantity);
         document.querySelectorAll('.remove-item-btn').forEach(button => button.onclick = handleRemoveItem);
     }
     
-    function renderAllRequesterSections() {
-        renderMyPendingRequests();
-        renderMyHistoryRequests();
-    }
-    
-    function renderAllAdminSections() {
-        renderAdminRequests();
-        renderAdminHistoryRequests();
-    }
-
     function renderMyPendingRequests() {
-        const selectedRequesterName = requesterNameSelect.value;
-        const myRequests = allTransferRequests.filter(req => req.requesterName === selectedRequesterName && (req.status === 'pending' || req.status.startsWith('processing')));
-        myPendingRequestsDiv.innerHTML = myRequests.length === 0 ? `<p class="text-gray-500 italic">No tienes solicitudes activas.</p>` : '';
+        const selectedRequester = requesterNameSelect.value;
+        const myRequests = allTransferRequests.filter(r => r.requesterName === selectedRequester && (r.status === 'pending' || r.status.startsWith('processing')));
+        myPendingRequestsDiv.innerHTML = myRequests.length === 0 ? '<p class="text-gray-500 italic">No hay solicitudes activas.</p>' : '';
         myRequests.forEach(req => myPendingRequestsDiv.appendChild(createRequestCard(req, 'requester')));
     }
 
     function renderMyHistoryRequests() {
-        const selectedRequesterName = requesterNameSelect.value;
-        const myRequests = allTransferRequests.filter(req => req.requesterName === selectedRequesterName && (req.status === 'completed' || req.status === 'cancelled')).sort((a, b) => b.timestamp - a.timestamp);
-        myHistoryRequestsDiv.innerHTML = myRequests.length === 0 ? `<p class="text-gray-500 italic">No tienes solicitudes en el historial.</p>` : '';
+        const selectedRequester = requesterNameSelect.value;
+        const myRequests = allTransferRequests.filter(r => r.requesterName === selectedRequester && (r.status === 'completed' || r.status === 'cancelled'));
+        myHistoryRequestsDiv.innerHTML = myRequests.length === 0 ? '<p class="text-gray-500 italic">No hay historial.</p>' : '';
         myRequests.forEach(req => myHistoryRequestsDiv.appendChild(createRequestCard(req, 'requester')));
     }
 
     function renderAdminRequests() {
-        const activeRequests = allTransferRequests.filter(req => req.status === 'pending' || req.status.startsWith('processing')).sort((a,b) => a.timestamp - b.timestamp);
-        adminTransferRequestsDiv.innerHTML = activeRequests.length === 0 ? '<p class="text-gray-500 italic">No hay solicitudes activas para administrar.</p>' : '';
-        activeRequests.forEach(req => adminTransferRequestsDiv.appendChild(createRequestCard(req, 'admin')));
+        const active = allTransferRequests.filter(r => r.status === 'pending' || r.status.startsWith('processing'));
+        adminTransferRequestsDiv.innerHTML = active.length === 0 ? '<p class="text-gray-500 italic">No hay solicitudes activas.</p>' : '';
+        active.forEach(req => adminTransferRequestsDiv.appendChild(createRequestCard(req, 'admin')));
     }
 
     function renderAdminHistoryRequests() {
-        const completed = allTransferRequests.filter(req => req.status === 'completed').sort((a, b) => b.timestamp - a.timestamp);
-        const cancelled = allTransferRequests.filter(req => req.status === 'cancelled').sort((a, b) => b.timestamp - a.timestamp);
+        const completed = allTransferRequests.filter(r => r.status === 'completed');
+        const cancelled = allTransferRequests.filter(r => r.status === 'cancelled');
         
-        adminCompletedRequestsDiv.innerHTML = completed.length > 0 ? '' : '<p class="text-gray-500 italic">No hay solicitudes completadas.</p>';
+        adminCompletedRequestsDiv.innerHTML = completed.length === 0 ? '<p class="text-gray-500 italic">No hay completadas.</p>' : '';
         completed.forEach(req => adminCompletedRequestsDiv.appendChild(createRequestCard(req, 'admin')));
 
-        adminCancelledRequestsDiv.innerHTML = cancelled.length > 0 ? '' : '<p class="text-gray-500 italic">No hay solicitudes canceladas.</p>';
+        adminCancelledRequestsDiv.innerHTML = cancelled.length === 0 ? '<p class="text-gray-500 italic">No hay canceladas.</p>' : '';
         cancelled.forEach(req => adminCancelledRequestsDiv.appendChild(createRequestCard(req, 'admin')));
     }
-
+    
     function createRequestCard(req, role) {
         const card = document.createElement('div');
         card.className = `p-4 border rounded-md shadow-sm mb-3 ${getRequestStatusColor(req.status)}`;
-        
         const itemsHtml = req.items.map((item, index) => {
             let availabilityStatus = '';
             let itemClasses = '';
             if (req.status.startsWith('processing')) {
-                if (item.available === true) {
-                    availabilityStatus = '<span class="text-green-600 font-bold ml-2">✓ OK</span>';
-                } else if (item.available === false) {
+                if (item.available === true) availabilityStatus = '<span class="text-green-600 font-bold ml-2">✓ OK</span>';
+                else if (item.available === false) {
                     availabilityStatus = '<span class="text-red-600 font-bold ml-2">✗ Falta</span>';
                     itemClasses = 'text-red-700 line-through';
                 }
             }
-            
             let itemButtons = '';
             if (role === 'admin' && (req.status === 'pending' || req.status.startsWith('processing'))) {
                 itemButtons = `
@@ -293,26 +263,21 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             return `<li class="${itemClasses} flex justify-between items-center"><span>${item.productName} (x${item.quantity})</span> <div>${availabilityStatus}${itemButtons}</div></li>`;
         }).join('');
-
         let adminActionsHtml = '';
         if (role === 'admin' && req.status !== 'completed' && req.status !== 'cancelled') {
             let buttons = '';
-            if (req.status === 'pending') {
-                buttons += `<button data-request-id="${req.id}" data-action="start_processing" class="action-btn bg-blue-500 hover:bg-blue-600 text-white text-xs py-1 px-2 rounded mr-1">Iniciar Revisión</button>`;
-            }
+            if (req.status === 'pending') buttons += `<button data-request-id="${req.id}" data-action="start_processing" class="action-btn bg-blue-500 hover:bg-blue-600 text-white text-xs py-1 px-2 rounded mr-1">Iniciar Revisión</button>`;
             if (req.status.startsWith('processing')) {
                  buttons += `<button data-request-id="${req.id}" data-action="completed" class="action-btn bg-teal-500 hover:bg-teal-600 text-white text-xs py-1 px-2 rounded">Marcar Realizado</button>`;
-                 buttons += ` <button data-request-id="${req.id}" data-action="revert_to_pending" class="action-btn bg-gray-400 hover:bg-gray-500 text-white text-xs py-1 px-2 rounded ml-1">Revertir</button>`;
+                 buttons += `<button data-request-id="${req.id}" data-action="revert_to_pending" class="action-btn bg-gray-400 hover:bg-gray-500 text-white text-xs py-1 px-2 rounded ml-1">Revertir</button>`;
             }
             buttons += `<button data-request-id="${req.id}" data-action="cancel" class="action-btn bg-red-500 hover:bg-red-600 text-white text-xs py-1 px-2 rounded ml-1">Cancelar</button>`;
             adminActionsHtml = `<div class="mt-3">${buttons}</div>`;
         }
-        
         let requesterActionsHtml = '';
         if (role === 'requester' && req.status === 'pending') {
              requesterActionsHtml = `<button data-request-id="${req.id}" class="delete-my-request-btn bg-red-500 hover:bg-red-700 text-white text-xs py-1 px-2 rounded">Eliminar</button>`;
         }
-        
         card.innerHTML = `
             <div class="flex justify-between items-start">
                 <div>
@@ -328,179 +293,154 @@ document.addEventListener('DOMContentLoaded', () => {
             <ul class="list-disc list-inside text-sm ml-4 space-y-1 mt-1">${itemsHtml}</ul>
             ${adminActionsHtml}
         `;
-        
         card.querySelectorAll('.action-btn').forEach(b => b.onclick = handleAdminAction);
         card.querySelectorAll('.mark-item-btn').forEach(b => b.onclick = handleMarkItemAvailability);
         card.querySelectorAll('.delete-my-request-btn').forEach(b => b.onclick = handleDeleteMyRequest);
-
         return card;
     }
 
-    // --- MANEJADORES DE EVENTOS (HANDLERS) ---
+    // --- MANEJADORES DE EVENTOS ---
     function handleAddToTransfer(event) {
         const button = event.currentTarget;
-        const productId = button.dataset.productId;
-        const product = allProducts.find(p => p.id === productId);
+        const product = allProducts.find(p => p.id === button.dataset.productId);
         if (!product) return;
-
-        const safeId = product.id.replace(/[^a-zA-Z0-9-_]/g, '');
-        const qtyInput = document.getElementById(`qty-${safeId}`);
+        const qtyInput = document.getElementById(`qty-${product.id.replace(/[^a-zA-Z0-9-_]/g, '')}`);
         const quantity = parseInt(qtyInput.value, 10);
-
-        if (isNaN(quantity) || quantity < 1) { alert("Cantidad inválida."); return; }
-
-        const existingItem = currentTransferItems.find(i => i.productId === productId);
+        const existingItem = currentTransferItems.find(i => i.productId === product.id);
         if (existingItem) {
             existingItem.quantity += quantity;
         } else {
-            currentTransferItems.push({ productId, productName: product.name, quantity });
+            currentTransferItems.push({ productId: product.id, productName: product.name, quantity });
         }
         qtyInput.value = "1";
+        localStorage.setItem('currentTransferDraft', JSON.stringify(currentTransferItems));
         renderCurrentTransfer();
-        saveCurrentTransferToLocalStorage();
     }
-
+    
     function handleUpdateItemQuantity(event) {
         const input = event.currentTarget;
         const itemIndex = parseInt(input.dataset.itemIndex, 10);
         const newQuantity = parseInt(input.value, 10);
-        if (isNaN(newQuantity) || newQuantity < 1) {
-            alert("Cantidad inválida.");
+        if(isNaN(newQuantity) || newQuantity < 1) {
             input.value = currentTransferItems[itemIndex].quantity;
             return;
         }
         currentTransferItems[itemIndex].quantity = newQuantity;
-        saveCurrentTransferToLocalStorage();
+        localStorage.setItem('currentTransferDraft', JSON.stringify(currentTransferItems));
+        renderCurrentTransfer();
     }
 
     function handleRemoveItem(event) {
-        const button = event.currentTarget;
-        const itemIndex = parseInt(button.dataset.itemIndex, 10);
+        const itemIndex = parseInt(event.currentTarget.dataset.itemIndex, 10);
         currentTransferItems.splice(itemIndex, 1);
+        localStorage.setItem('currentTransferDraft', JSON.stringify(currentTransferItems));
         renderCurrentTransfer();
-        saveCurrentTransferToLocalStorage();
     }
-
-// VERSIÓN NUEVA (USA FIREBASE)
-async function handleSubmitTransferForm(event) {
-    event.preventDefault();
-    if (currentTransferItems.length === 0) {
-        alert("Agrega productos antes de enviar.");
-        return;
-    }
-    const newReq = {
-        items: currentTransferItems,
-        fromWarehouse: fromWarehouseSelect.value,
-        toWarehouse: toWarehouseSelect.value,
-        requesterName: requesterNameSelect.value,
-        status: 'pending',
-        timestamp: firebase.firestore.FieldValue.serverTimestamp() // Usa la hora del servidor
-    };
-
-    try {
-        await transfersCollection.add(newReq); // <-- Envía a Firebase
-        currentTransferItems = [];
-        localStorage.removeItem('currentTransferDraft'); // Limpia el borrador local
-        renderCurrentTransfer();
-        alert("¡Solicitud enviada a la nube con éxito!");
-    } catch (error) {
-        console.error("Error al guardar en Firebase: ", error);
-        alert("Error al enviar la solicitud. Revisa la consola (F12).");
-    }
-}
-
-   // VERSIÓN NUEVA (USA FIREBASE)
-async function handleDeleteMyRequest(event) {
-    const requestId = event.currentTarget.dataset.requestId;
-    if (confirm("¿Eliminar esta solicitud de la nube?")) {
-        try {
-            await transfersCollection.doc(requestId).delete(); // <-- Borra en Firebase
-            // No es necesario llamar a render, el listener onSnapshot lo hará automáticamente.
-        } catch (error) {
-            console.error("Error al eliminar: ", error);
-            alert("No se pudo eliminar la solicitud.");
-        }
-    }
-}
-
-   // VERSIÓN NUEVA (USA FIREBASE)
-async function handleMarkItemAvailability(event) {
-    const { requestId, itemIndex, available } = event.currentTarget.dataset;
-    const reqRef = transfersCollection.doc(requestId);
     
-    try {
-        const doc = await reqRef.get();
-        if (doc.exists) {
-            let reqData = doc.data();
-            reqData.items[itemIndex].available = (available === 'true');
-            if(reqData.status === 'pending') {
-                reqData.status = 'processing_partial_items';
-            }
-            // Actualiza el documento completo en Firebase
-            await reqRef.update({ items: reqData.items, status: reqData.status });
-        }
-    } catch(e) { console.error("Error al marcar el ítem:", e); }
-}
-
-  async function handleAdminAction(event) {
-    const { requestId, action } = event.currentTarget.dataset;
-    const reqRef = transfersCollection.doc(requestId);
-
-    try {
-        const doc = await reqRef.get();
-        if (!doc.exists) return;
-        const currentData = doc.data();
-        const currentNotes = currentData.notes || "";
-        let updateData = {};
-
-        switch(action) {
-            case 'start_processing':
-                updateData = { status: 'processing_partial_items', notes: 'Revisión iniciada.' };
-                break;
-            case 'completed':
-                if (currentData.items.some(item => item.available === false) && !confirm("Hay ítems faltantes. ¿Completar igual?")) return;
-                updateData = { status: 'completed', notes: currentNotes + " Traslado completado." };
-                break;
-            case 'revert_to_pending':
-                if (confirm("¿Revertir a Pendiente?")) {
-                    const resetItems = currentData.items.map(i => ({ ...i, available: null }));
-                    updateData = { status: 'pending', notes: 'Revertido a pendiente.', items: resetItems };
-                } else return;
-                break;
-            case 'cancel':
-                if (confirm("¿Cancelar esta solicitud?")) {
-                    updateData = { status: 'cancelled', notes: currentNotes + " Solicitud cancelada." };
-                } else return;
-                break;
-        }
-        await reqRef.update(updateData); // <-- Actualiza en Firebase
-    } catch(e) { console.error("Error al actualizar la solicitud:", e); }
-}
-
-    function handleSearchInput() {
-        const searchTerm = searchInput.value.toLowerCase().trim();
-        if (searchTerm === "") {
-            displayInitialProducts();
+    async function handleSubmitTransferForm(event) {
+        event.preventDefault();
+        if (currentTransferItems.length === 0) {
+            alert("Agrega productos antes de enviar.");
             return;
         }
-        if (searchTerm.length > 1) {
-            const filtered = allProducts.filter(p => p.name.toLowerCase().includes(searchTerm) || p.description.toLowerCase().includes(searchTerm) || p.id.toLowerCase().includes(searchTerm));
-            renderProducts(filtered, false);
+        const newReq = {
+            items: currentTransferItems,
+            fromWarehouse: fromWarehouseSelect.value,
+            toWarehouse: toWarehouseSelect.value,
+            requesterName: requesterNameSelect.value,
+            status: 'pending',
+            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        };
+        try {
+            await transfersCollection.add(newReq);
+            currentTransferItems = [];
+            localStorage.removeItem('currentTransferDraft');
+            renderCurrentTransfer();
+            alert("¡Solicitud enviada a la nube con éxito!");
+        } catch (error) {
+            console.error("Error al guardar en Firebase: ", error);
+            alert("Error al enviar la solicitud. Revisa la consola (F12).");
         }
     }
 
-    // --- LOCALSTORAGE Y HELPERS ---
-    function saveTransferRequestsToLocalStorage() { localStorage.setItem('transferRequests', JSON.stringify(allTransferRequests)); }
-    function loadTransferRequestsFromLocalStorage() { const d = localStorage.getItem('transferRequests'); return d ? JSON.parse(d) : []; }
-    function saveCurrentTransferToLocalStorage() { localStorage.setItem('currentTransferDraft', JSON.stringify(currentTransferItems)); }
-    function loadCurrentTransferFromLocalStorage() { const d = localStorage.getItem('currentTransferDraft'); currentTransferItems = d ? JSON.parse(d) : []; }
+    async function handleDeleteMyRequest(event) {
+        const requestId = event.currentTarget.dataset.requestId;
+        if (confirm("¿Eliminar esta solicitud de la nube?")) {
+            try {
+                await transfersCollection.doc(requestId).delete();
+            } catch (error) {
+                console.error("Error al eliminar: ", error);
+                alert("No se pudo eliminar la solicitud.");
+            }
+        }
+    }
+
+    async function handleAdminAction(event) {
+        const { requestId, action } = event.currentTarget.dataset;
+        const reqRef = transfersCollection.doc(requestId);
+        
+        try {
+            const doc = await reqRef.get();
+            if (!doc.exists) return;
+            const currentData = doc.data();
+            const currentNotes = currentData.notes || "";
+            let updateData = {};
+
+            switch(action) {
+                case 'start_processing':
+                    updateData = { status: 'processing_partial_items', notes: 'Revisión iniciada.' };
+                    break;
+                case 'completed':
+                    if (currentData.items.some(item => item.available === false) && !confirm("Hay ítems faltantes. ¿Completar igual?")) return;
+                    updateData = { status: 'completed', notes: currentNotes + " Traslado completado." };
+                    break;
+                case 'revert_to_pending':
+                    if (confirm("¿Revertir a Pendiente?")) {
+                        const resetItems = currentData.items.map(i => ({...i, available: null}));
+                        updateData = { status: 'pending', notes: 'Revertido a pendiente.', items: resetItems };
+                    } else return;
+                    break;
+                case 'cancel':
+                    if (confirm("¿Cancelar esta solicitud?")) {
+                        updateData = { status: 'cancelled', notes: currentNotes + " Solicitud cancelada." };
+                    } else return;
+                    break;
+            }
+            await reqRef.update(updateData);
+        } catch(e) { console.error("Error al actualizar la solicitud:", e); }
+    }
+    
+    async function handleMarkItemAvailability(event) {
+        const { requestId, itemIndex, available } = event.currentTarget.dataset;
+        const reqRef = transfersCollection.doc(requestId);
+        
+        try {
+            const doc = await reqRef.get();
+            if (doc.exists) {
+                let reqData = doc.data();
+                reqData.items[itemIndex].available = (available === 'true');
+                if(reqData.status === 'pending') {
+                    reqData.status = 'processing_partial_items';
+                }
+                await reqRef.update({ items: reqData.items, status: reqData.status });
+            }
+        } catch(e) { console.error("Error al marcar el ítem:", e); }
+    }
+    
+    function handleSearchInput() {
+        const searchTerm = searchInput.value.toLowerCase().trim();
+        const filtered = allProducts.filter(p => p.name.toLowerCase().includes(searchTerm) || p.description.toLowerCase().includes(searchTerm) || p.id.toLowerCase().includes(searchTerm));
+        renderProducts(filtered);
+    }
+    
+    // --- HELPERS ---
     function getRequestStatusColor(s) { return {'pending':'bg-yellow-50 border-yellow-400','processing_all_items':'bg-blue-50 border-blue-400','processing_partial_items':'bg-orange-50 border-orange-400','completed':'bg-green-100 border-green-500','cancelled':'bg-red-100 border-red-400'}[s]||'bg-gray-50 border-gray-300'; }
     function translateStatus(s) { return {'pending':'Pendiente','processing_all_items':'En Revisión (Todo OK)','processing_partial_items':'En Revisión (Parcial)','completed':'Realizado','cancelled':'Cancelado'}[s]||s; }
 
     // --- CARGA DE DATOS DE PRODUCTOS ---
     function loadAndTransformProducts() {
         const rawData = [
-            {
+           {
   "738678000984 - DAILY CLEANS SHAMPOO AMERICAN CREW X 250ML": "669316222034 - BALSAMO AMERICAN CREW 170 ML"
  },
  {
@@ -5786,13 +5726,11 @@ async function handleMarkItemAvailability(event) {
             productListDiv.innerHTML = '<p class="text-red-500 col-span-full text-center">Error: Agrega tus productos en el archivo index.html.</p>';
             return [];
         }
-
         const uniqueProductStrings = new Set();
         rawData.forEach(item => {
             Object.keys(item).forEach(key => uniqueProductStrings.add(key));
             Object.values(item).forEach(val => val && uniqueProductStrings.add(val));
         });
-
         const productsMap = new Map();
         let genericCounter = 1;
         Array.from(uniqueProductStrings).forEach(fullProductName => {
@@ -5807,42 +5745,36 @@ async function handleMarkItemAvailability(event) {
             }
             let finalId = idPart;
             let idCounter = 1;
-            while (productsMap.has(finalId)) {
-                finalId = `${idPart}_${idCounter++}`;
-            }
+            while (productsMap.has(finalId)) finalId = `${idPart}_${idCounter++}`;
             productsMap.set(finalId, { id: finalId, name: namePart, description: fullProductName });
         });
         return Array.from(productsMap.values()).sort((a, b) => a.name.localeCompare(b.name));
     }
 
-// REEMPLAZA TU FUNCIÓN initializeApp CON ESTA
-function initializeApp() {
-    allProducts = loadAndTransformProducts();
-    currentTransferItems = JSON.parse(localStorage.getItem('currentTransferDraft')) || [];
-    displayInitialProducts();
-    renderCurrentTransfer();
+    // --- INICIALIZACIÓN DE LA APP ---
+    function initializeApp() {
+        allProducts = loadAndTransformProducts();
+        displayInitialProducts();
+        renderCurrentTransfer();
 
-    // Listeners de la interfaz
-    roleSelector.onchange = () => {
-        currentUserRole = roleSelector.value;
+        // Listeners de la interfaz
+        roleSelector.onchange = handleRoleChange;
+        requesterNameSelect.onchange = renderAllSections;
+        transferForm.onsubmit = handleSubmitTransferForm;
+        searchInput.oninput = handleSearchInput;
+        
+        // Listener de Firebase (la magia en tiempo real)
+        transfersCollection.orderBy("timestamp", "desc").onSnapshot(snapshot => {
+            console.log("Datos recibidos de Firebase!");
+            allTransferRequests = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            renderAllSections();
+        }, error => {
+            console.error("Error al conectar con Firebase: ", error);
+            alert("No se pudo conectar a la base de datos. Asegúrate de que tus claves de Firebase son correctas y que las reglas de la base de datos están en modo de prueba.")
+        });
+
         updateUserRoleView();
-    };
-    requesterNameSelect.onchange = renderAllSections;
-    transferForm.onsubmit = handleSubmitTransferForm;
-    searchInput.oninput = handleSearchInput;
-    
-    // Listener de Firebase (la magia en tiempo real)
-    transfersCollection.orderBy("timestamp", "desc").onSnapshot(snapshot => {
-        console.log("Datos recibidos de Firebase!");
-        allTransferRequests = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        renderAllSections();
-    }, error => {
-        console.error("Error al conectar con Firebase: ", error);
-        alert("No se pudo conectar a la base de datos. Asegúrate de que tus claves de Firebase son correctas y que las reglas de la base de datos están en modo de prueba.")
-    });
-
-    updateUserRoleView();
-}
+    }
 
     initializeApp();
 });
