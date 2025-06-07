@@ -12,16 +12,19 @@
 </head>
 <body class="bg-gray-100 font-sans">
     <div class="container mx-auto p-4 md:p-8">
-        <header class="mb-8 text-center">
-            <h1 class="text-3xl md:text-5xl font-bold text-gray-800">TRASLADOS ENTRE BODEGAS</h1>
-            <div class="mt-6">
-                <label for="roleSelector" class="mr-2 text-sm font-medium">USUARIO:</label>
-                <select id="roleSelector" class="p-2 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-red-500">
-                    <option value="requester">Solicitante</option>
-                    <option value="admin">Administrador</option>
-                </select>
-            </div>
-        </header>
+        <header class="mb-12 text-center">
+    <div class="inline-block p-2 bg-white rounded-full shadow-lg mx-auto mb-6 border-4 border-gray-200">
+        <img src="https://parabarberos.github.io/1.jpg" alt="Logo Parabarberos" class="h-24 w-24 md:h-32 md:w-32 rounded-full">
+    </div>
+    <h1 class="text-4xl md:text-5xl font-extrabold text-gray-800 tracking-tight">TRASLADOS ENTRE BODEGAS</h1>
+    <div class="mt-8">
+        <label for="roleSelector" class="mr-2 text-base font-semibold text-gray-600">USUARIO:</label>
+        <select id="roleSelector" class="p-2 border-2 border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-red-500 focus:border-red-500 font-semibold">
+            <option value="requester">Solicitante</option>
+            <option value="admin">Administrador</option>
+        </select>
+    </div>
+</header>
 
         <!-- VISTA DE SOLICITANTE -->
         <div id="requesterView" class="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -82,7 +85,7 @@
         <!-- VISTA DE ADMINISTRADOR -->
         <div id="adminView" class="grid grid-cols-1 lg:grid-cols-2 gap-8" style="display: none;">
             <div class="bg-white p-6 rounded-xl shadow-lg card">
-                <h2 class="text-2xl font-semibold mb-4 text-gray-800 border-b pb-3">Traslados pendiente</h2>
+                <h2 class="text-2xl font-semibold mb-4 text-gray-800 border-b pb-3">Traslados pendientes</h2>
                 <div class="space-y-2 mb-4">
                     <input type="text" id="adminActiveSearchId" placeholder="Buscar por ID o Solicitante..." class="w-full px-3 py-2 border rounded-lg">
                     <div class="grid grid-cols-2 gap-2">
