@@ -129,7 +129,8 @@
         let allProducts = [];
         let currentTransferItems = JSON.parse(localStorage.getItem('currentTransferDraft')) || [];
         let allTransferRequests = [];
-        let currentUserRole = localStorage.getItem('userRole') || 'requester';
+        let currentUserRole = 'requester';
+        const ADMIN_PASSWORD = "Traslados1234";
 
         const dom = {
             productList: document.getElementById('productList'),
@@ -344,9 +345,25 @@
 
         // --- MANEJADORES DE EVENTOS Y LÓGICA DE DATOS ---
         function handleRoleChange() {
-            currentUserRole = dom.roleSelector.value;
-            updateUserRoleView();
+    const selectedRole = dom.roleSelector.value;
+
+    if (selectedRole === 'admin') {
+        const password = prompt("Por favor, ingresa la contraseña de administrador:");
+
+        if (password === ADMIN_PASSWORD) {
+            currentUserRole = 'admin';
+            alert("Acceso concedido. Bienvenido, Administrador.");
+        } else {
+            alert("Contraseña incorrecta. Acceso denegado.");
+            dom.roleSelector.value = 'requester';
+            return; // Detiene la ejecución para no actualizar la vista
         }
+    } else {
+        currentUserRole = 'requester';
+    }
+    
+    updateUserRoleView();
+}
         function handleUpdateItemQuantity(event) {
             const input = event.currentTarget;
             currentTransferItems[input.dataset.itemIndex].quantity = parseInt(input.value, 10);
