@@ -3,127 +3,107 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Traslados Parabarberos (En la Nube)</title>
+    <title>Traslados Parabarberos v3</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-firestore-compat.js"></script>
+    <style>
+        .card { transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out; }
+        .card:hover { transform: translateY(-3px); box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1); }
+    </style>
 </head>
 <body class="bg-gray-100 font-sans">
-    <div class="container mx-auto p-4">
-        <header class="mb-6">
-            <h1 class="text-4xl font-bold text-center text-gray-800">Traslados Parabarberos</h1>
-            <div class="mt-4 text-center">
-                <label for="roleSelector" class="mr-2">Rol Actual:</label>
-                <select id="roleSelector" class="p-2 border rounded-md">
+    <div class="container mx-auto p-4 md:p-8">
+        <header class="mb-8 text-center">
+            <h1 class="text-3xl md:text-5xl font-bold text-gray-800">Traslados Parabarberos</h1>
+            <img src="URL_DE_TU_LOGO.png" alt="Logo Parabarberos" class="mx-auto mt-4 h-16 w-auto">
+            <div class="mt-6">
+                <label for="roleSelector" class="mr-2 text-sm font-medium">Vista como:</label>
+                <select id="roleSelector" class="p-2 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-red-500">
                     <option value="requester">Solicitante</option>
                     <option value="admin">Administrador</option>
                 </select>
             </div>
         </header>
 
+        <!-- === VISTA DE SOLICITANTE === -->
         <div id="requesterView" class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <!-- Sección de Solicitante -->
-            <div id="requesterSection" class="md:col-span-2 bg-white p-6 rounded-lg shadow-lg">
-                <h2 class="text-2xl font-semibold mb-4 text-gray-700">Crear Nueva Solicitud de Traslado</h2>
+            <!-- Columna Izquierda: Formulario de Creación -->
+            <div class="lg:col-span-2 bg-white p-6 rounded-xl shadow-lg card">
+                <h2 class="text-2xl font-semibold mb-4 text-gray-800 border-b pb-3">1. Crear Nueva Solicitud</h2>
                 <div class="mb-4">
-                    <input type="search" id="searchInput" placeholder="Buscar producto por nombre o ID..."
-                           class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                    <input type="search" id="searchInput" placeholder="Buscar producto..." class="w-full px-4 py-2 border border-gray-300 rounded-lg">
                 </div>
-                <div id="productList" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6 min-h-[200px] max-h-[60vh] overflow-y-auto p-2 bg-gray-50 rounded"></div>
-                <h3 class="text-xl font-semibold mb-2 text-gray-700">Solicitud Actual</h3>
-                <div id="currentTransferRequest" class="space-y-3 mb-6 min-h-[100px] border p-4 rounded-md bg-gray-50"></div>
-                <form id="transferForm" class="space-y-4">
-                    <div>
-                        <label for="fromWarehouse" class="block text-sm font-medium text-gray-700">Desde Bodega:</label>
-                        <select id="fromWarehouse" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm">
-                            <option value="Bodega Principal">Bodega Principal</option>
-                        </select>
+                <div id="productList" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 mb-6 min-h-[200px] max-h-[50vh] overflow-y-auto p-4 bg-gray-50 rounded-lg"></div>
+                <h3 class="text-xl font-semibold mb-3 text-gray-800">2. Productos a Solicitar</h3>
+                <div id="currentTransferRequest" class="space-y-3 mb-6 min-h-[100px] p-4 bg-gray-50 rounded-lg"></div>
+                <form id="transferForm" class="space-y-4 border-t pt-6">
+                    <h3 class="text-xl font-semibold mb-3 text-gray-800">3. Detalles del Envío</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label for="toWarehouse" class="block text-sm font-medium text-gray-700">Bodega Destino:</label>
+                            <select id="toWarehouse" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm"></select>
+                        </div>
+                         <div>
+                            <label for="requesterName" class="block text-sm font-medium text-gray-700">Solicitante:</label>
+                            <select id="requesterName" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm"></select>
+                        </div>
+                         <div>
+                            <label for="deliveryDate" class="block text-sm font-medium text-gray-700">Fecha Requerida</label>
+                            <input type="date" id="deliveryDate" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm">
+                        </div>
                     </div>
-                    <div>
-                        <label for="toWarehouse" class="block text-sm font-medium text-gray-700">Bodega Destino:</label>
-                        <select id="toWarehouse" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm">
-                            <option value="Bodega Principal">Bodega Principal</option>
-                            <option value="Bodega Cali Centro">Bodega Cali Centro</option>
-                            <option value="Bodega Cali Sur">Bodega Cali Sur</option>
-                            <option value="Bodega Pasto">Bodega Pasto</option>
-                            <option value="Bodega Tulua">Bodega Tulua</option>
-                            <option value="Bodega Medellín">Bodega Medellín</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label for="requesterName" class="block text-sm font-medium text-gray-700">Solicitante (Punto de Venta):</label>
-                        <select id="requesterName" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm">
-                            <option value="Punto de venta Cali centro">Punto de venta Cali centro</option>
-                            <option value="Punto de venta Cali sur">Punto de venta Cali sur</option>
-                            <option value="Punto de venta Pasto">Punto de venta Pasto</option>
-                            <option value="Punto de venta Tulua">Punto de venta Tulua</option>
-                            <option value="Punto de venta Medellin">Punto de venta Medellin</option>
-                        </select>
-                    </div>
-                    <button type="submit" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-md transition-colors">
-                        Solicitar Traslado
+                    <input type="hidden" id="fromWarehouse" value="Bodega Principal">
+                    <button type="submit" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-4 rounded-lg shadow-lg transition transform hover:scale-105">
+                        ENVIAR SOLICITUD
                     </button>
                 </form>
-                <h3 class="text-xl font-semibold mt-8 mb-4 text-gray-700">Mis Solicitudes Activas</h3>
-                <div id="myPendingRequests" class="space-y-3"></div>
-                <h3 class="text-xl font-semibold mt-8 mb-4 text-gray-700">Mi Historial de Solicitudes</h3>
-                <div id="myHistoryRequests" class="space-y-3"></div>
+            </div>
+            <!-- Columna Derecha: Historial y Filtros del Solicitante -->
+            <div class="lg:col-span-1 bg-white p-6 rounded-xl shadow-lg card">
+                <h3 class="text-2xl font-semibold mb-4 text-gray-800 border-b pb-3">Mis Solicitudes</h3>
+                <div class="space-y-2 mb-4">
+                    <input type="text" id="requesterSearchId" placeholder="Buscar por ID..." class="w-full px-3 py-2 border rounded-lg">
+                    <div class="grid grid-cols-2 gap-2">
+                        <input type="date" id="requesterDateFrom" class="w-full px-3 py-2 border rounded-lg text-sm" title="Fecha Desde">
+                        <input type="date" id="requesterDateTo" class="w-full px-3 py-2 border rounded-lg text-sm" title="Fecha Hasta">
+                    </div>
+                </div>
+                <div id="myRequestsContainer" class="space-y-4 max-h-[80vh] overflow-y-auto"></div>
+            </div>
+        </div>
+
+        <!-- === VISTA DE ADMINISTRADOR === -->
+        <div id="adminView" class="grid grid-cols-1 lg:grid-cols-2 gap-8" style="display: none;">
+            <div class="bg-white p-6 rounded-xl shadow-lg card">
+                <h2 class="text-2xl font-semibold mb-4 text-gray-800 border-b pb-3">Solicitudes Activas</h2>
+                 <div class="space-y-2 mb-4">
+                    <input type="text" id="adminActiveSearchId" placeholder="Buscar por ID o Solicitante..." class="w-full px-3 py-2 border rounded-lg">
+                    <div class="grid grid-cols-2 gap-2">
+                        <input type="date" id="adminActiveDateFrom" class="w-full px-3 py-2 border rounded-lg text-sm" title="Fecha Desde">
+                        <input type="date" id="adminActiveDateTo" class="w-full px-3 py-2 border rounded-lg text-sm" title="Fecha Hasta">
+                    </div>
+                </div>
+                <div id="adminTransferRequests" class="space-y-4 max-h-[80vh] overflow-y-auto"></div>
+            </div>
+             <div class="bg-white p-6 rounded-xl shadow-lg card">
+                <h2 class="text-2xl font-semibold mb-4 text-gray-800 border-b pb-3">Historial</h2>
+                 <div class="space-y-2 mb-4">
+                    <input type="text" id="adminHistorySearchId" placeholder="Buscar por ID o Solicitante..." class="w-full px-3 py-2 border rounded-lg">
+                    <div class="grid grid-cols-2 gap-2">
+                        <input type="date" id="adminHistoryDateFrom" class="w-full px-3 py-2 border rounded-lg text-sm" title="Fecha Desde">
+                        <input type="date" id="adminHistoryDateTo" class="w-full px-3 py-2 border rounded-lg text-sm" title="Fecha Hasta">
+                    </div>
+                </div>
+                <div class="max-h-[80vh] overflow-y-auto">
+                    <h3 class="text-lg font-medium text-gray-700 mb-2">Completadas</h3>
+                    <div id="adminCompletedRequests" class="space-y-4 mb-6"></div>
+                    <h3 class="text-lg font-medium text-gray-700 mb-2">Canceladas</h3>
+                    <div id="adminCancelledRequests" class="space-y-4"></div>
+                </div>
             </div>
         </div>
     </div>
-    <div id="requesterHistoryColumn" class="lg:col-span-1 bg-white p-6 rounded-lg shadow-lg">
-    <h3 class="text-2xl font-semibold mb-4 text-gray-800 border-b pb-3">Mis Solicitudes</h3>
-    <div class="space-y-2 mb-4">
-        <input type="text" id="requesterSearchId" placeholder="Buscar por ID..." class="w-full px-3 py-2 border rounded-lg">
-        <div class="grid grid-cols-2 gap-2">
-            <input type="date" id="requesterDateFrom" class="w-full px-3 py-2 border rounded-lg text-sm">
-            <input type="date" id="requesterDateTo" class="w-full px-3 py-2 border rounded-lg text-sm">
-        </div>
-    </div>
-    <div id="myRequestsContainer" class="space-y-4 max-h-[80vh] overflow-y-auto">
-        <!-- Aquí se mostrarán las solicitudes del solicitante -->
-    </div>
-</div>
-    
-<div id="adminView" class="grid grid-cols-1 lg:grid-cols-2 gap-8" style="display: none;">
-    <div class="bg-white p-6 rounded-lg shadow-lg">
-        <h2 class="text-2xl font-semibold mb-4 text-gray-800 border-b pb-3">Solicitudes Activas</h2>
-        <div class="space-y-2 mb-4">
-            <input type="text" id="adminActiveSearchId" placeholder="Buscar por ID..." class="w-full px-3 py-2 border rounded-lg">
-            <div class="grid grid-cols-2 gap-2">
-                <input type="date" id="adminActiveDateFrom" class="w-full px-3 py-2 border rounded-lg text-sm">
-                <input type="date" id="adminActiveDateTo" class="w-full px-3 py-2 border rounded-lg text-sm">
-            </div>
-        </div>
-        <div id="adminTransferRequests" class="space-y-4 max-h-[80vh] overflow-y-auto">
-             <div id="adminSection" class="bg-white p-6 rounded-lg shadow-lg" style="display: none;">
-                <h2 class="text-2xl font-semibold mb-4 text-gray-700">Administrar Solicitudes Activas</h2>
-                <div id="adminTransferRequests" class="space-y-4"></div>
-                <h2 class="text-2xl font-semibold mt-8 mb-4 text-gray-700">Historial de Traslados</h2>
-                <h3 class="text-lg font-semibold mb-2 text-gray-600">Completadas</h3>
-                <div id="adminCompletedRequests" class="space-y-4 mb-4"></div>
-                <h3 class="text-lg font-semibold mb-2 text-gray-600">Canceladas</h3>
-                <div id="adminCancelledRequests" class="space-y-4"></div>
-            </div>
-        </div>
-    </div>
-     <div class="bg-white p-6 rounded-lg shadow-lg">
-        <h2 class="text-2xl font-semibold mb-4 text-gray-800 border-b pb-3">Historial</h2>
-         <div class="space-y-2 mb-4">
-            <input type="text" id="adminHistorySearchId" placeholder="Buscar por ID..." class="w-full px-3 py-2 border rounded-lg">
-            <div class="grid grid-cols-2 gap-2">
-                <input type="date" id="adminHistoryDateFrom" class="w-full px-3 py-2 border rounded-lg text-sm">
-                <input type="date" id="adminHistoryDateTo" class="w-full px-3 py-2 border rounded-lg text-sm">
-            </div>
-        </div>
-        <div class="max-h-[80vh] overflow-y-auto">
-            <h3 class="text-lg font-medium text-gray-700 mb-2">Completadas</h3>
-            <div id="adminCompletedRequests" class="space-y-4 mb-6"></div>
-            <h3 class="text-lg font-medium text-gray-700 mb-2">Canceladas</h3>
-            <div id="adminCancelledRequests" class="space-y-4"></div>
-        </div>
-    </div>
-</div>
 
     <script>
     document.addEventListener('DOMContentLoaded', () => {
@@ -136,285 +116,194 @@
           appId: "1:569583717634:web:f7baa7aaf66a639624461b",
           measurementId: "G-9CSBCGJRGS"
         };
-
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
         const transfersCollection = db.collection("transferencias");
 
-        // --- ESTADO GLOBAL Y ELEMENTOS DEL DOM ---
         let allProducts = [];
         let currentTransferItems = JSON.parse(localStorage.getItem('currentTransferDraft')) || [];
         let allTransferRequests = [];
         let currentUserRole = localStorage.getItem('userRole') || 'requester';
 
-        const productListDiv = document.getElementById('productList');
-        const currentTransferRequestDiv = document.getElementById('currentTransferRequest');
-        const transferForm = document.getElementById('transferForm');
-        const fromWarehouseSelect = document.getElementById('fromWarehouse');
-        const toWarehouseSelect = document.getElementById('toWarehouse');
-        const requesterNameSelect = document.getElementById('requesterName');
-        const searchInput = document.getElementById('searchInput');
-        const roleSelector = document.getElementById('roleSelector');
-        const requesterSection = document.getElementById('requesterSection');
-        const adminSection = document.getElementById('adminSection');
-        const myPendingRequestsDiv = document.getElementById('myPendingRequests');
-        const myHistoryRequestsDiv = document.getElementById('myHistoryRequests');
-        const adminTransferRequestsDiv = document.getElementById('adminTransferRequests');
-        const adminCompletedRequestsDiv = document.getElementById('adminCompletedRequests');
-        const adminCancelledRequestsDiv = document.getElementById('adminCancelledRequests');
+        const dom = {
+            productList: document.getElementById('productList'),
+            currentTransferRequest: document.getElementById('currentTransferRequest'),
+            transferForm: document.getElementById('transferForm'),
+            toWarehouse: document.getElementById('toWarehouse'),
+            requesterName: document.getElementById('requesterName'),
+            searchInput: document.getElementById('searchInput'),
+            roleSelector: document.getElementById('roleSelector'),
+            requesterView: document.getElementById('requesterView'),
+            adminView: document.getElementById('adminView'),
+            myRequestsContainer: document.getElementById('myRequestsContainer'),
+            adminTransferRequests: document.getElementById('adminTransferRequests'),
+            adminCompletedRequests: document.getElementById('adminCompletedRequests'),
+            adminCancelledRequests: document.getElementById('adminCancelledRequests'),
+            requesterSearchId: document.getElementById('requesterSearchId'),
+            requesterDateFrom: document.getElementById('requesterDateFrom'),
+            requesterDateTo: document.getElementById('requesterDateTo'),
+            adminActiveSearchId: document.getElementById('adminActiveSearchId'),
+            adminActiveDateFrom: document.getElementById('adminActiveDateFrom'),
+            adminActiveDateTo: document.getElementById('adminActiveDateTo'),
+            adminHistorySearchId: document.getElementById('adminHistorySearchId'),
+            adminHistoryDateFrom: document.getElementById('adminHistoryDateFrom'),
+            adminHistoryDateTo: document.getElementById('adminHistoryDateTo'),
+        };
         
-        // --- HELPERS ---
-        const getRequestStatusColor = (s) => ({'pending':'bg-yellow-50 border-yellow-400','processing_all_items':'bg-blue-50 border-blue-400','processing_partial_items':'bg-orange-50 border-orange-400','completed':'bg-green-100 border-green-500','cancelled':'bg-red-100 border-red-400'}[s]||'bg-gray-50 border-gray-300');
-        const translateStatus = (s) => ({'pending':'Pendiente','processing_all_items':'En Revisión (Todo OK)','processing_partial_items':'En Revisión (Parcial)','completed':'Realizado','cancelled':'Cancelado'}[s]||s);
+        const getRequestStatusColor = (s) => ({'pending':'border-l-4 border-gray-400 bg-gray-50','processing_partial_items':'border-l-4 border-red-500 bg-red-50','completed':'border-l-4 border-black bg-gray-100','cancelled':'border-l-4 border-red-700 bg-red-100'}[s]||'border-l-4 border-gray-300');
+        const translateStatus = (s) => ({'pending':'Pendiente','processing_partial_items':'En Revisión','completed':'Realizado','cancelled':'Cancelado'}[s]||s);
 
-        // --- FUNCIONES DE RENDERIZADO Y LÓGICA DE VISTAS ---
         function updateUserRoleView() {
             localStorage.setItem('userRole', currentUserRole);
-            roleSelector.value = currentUserRole;
-            requesterSection.style.display = (currentUserRole === 'requester') ? 'block' : 'none';
-            adminSection.style.display = (currentUserRole === 'admin') ? 'block' : 'none';
+            dom.roleSelector.value = currentUserRole;
+            dom.requesterView.style.display = (currentUserRole === 'requester') ? 'grid' : 'none';
+            dom.adminView.style.display = (currentUserRole === 'admin') ? 'grid' : 'none';
             renderAllSections();
         }
         
         function renderAllSections() {
-            renderMyPendingRequests();
-            renderMyHistoryRequests();
-            renderAdminRequests();
-            renderAdminHistoryRequests();
-        }
-
-        function renderProducts(productsToRender) {
-            productListDiv.innerHTML = '';
-            if (!productsToRender || productsToRender.length === 0) {
-                productListDiv.innerHTML = '<p class="text-gray-500 col-span-full text-center">No se encontraron productos.</p>';
-                return;
-            }
-            const fragment = document.createDocumentFragment();
-            productsToRender.forEach(product => {
-                const card = document.createElement('div');
-                card.className = 'border p-2 rounded-md shadow hover:shadow-lg transition-shadow bg-white flex flex-col justify-between';
-                const safeId = product.id.replace(/[^a-zA-Z0-9-_]/g, '');
-                card.innerHTML = `
-                    <div>
-                        <h3 class="text-sm font-semibold text-blue-600" title="${product.description}">${product.name.length > 40 ? product.name.substring(0, 37) + '...' : product.name}</h3>
-                        <p class="text-xs text-gray-400 mb-1">ID: ${product.id}</p>
-                    </div>
-                    <div class="flex items-center space-x-1 mt-auto pt-1">
-                        <input type="number" min="1" value="1" id="qty-${safeId}" class="w-12 border-gray-300 rounded-md shadow-sm text-xs p-1">
-                        <button data-product-id="${product.id}" class="add-to-transfer-btn bg-blue-500 hover:bg-blue-700 text-white text-xs font-bold py-1 px-2 rounded">Add</button>
-                    </div>`;
-                fragment.appendChild(card);
-            });
-            productListDiv.appendChild(fragment);
-            productListDiv.querySelectorAll('.add-to-transfer-btn').forEach(b => {
-                b.onclick = handleAddToTransfer;
-            });
-        }
-
-        function displayInitialProducts() {
-            renderProducts(allProducts.slice(0, 50));
-        }
-        
-        function renderCurrentTransfer() {
-            currentTransferRequestDiv.innerHTML = '';
-            if (currentTransferItems.length === 0) {
-                currentTransferRequestDiv.innerHTML = '<p class="text-gray-500 italic">Selecciona productos.</p>';
-                return;
-            }
-            const ul = document.createElement('ul');
-            ul.className = 'space-y-2';
-            currentTransferItems.forEach((item, index) => {
-                const li = document.createElement('li');
-                li.className = 'flex justify-between items-center p-2 bg-white rounded shadow-sm';
-                li.innerHTML = `
-                    <div>
-                        <span class="font-medium">${item.productName}</span> <span class="text-sm text-gray-500">(ID: ${item.productId})</span>
-                    </div>
-                    <div class="flex items-center space-x-2">
-                        <input type="number" min="1" value="${item.quantity}" data-item-index="${index}" class="w-16 p-1 border rounded item-quantity-input text-sm">
-                        <button data-item-index="${index}" class="remove-item-btn text-red-500 hover:text-red-700 font-semibold text-xs">Quitar</button>
-                    </div>`;
-                ul.appendChild(li);
-            });
-            currentTransferRequestDiv.appendChild(ul);
-            document.querySelectorAll('.item-quantity-input').forEach(input => input.onchange = handleUpdateItemQuantity);
-            document.querySelectorAll('.remove-item-btn').forEach(button => button.onclick = handleRemoveItem);
-        }
-        
-        function renderMyPendingRequests() {
-            const selectedRequester = requesterNameSelect.value;
-            const myRequests = allTransferRequests.filter(r => r.requesterName === selectedRequester && (r.status === 'pending' || r.status.startsWith('processing'))).sort((a,b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0));
-            myPendingRequestsDiv.innerHTML = '';
-            if (myRequests.length === 0) {
-                myPendingRequestsDiv.innerHTML = '<p class="text-gray-500 italic">No hay solicitudes activas.</p>';
-            } else {
-                myRequests.forEach(req => myPendingRequestsDiv.appendChild(createRequestCard(req, 'requester')));
-            }
-        }
-
-        function renderMyHistoryRequests() {
-            const selectedRequester = requesterNameSelect.value;
-            const myRequests = allTransferRequests.filter(r => r.requesterName === selectedRequester && (r.status === 'completed' || r.status === 'cancelled')).sort((a,b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0));
-            myHistoryRequestsDiv.innerHTML = '';
-            if (myRequests.length === 0) {
-                myHistoryRequestsDiv.innerHTML = '<p class="text-gray-500 italic">No hay historial.</p>';
-            } else {
-                myRequests.forEach(req => myHistoryRequestsDiv.appendChild(createRequestCard(req, 'requester')));
-            }
-        }
-
-        function renderAdminRequests() {
-            const active = allTransferRequests.filter(r => r.status === 'pending' || r.status.startsWith('processing')).sort((a,b) => (a.timestamp?.seconds || 0) - (b.timestamp?.seconds || 0));
-            adminTransferRequestsDiv.innerHTML = '';
-            if (active.length === 0) {
-                adminTransferRequestsDiv.innerHTML = '<p class="text-gray-500 italic">No hay solicitudes activas.</p>';
-            } else {
-                active.forEach(req => adminTransferRequestsDiv.appendChild(createRequestCard(req, 'admin')));
-            }
-        }
-
-        function renderAdminHistoryRequests() {
-            const completed = allTransferRequests.filter(r => r.status === 'completed').sort((a,b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0));
-            const cancelled = allTransferRequests.filter(r => r.status === 'cancelled').sort((a,b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0));
+            const sortedRequests = allTransferRequests.sort((a,b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0));
             
-            adminCompletedRequestsDiv.innerHTML = completed.length === 0 ? '<p class="text-gray-500 italic">No hay completadas.</p>' : '';
-            completed.forEach(req => adminCompletedRequestsDiv.appendChild(createRequestCard(req, 'admin')));
+            const requesterRequests = applyFilters(sortedRequests.filter(r => r.requesterName === dom.requesterName.value), dom.requesterSearchId.value, dom.requesterDateFrom.value, dom.requesterDateTo.value);
+            renderSection(dom.myRequestsContainer, requesterRequests, 'requester');
 
-            adminCancelledRequestsDiv.innerHTML = cancelled.length === 0 ? '<p class="text-gray-500 italic">No hay canceladas.</p>' : '';
-            cancelled.forEach(req => adminCancelledRequestsDiv.appendChild(createRequestCard(req, 'admin')));
+            const activeReqs = applyFilters(sortedRequests.filter(r => r.status === 'pending' || r.status.startsWith('processing')), dom.adminActiveSearchId.value, dom.adminActiveDateFrom.value, dom.adminActiveDateTo.value);
+            const completedReqs = applyFilters(sortedRequests.filter(r => r.status === 'completed'), dom.adminHistorySearchId.value, dom.adminHistoryDateFrom.value, dom.adminHistoryDateTo.value);
+            const cancelledReqs = applyFilters(sortedRequests.filter(r => r.status === 'cancelled'), dom.adminHistorySearchId.value, dom.adminHistoryDateFrom.value, dom.adminHistoryDateTo.value);
+            
+            renderSection(dom.adminTransferRequests, activeReqs, 'admin');
+            renderSection(dom.adminCompletedRequests, completedReqs, 'admin');
+            renderSection(dom.adminCancelledRequests, cancelledReqs, 'admin');
         }
-        
+
+        function applyFilters(requests, searchId, dateFrom, dateTo) {
+            let filtered = requests;
+            if (searchId) {
+                const term = searchId.toLowerCase();
+                filtered = filtered.filter(req => req.id.toLowerCase().includes(term) || req.requesterName.toLowerCase().includes(term));
+            }
+            if (dateFrom) {
+                const from = new Date(dateFrom).setHours(0,0,0,0);
+                filtered = filtered.filter(req => req.timestamp && (req.timestamp.seconds * 1000) >= from);
+            }
+            if (dateTo) {
+                const to = new Date(dateTo).setHours(23,59,59,999);
+                filtered = filtered.filter(req => req.timestamp && (req.timestamp.seconds * 1000) <= to);
+            }
+            return filtered;
+        }
+
+        function renderSection(div, data, role) {
+            div.innerHTML = '';
+            if (data.length === 0) {
+                div.innerHTML = '<p class="text-gray-500 italic text-center py-4">No hay solicitudes que coincidan.</p>';
+            } else {
+                data.forEach(req => div.appendChild(createRequestCard(req, role)));
+            }
+        }
+
         function createRequestCard(req, role) {
-    const card = document.createElement('div');
-    card.className = `p-4 border rounded-md shadow-sm mb-3 ${getRequestStatusColor(req.status)}`;
-    
-    // Lógica para mostrar items (¡NUEVA!)
-    const itemsHtml = (req.items || []).map((item, index) => {
-        const requestedQty = item.quantity;
-        // Si sentQuantity no existe, se asume que es igual a la solicitada.
-        const sentQty = (item.sentQuantity === undefined) ? item.quantity : item.sentQuantity;
-        const isProcessing = req.status.startsWith('processing');
-        
-        let quantityDisplay = `Solicitado: <b>${requestedQty}</b>`;
-        let statusClasses = '';
-        
-        // Muestra el estado del envío si ya no está pendiente
-        if (req.status !== 'pending') {
-            if (sentQty < requestedQty) {
-                quantityDisplay += `<span class="ml-2 font-bold text-orange-600">Enviado: ${sentQty} (Faltan: ${requestedQty - sentQty})</span>`;
-                statusClasses = 'bg-orange-50';
-            } else {
-                quantityDisplay += `<span class="ml-2 font-bold text-green-600">✓ Enviado: ${sentQty}</span>`;
-                statusClasses = 'bg-green-50';
-            }
-        }
-        
-        // Muestra el campo de entrada solo para el admin y si se está procesando
-        const adminInput = (role === 'admin' && isProcessing)
-            ? `<input type="number" value="${sentQty}" data-request-id="${req.id}" data-item-index="${index}" class="admin-qty-input w-16 p-1 border rounded-md text-center">`
-            : ``;
+            const card = document.createElement('div');
+            card.className = `p-4 rounded-lg shadow-sm mb-4 ${getRequestStatusColor(req.status)}`;
+            const itemsHtml = (req.items || []).map((item, index) => {
+                const requestedQty = item.quantity;
+                const sentQty = (item.sentQuantity === undefined) ? item.quantity : item.sentQuantity;
+                const isProcessing = req.status.startsWith('processing');
+                
+                let quantityDisplay = `Solicitado: <b>${requestedQty}</b>`;
+                let statusClasses = '';
+                
+                if (req.status !== 'pending' && req.status !== 'cancelled') {
+                    if (sentQty < requestedQty) {
+                        quantityDisplay += `<span class="ml-2 font-bold text-red-600">Enviado: ${sentQty} (Faltan: ${requestedQty - sentQty})</span>`;
+                        statusClasses = 'bg-red-50';
+                    } else {
+                        quantityDisplay += `<span class="ml-2 font-bold text-gray-800">✓ Enviado: ${sentQty}</span>`;
+                        statusClasses = 'bg-gray-100';
+                    }
+                }
+                
+                const adminInput = (role === 'admin' && isProcessing)
+                    ? `<input type="number" value="${sentQty}" data-request-id="${req.id}" data-item-index="${index}" class="admin-qty-input w-20 p-1 border rounded-md text-center">`
+                    : ``;
 
-        return `<li class="p-2 rounded-md ${statusClasses} flex justify-between items-center">
+                return `<li class="p-2 rounded-md ${statusClasses} flex justify-between items-center text-sm">
+                            <div><span class="font-medium text-gray-800">${item.productName}</span><div class="text-xs text-gray-600">${quantityDisplay}</div></div>
+                            ${adminInput}
+                        </li>`;
+            }).join('');
+            
+            let adminActionsHtml = '', requesterActionsHtml = '';
+            if (role === 'admin' && req.status !== 'completed' && req.status !== 'cancelled') {
+                let buttons = '';
+                if (req.status === 'pending') buttons += `<button data-request-id="${req.id}" data-action="start_processing" class="action-btn bg-gray-800 hover:bg-black text-white text-xs font-semibold py-2 px-3 rounded-md mr-1">Iniciar Revisión</button>`;
+                if (req.status.startsWith('processing')) {
+                    buttons += `<button data-request-id="${req.id}" data-action="completed" class="action-btn bg-black hover:bg-gray-800 text-white text-xs font-semibold py-2 px-3 rounded-md">Marcar Realizado</button>`;
+                    buttons += `<button data-request-id="${req.id}" data-action="revert_to_pending" class="action-btn bg-gray-500 hover:bg-gray-600 text-white text-xs font-semibold py-2 px-3 rounded-md ml-1">Revertir</button>`;
+                }
+                buttons += `<button data-request-id="${req.id}" data-action="cancel" class="action-btn bg-red-600 hover:bg-red-700 text-white text-xs font-semibold py-2 px-3 rounded-md ml-1">Cancelar</button>`;
+                adminActionsHtml = `<div class="mt-4 border-t pt-4 text-right">${buttons}</div>`;
+            }
+            if (role === 'requester' && req.status === 'pending') {
+                 requesterActionsHtml = `<button data-request-id="${req.id}" class="delete-my-request-btn bg-red-600 hover:bg-red-700 text-white text-xs font-semibold py-1 px-2 rounded-md">Eliminar</button>`;
+            }
+            
+            const reqDate = req.deliveryDate ? req.deliveryDate : 'No especificada';
+            const creationDate = req.timestamp ? new Date(req.timestamp.seconds * 1000).toLocaleDateString('es-CO') : '';
+
+            card.innerHTML = `
+                <div class="flex justify-between items-start">
                     <div>
-                        <span class="font-medium">${item.productName}</span>
-                        <div class="text-xs text-gray-600">${quantityDisplay}</div>
+                        <h4 class="font-semibold text-lg text-gray-800">${req.requesterName}</h4>
+                        <p class="text-sm text-gray-600">Para: <strong>${req.toWarehouse}</strong></p>
+                        <p class="text-xs text-gray-400">ID: ${req.id.substring(0, 8)} | Creada: ${creationDate}</p>
+                        <p class="text-sm mt-1">Fecha Requerida: <b>${reqDate}</b></p>
+                        <span class="inline-block mt-2 px-2 py-1 text-xs font-bold rounded-full text-gray-800 ${getRequestStatusColor(req.status)}">${translateStatus(req.status)}</span>
+                        ${req.notes ? `<p class="text-sm text-red-700 mt-2 p-2 bg-red-100 rounded-md"><em><b>Nota:</b> ${req.notes}</em></p>` : ''}
                     </div>
-                    ${adminInput}
-                </li>`;
-    }).join('');
-    
-    // El resto de la función (botones de acción) permanece igual
-    let adminActionsHtml = '', requesterActionsHtml = '';
-    if (role === 'admin' && req.status !== 'completed' && req.status !== 'cancelled') {
-        let buttons = '';
-        if (req.status === 'pending') buttons += `<button data-request-id="${req.id}" data-action="start_processing" class="action-btn bg-blue-500 hover:bg-blue-600 text-white text-xs py-1 px-2 rounded mr-1">Iniciar Revisión</button>`;
-        if (req.status.startsWith('processing')) {
-             buttons += `<button data-request-id="${req.id}" data-action="completed" class="action-btn bg-teal-500 hover:bg-teal-600 text-white text-xs py-1 px-2 rounded">Marcar Realizado</button>`;
-             buttons += `<button data-request-id="${req.id}" data-action="revert_to_pending" class="action-btn bg-gray-400 hover:bg-gray-500 text-white text-xs py-1 px-2 rounded ml-1">Revertir</button>`;
-        }
-        buttons += `<button data-request-id="${req.id}" data-action="cancel" class="action-btn bg-red-500 hover:bg-red-600 text-white text-xs py-1 px-2 rounded ml-1">Cancelar</button>`;
-        adminActionsHtml = `<div class="mt-3">${buttons}</div>`;
-    }
-    if (role === 'requester' && req.status === 'pending') {
-         requesterActionsHtml = `<button data-request-id="${req.id}" class="delete-my-request-btn bg-red-500 hover:bg-red-700 text-white text-xs py-1 px-2 rounded">Eliminar</button>`;
-    }
-
-    card.innerHTML = `
-        <div class="flex justify-between items-start">
-            <div>
-                <h4 class="font-semibold text-md">ID: ${req.id.substring(0, 8)}</h4>
-                <p class="text-sm">De: ${req.fromWarehouse} → A: <strong>${req.toWarehouse}</strong></p>
-                <p class="text-sm">Solicitante: ${req.requesterName}</p>
-                <p class="text-sm">Estado: <span class="font-medium">${translateStatus(req.status)}</span></p>
-                ${req.notes ? `<p class="text-sm text-orange-600 mt-1"><em>Notas Admin: ${req.notes}</em></p>` : ''}
-            </div>
-            ${requesterActionsHtml}
-        </div>
-        <p class="text-sm mt-2 font-medium">Items:</p>
-        <ul class="space-y-1 mt-1">${itemsHtml}</ul>
-        ${adminActionsHtml}
-    `;
-    card.querySelectorAll('.action-btn').forEach(b => b.onclick = handleAdminAction);
-    card.querySelectorAll('.delete-my-request-btn').forEach(b => b.onclick = handleDeleteMyRequest);
-    // Añadimos el listener para el nuevo input
-    card.querySelectorAll('.admin-qty-input').forEach(i => i.onchange = handleAdminQuantityChange);
-    return card;
-}
-
-        // --- MANEJADORES DE EVENTOS ---
-        function handleRoleChange() {
-            currentUserRole = roleSelector.value;
-            updateUserRoleView();
+                    ${requesterActionsHtml}
+                </div>
+                <div class="mt-4"><p class="text-sm font-semibold mb-2 text-gray-600">Items Solicitados:</p><ul class="space-y-2">${itemsHtml}</ul></div>
+                ${adminActionsHtml}
+            `;
+            card.querySelectorAll('.action-btn').forEach(b => b.onclick = handleAdminAction);
+            card.querySelectorAll('.delete-my-request-btn').forEach(b => b.onclick = handleDeleteMyRequest);
+            card.querySelectorAll('.admin-qty-input').forEach(i => i.onchange = handleAdminQuantityChange);
+            return card;
         }
 
-        function handleAddToTransfer(event) {
-            const button = event.currentTarget;
-            const product = allProducts.find(p => p.id === button.dataset.productId);
-            if (!product) return;
-            const qtyInput = document.getElementById(`qty-${product.id.replace(/[^a-zA-Z0-9-_]/g, '')}`);
-            const quantity = parseInt(qtyInput.value, 10);
-            if (isNaN(quantity) || quantity < 1) { alert("Cantidad inválida."); return; }
-            const existingItem = currentTransferItems.find(i => i.productId === product.id);
-            if (existingItem) {
-                existingItem.quantity += quantity;
-            } else {
-                currentTransferItems.push({ productId: product.id, productName: product.name, quantity });
-            }
-            qtyInput.value = "1";
-            localStorage.setItem('currentTransferDraft', JSON.stringify(currentTransferItems));
-            renderCurrentTransfer();
-        }
-        
+        // --- MANEJADORES DE EVENTOS Y LÓGICA DE DATOS ---
+        function handleRoleChange() { updateUserRoleView(); }
         function handleUpdateItemQuantity(event) {
             const input = event.currentTarget;
             const itemIndex = parseInt(input.dataset.itemIndex, 10);
             const newQuantity = parseInt(input.value, 10);
-            if(isNaN(newQuantity) || newQuantity < 1) {
-                input.value = currentTransferItems[itemIndex].quantity;
-                return;
-            }
+            if(isNaN(newQuantity) || newQuantity < 1) { input.value = currentTransferItems[itemIndex].quantity; return; }
             currentTransferItems[itemIndex].quantity = newQuantity;
             localStorage.setItem('currentTransferDraft', JSON.stringify(currentTransferItems));
         }
-
         function handleRemoveItem(event) {
             const itemIndex = parseInt(event.currentTarget.dataset.itemIndex, 10);
             currentTransferItems.splice(itemIndex, 1);
             localStorage.setItem('currentTransferDraft', JSON.stringify(currentTransferItems));
             renderCurrentTransfer();
         }
-        
+        function handleSearchInput() {
+            const searchTerm = dom.searchInput.value.toLowerCase().trim();
+            const filtered = allProducts.filter(p => p.name.toLowerCase().includes(searchTerm) || p.description.toLowerCase().includes(searchTerm) || p.id.toLowerCase().includes(searchTerm));
+            renderProducts(filtered);
+        }
         async function handleSubmitTransferForm(event) {
             event.preventDefault();
-            if (currentTransferItems.length === 0) {
-                alert("Agrega productos antes de enviar.");
-                return;
-            }
+            const deliveryDateInput = document.getElementById('deliveryDate');
+            if (currentTransferItems.length === 0) { alert("Agrega productos antes de enviar."); return; }
+            if (!deliveryDateInput.value) { alert("Por favor, selecciona una fecha requerida."); return; }
             const newReq = {
                 items: currentTransferItems.map(item => ({ ...item, sentQuantity: item.quantity })),
-                fromWarehouse: fromWarehouseSelect.value,
-                toWarehouse: toWarehouseSelect.value,
-                requesterName: requesterNameSelect.value,
+                fromWarehouse: document.getElementById('fromWarehouse').value,
+                toWarehouse: dom.toWarehouse.value,
+                requesterName: dom.requesterName.value,
+                deliveryDate: deliveryDateInput.value,
                 status: 'pending',
                 timestamp: firebase.firestore.FieldValue.serverTimestamp()
             };
@@ -423,111 +312,64 @@
                 currentTransferItems = [];
                 localStorage.removeItem('currentTransferDraft');
                 renderCurrentTransfer();
+                transferForm.reset();
                 alert("¡Solicitud enviada a la nube con éxito!");
-            } catch (error) {
-                console.error("Error al guardar en Firebase: ", error);
-                alert("Error al enviar la solicitud. Revisa la consola (F12).");
-            }
+            } catch (error) { console.error("Error al guardar en Firebase: ", error); }
         }
-
         async function handleDeleteMyRequest(event) {
             const requestId = event.currentTarget.dataset.requestId;
             if (confirm("¿Eliminar esta solicitud de la nube?")) {
-                try {
-                    await transfersCollection.doc(requestId).delete();
-                } catch (error) {
-                    console.error("Error al eliminar: ", error);
-                }
+                try { await transfersCollection.doc(requestId).delete(); } 
+                catch (error) { console.error("Error al eliminar: ", error); }
             }
         }
-
         async function handleAdminAction(event) {
             const { requestId, action } = event.currentTarget.dataset;
             const reqRef = transfersCollection.doc(requestId);
-            
             try {
                 const doc = await reqRef.get();
                 if (!doc.exists) return;
                 const currentData = doc.data();
-                const currentNotes = currentData.notes || "";
                 let updateData = {};
-
                 switch(action) {
                     case 'start_processing':
                         updateData = { status: 'processing_partial_items', notes: 'Revisión iniciada.' };
                         break;
                     case 'completed':
-                        if (currentData.items.some(item => item.available === false) && !confirm("Hay ítems faltantes. ¿Completar igual?")) return;
-                        updateData = { status: 'completed', notes: currentNotes + " Traslado completado." };
+                        const hasMissingItems = currentData.items.some(item => item.sentQuantity < item.quantity);
+                        if (hasMissingItems && !confirm("Hay ítems faltantes. ¿Completar el traslado de todas formas?")) return;
+                        updateData = { status: 'completed', notes: (currentData.notes || "") + " Traslado completado." };
                         break;
                     case 'revert_to_pending':
                         if (confirm("¿Revertir a Pendiente?")) {
-                            const resetItems = currentData.items.map(i => ({ ...i, available: null }));
+                            const resetItems = currentData.items.map(i => ({ ...i, sentQuantity: i.quantity }));
                             updateData = { status: 'pending', notes: 'Revertido a pendiente.', items: resetItems };
                         } else return;
                         break;
                     case 'cancel':
                         if (confirm("¿Cancelar esta solicitud?")) {
-                            updateData = { status: 'cancelled', notes: currentNotes + " Solicitud cancelada." };
+                            updateData = { status: 'cancelled', notes: (currentData.notes || "") + " Solicitud cancelada." };
                         } else return;
                         break;
                 }
                 await reqRef.update(updateData);
             } catch(e) { console.error("Error al actualizar la solicitud:", e); }
         }
-        
-        async function handleMarkItemAvailability(event) {
-            const { requestId, itemIndex, available } = event.currentTarget.dataset;
+        async function handleAdminQuantityChange(event) {
+            const input = event.currentTarget;
+            const { requestId, itemIndex } = input.dataset;
+            const newSentQuantity = parseInt(input.value, 10);
+            if (isNaN(newSentQuantity) || newSentQuantity < 0) return;
             const reqRef = transfersCollection.doc(requestId);
-            
             try {
                 const doc = await reqRef.get();
                 if (doc.exists) {
-                    let reqData = doc.data();
-                    if (reqData.items && reqData.items[itemIndex]) {
-                        reqData.items[itemIndex].available = (available === 'true');
-                        if (reqData.status === 'pending') {
-                            reqData.status = 'processing_partial_items';
-                        }
-                        await reqRef.update({ items: reqData.items, status: reqData.status });
-                    }
+                    let items = doc.data().items;
+                    if (items && items[itemIndex]) { items[itemIndex].sentQuantity = newSentQuantity; }
+                    await reqRef.update({ items });
                 }
-            } catch(e) { console.error("Error al marcar el ítem:", e); }
+            } catch(e) { console.error("Error al actualizar cantidad:", e); }
         }
-        
-        function handleSearchInput() {
-            const searchTerm = searchInput.value.toLowerCase().trim();
-            const filtered = allProducts.filter(p => p.name.toLowerCase().includes(searchTerm) || p.description.toLowerCase().includes(searchTerm) || p.id.toLowerCase().includes(searchTerm));
-            renderProducts(filtered);
-        }
-        
-        async function handleAdminQuantityChange(event) {
-        const input = event.currentTarget;
-        const { requestId, itemIndex } = input.dataset;
-        const newSentQuantity = parseInt(input.value, 10);
-
-        if (isNaN(newSentQuantity) || newSentQuantity < 0) {
-            alert("Cantidad inválida. Debe ser un número igual o mayor a cero.");
-            // Opcional: revertir al valor anterior si es inválido
-            return;
-        }
-
-        const reqRef = transfersCollection.doc(requestId);
-        try {
-            const doc = await reqRef.get();
-            if (doc.exists) {
-                let items = doc.data().items;
-                // Asegurarse de que el ítem exista
-                if (items && items[itemIndex]) {
-                    items[itemIndex].sentQuantity = newSentQuantity;
-                    await reqRef.update({ items: items }); // Actualiza solo el array de ítems en Firebase
-                }
-            }
-        } catch(e) {
-            console.error("Error al actualizar la cantidad:", e);
-            alert("No se pudo actualizar la cantidad.");
-        }
-    }
         
         function loadAndTransformProducts() {
             const rawData = [
@@ -5827,11 +5669,9 @@
                     idPart = parts[0].trim().replace(/\s+/g, '-');
                     namePart = parts.slice(1).join(' - ').trim();
                 } else {
-                    idPart = `prod-gen-${genericCounter++}`;
-                    namePart = fullProductName;
+                    idPart = `prod-gen-${genericCounter++}`; namePart = fullProductName;
                 }
-                let finalId = idPart;
-                let idCounter = 1;
+                let finalId = idPart, idCounter = 1;
                 while (productsMap.has(finalId)) finalId = `${idPart}_${idCounter++}`;
                 productsMap.set(finalId, { id: finalId, name: namePart, description: fullProductName });
             });
@@ -5840,22 +5680,32 @@
 
         function initializeApp() {
             allProducts = loadAndTransformProducts();
-            displayInitialProducts();
+            renderProducts(allProducts);
             renderCurrentTransfer();
+            
+            // Llenar menús desplegables
+            const warehouseOptions = ['Bodega Cali Centro', 'Bodega Cali Sur', 'Bodega Pasto', 'Bodega Tulua', 'Bodega Medellín'];
+            const requesterOptions = ['Punto de venta Cali centro', 'Punto de venta Cali sur', 'Punto de venta Pasto', 'Punto de venta Tulua', 'Punto de venta Medellin'];
+            dom.toWarehouse.innerHTML = warehouseOptions.map(w => `<option value="${w}">${w}</option>`).join('');
+            dom.requesterName.innerHTML = requesterOptions.map(r => `<option value="${r}">${r}</option>`).join('');
 
             // Listeners de la interfaz
-            roleSelector.onchange = handleRoleChange;
-            requesterNameSelect.onchange = renderAllSections;
-            transferForm.onsubmit = handleSubmitTransferForm;
-            searchInput.oninput = handleSearchInput;
+            dom.roleSelector.onchange = handleRoleChange;
+            dom.requesterName.onchange = renderAllSections;
+            dom.transferForm.onsubmit = handleSubmitTransferForm;
+            dom.searchInput.oninput = handleSearchInput;
             
-            // Listener de Firebase (la magia en tiempo real)
+            Object.values(dom).forEach(element => {
+                if (element && element.id && element.id.includes('Search') || element.id.includes('Date')) {
+                    element.addEventListener('input', renderAllSections);
+                }
+            });
+            
             transfersCollection.orderBy("timestamp", "desc").onSnapshot(snapshot => {
                 allTransferRequests = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                 renderAllSections();
             }, error => {
                 console.error("Error al conectar con Firebase: ", error);
-                alert("No se pudo conectar a la base de datos. Revisa la consola (F12).")
             });
 
             updateUserRoleView();
