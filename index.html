@@ -198,22 +198,27 @@
             const sortedRequests = allTransferRequests.sort((a,b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0));
             const selectedRequester = dom.requesterName.value;
             
-            // Render para Solicitante
-            const requesterAll = sortedRequests.filter(r => r.requesterName === selectedRequester);
-            const filteredRequesterReqs = applyFilters(requesterAll, dom.requesterSearchId, dom.requesterDateFrom, dom.requesterDateTo);
-
-            renderSection(dom.myPendingRequests, filteredRequesterReqs.filter(r => r.status === 'pending' || r.status.startsWith('processing')), 'requester', "No tienes solicitudes activas.");
-            renderSection(dom.myHistoryRequests, filteredRequesterReqs.filter(r => r.status === 'completed' || r.status === 'cancelled'), 'requester', "No tienes historial de solicitudes.");
-
-            // Render para Admin
-            const activeReqs = applyFilters(sortedRequests.filter(r => r.status === 'pending' || r.status.startsWith('processing')), dom.adminActiveSearchId, dom.adminActiveDateFrom, dom.adminActiveDateTo);
-            const completedReqs = applyFilters(sortedRequests.filter(r => r.status === 'completed'), dom.adminHistorySearchId, dom.adminHistoryDateFrom, dom.adminHistoryDateTo);
-            const cancelledReqs = applyFilters(sortedRequests.filter(r => r.status === 'cancelled'), dom.adminHistorySearchId, dom.adminHistoryDateFrom, dom.adminHistoryDateTo);
+            if (selectedRequester) {
+                const requesterAll = sortedRequests.filter(r => r.requesterName === selectedRequester);
+                const filteredRequesterReqs = applyFilters(requesterAll, dom.requesterSearchId, dom.requesterDateFrom, dom.requesterDateTo);
+                
+                renderSection(dom.myPendingRequests, filteredRequesterReqs.filter(r => r.status === 'pending' || r.status.startsWith('processing')), 'requester', "No tienes solicitudes activas.");
+                renderSection(dom.myHistoryRequests, filteredRequesterReqs.filter(r => r.status === 'completed' || r.status === 'cancelled'), 'requester', "No tienes historial de solicitudes.");
             
-            renderSection(dom.adminTransferRequests, activeReqs, 'admin', "No hay solicitudes activas.");
-            renderSection(dom.adminCompletedRequests, completedReqs, 'admin', "No hay solicitudes completadas.");
-            renderSection(dom.adminCancelledRequests, cancelledReqs, 'admin', "No hay solicitudes canceladas.");
+            } else {
+                renderSection(dom.myPendingRequests, [], 'requester', "Seleccione un punto de venta para ver sus solicitudes.");
+                renderSection(dom.myHistoryRequests, [], 'requester', ""); // Dejamos el historial vacío
+                
+                const activeReqs = applyFilters(sortedRequests.filter(r => r.status === 'pending' || r.status.startsWith('processing')), dom.adminActiveSearchId, dom.adminActiveDateFrom, dom.adminActiveDateTo);
+                const completedReqs = applyFilters(sortedRequests.filter(r => r.status === 'completed'), dom.adminHistorySearchId, dom.adminHistoryDateFrom, dom.adminHistoryDateTo);
+                const cancelledReqs = applyFilters(sortedRequests.filter(r => r.status === 'cancelled'), dom.adminHistorySearchId, dom.adminHistoryDateFrom, dom.adminHistoryDateTo);
+    
+                renderSection(dom.adminTransferRequests, activeReqs, 'admin', "No hay solicitudes activas.");
+                renderSection(dom.adminCompletedRequests, completedReqs, 'admin', "No hay solicitudes completadas.");
+                renderSection(dom.adminCancelledRequests, cancelledReqs, 'admin', "No hay solicitudes canceladas.");
+            }
         }
+            
 
         function renderSection(div, data, role, emptyMessage) {
             div.innerHTML = '';
@@ -5805,7 +5810,8 @@
             const warehouseOptions = ['Bodega Cali Centro', 'Bodega Cali Sur', 'Bodega Pasto', 'Bodega Tulua', 'Bodega Medellín'];
             const requesterOptions = ['Punto de venta Cali centro', 'Punto de venta Cali sur', 'Punto de venta Pasto', 'Punto de venta Tulua', 'Punto de venta Medellin'];
             dom.toWarehouse.innerHTML = warehouseOptions.map(w => `<option value="${w}">${w}</option>`).join('');
-            dom.requesterName.innerHTML = requesterOptions.map(r => `<option value="${r}">${r}</option>`).join('');
+            const placeholder = '<option value="" selected disabled>-- Seleccione un punto de venta --</option>';
+            dom.requesterName.innerHTML = placeholder + requesterOptions.map(r => `<option value="${r}">${r}</option>`).join('');
 
             dom.roleSelector.onchange = handleRoleChange;
             dom.requesterName.onchange = renderAllSections;
