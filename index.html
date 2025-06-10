@@ -135,15 +135,6 @@
         let allTransferRequests = [];
         let currentUserRole = 'requester';
         const ADMIN_PASSWORD = "Traslados1234";
-        const REQUESTER_PASSWORDS = {
-            "Punto de venta Cali centro": "centro123",
-            "Punto de venta Cali sur": "sur456",
-            "Punto de venta Pasto": "pasto789",
-            "Punto de venta Tulua": "tulua101",
-            "Punto de venta Medellin": "medellin112"
-        };
-
-};
 
         const dom = {
             productList: document.getElementById('productList'),
@@ -208,16 +199,11 @@
             const selectedRequester = dom.requesterName.value;
             
             // Render para Solicitante
-            if (!selectedRequester) {
-                document.getElementById('myPendingRequests').innerHTML = '<p class="text-gray-500 italic text-center py-4">Selecciona un solicitante para ver sus pedidos.</p>';
-                document.getElementById('myHistoryRequests').innerHTML = '';
-            } 
-            else {
-                const requesterAll = sortedRequests.filter(r => r.requesterName === selectedRequester);
-                const filteredRequesterReqs = applyFilters(requesterAll, dom.requesterSearchId, dom.requesterDateFrom, dom.requesterDateTo);
-                renderSection(document.getElementById('myPendingRequests'), filteredRequesterReqs.filter(r => r.status === 'pending' || r.status.startsWith('processing')), 'requester', "No tienes solicitudes activas.");
-                renderSection(document.getElementById('myHistoryRequests'), filteredRequesterReqs.filter(r => r.status === 'completed' || r.status === 'cancelled'), 'requester', "No tienes historial de solicitudes.");
-            }
+            const requesterAll = sortedRequests.filter(r => r.requesterName === selectedRequester);
+            const filteredRequesterReqs = applyFilters(requesterAll, dom.requesterSearchId, dom.requesterDateFrom, dom.requesterDateTo);
+
+            renderSection(dom.myPendingRequests, filteredRequesterReqs.filter(r => r.status === 'pending' || r.status.startsWith('processing')), 'requester', "No tienes solicitudes activas.");
+            renderSection(dom.myHistoryRequests, filteredRequesterReqs.filter(r => r.status === 'completed' || r.status === 'cancelled'), 'requester', "No tienes historial de solicitudes.");
 
             // Render para Admin
             const activeReqs = applyFilters(sortedRequests.filter(r => r.status === 'pending' || r.status.startsWith('processing')), dom.adminActiveSearchId, dom.adminActiveDateFrom, dom.adminActiveDateTo);
@@ -397,48 +383,29 @@
             renderProducts(allProducts.filter(p => p.name.toLowerCase().includes(searchTerm) || p.description.toLowerCase().includes(searchTerm) || p.id.toLowerCase().includes(searchTerm)));
         }
         async function handleSubmitTransferForm(event) {
-    event.preventDefault();
-    if (currentTransferItems.length === 0) {
-        alert("Agrega productos antes de enviar.");
-        return;
-    }
-    const deliveryDateInput = document.getElementById('deliveryDate');
-    if (!deliveryDateInput.value) {
-        alert("Por favor, selecciona una fecha requerida.");
-        return;
-    }
-    const requester = dom.requesterName.value;
-    const correctPassword = REQUESTER_PASSWORDS[requester];
-    const enteredPassword = prompt(`Confirma tu identidad para "${requester}".\nIngresa la contraseña:`);
-
-    if (enteredPassword !== correctPassword) {
-        alert("Contraseña incorrecta. La solicitud NO fue enviada.");
-        return; // Detiene el envío si la contraseña es incorrecta
-    }
-
-    const newReq = {
-        items: currentTransferItems.map(item => ({ ...item, sentQuantity: item.quantity })),
-        fromWarehouse: document.getElementById('fromWarehouse').value,
-        toWarehouse: dom.toWarehouse.value,
-        requesterName: requester, // Usamos la variable que ya teníamos
-        deliveryDate: deliveryDateInput.value,
-        requesterNotes: document.getElementById('requesterNotes').value,
-        status: 'pending',
-        timestamp: firebase.firestore.FieldValue.serverTimestamp()
-    };
-
-    try {
-        await transfersCollection.add(newReq);
-        currentTransferItems = [];
-        localStorage.removeItem('currentTransferDraft');
-        renderCurrentTransfer();
-        dom.transferForm.reset();
-        alert("¡Contraseña correcta! Solicitud enviada a la nube.");
-    } catch (error) {
-        console.error("Error al guardar en Firebase: ", error);
-        alert("Error al enviar la solicitud. Revisa la consola (F12).");
-    }
-}
+            event.preventDefault();
+            const deliveryDateInput = document.getElementById('deliveryDate');
+            if (currentTransferItems.length === 0) { alert("Agrega productos antes de enviar."); return; }
+            if (!deliveryDateInput.value) { alert("Por favor, selecciona una fecha requerida."); return; }
+            const newReq = {
+                items: currentTransferItems.map(item => ({ ...item, sentQuantity: item.quantity })),
+                fromWarehouse: document.getElementById('fromWarehouse').value,
+                toWarehouse: dom.toWarehouse.value,
+                requesterName: dom.requesterName.value,
+                deliveryDate: deliveryDateInput.value,
+                requesterNotes: document.getElementById('requesterNotes').value,
+                status: 'pending',
+                timestamp: firebase.firestore.FieldValue.serverTimestamp()
+            };
+            try {
+                await transfersCollection.add(newReq);
+                currentTransferItems = [];
+                localStorage.removeItem('currentTransferDraft');
+                renderCurrentTransfer();
+                dom.transferForm.reset();
+                alert("¡Solicitud enviada a la nube con éxito!");
+            } catch (error) { console.error("Error al guardar en Firebase: ", error); }
+        }
         async function handleDeleteMyRequest(event) {
             const requestId = event.currentTarget.dataset.requestId;
             if (confirm("¿Eliminar esta solicitud de la nube?")) {
@@ -5837,8 +5804,8 @@
 
             const warehouseOptions = ['Bodega Cali Centro', 'Bodega Cali Sur', 'Bodega Pasto', 'Bodega Tulua', 'Bodega Medellín'];
             const requesterOptions = ['Punto de venta Cali centro', 'Punto de venta Cali sur', 'Punto de venta Pasto', 'Punto de venta Tulua', 'Punto de venta Medellin'];
-            dom.toWarehouse.innerHTML = `<option value="" disabled selected>-- Selecciona una bodega --</option>` + warehouseOptions.map(w => `<option value="${w}">${w}</option>`).join('');
-            dom.requesterName.innerHTML = `<option value="" disabled selected>-- Selecciona un solicitante --</option>` + requesterOptions.map(r => `<option value="${r}">${r}</option>`).join('');
+            dom.toWarehouse.innerHTML = warehouseOptions.map(w => `<option value="${w}">${w}</option>`).join('');
+            dom.requesterName.innerHTML = requesterOptions.map(r => `<option value="${r}">${r}</option>`).join('');
 
             dom.roleSelector.onchange = handleRoleChange;
             dom.requesterName.onchange = renderAllSections;
@@ -5847,14 +5814,16 @@
             
             Object.keys(dom).forEach(key => {
                 if (key.includes('Search') || key.includes('Date')) {
-                    if(dom[key]) dom[key].addEventListener('input', renderAllSections);
+                    dom[key].addEventListener('input', renderAllSections);
                 }
             });
             
             transfersCollection.orderBy("timestamp", "desc").onSnapshot(snapshot => {
                 allTransferRequests = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                 renderAllSections();
-            }, error => console.error("Error al conectar con Firebase: ", error));
+            }, error => {
+                console.error("Error al conectar con Firebase: ", error);
+            });
 
             updateUserRoleView();
         }
