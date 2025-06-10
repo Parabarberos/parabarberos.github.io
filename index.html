@@ -135,7 +135,14 @@
         let allTransferRequests = [];
         let currentUserRole = 'requester';
         const ADMIN_PASSWORD = "Traslados1234";
-
+        const POINT_OF_SALE_PASSWORDS = {
+            'Punto de venta Cali centro': 'calicentro77',
+            'Punto de venta Cali sur': 'calisur88',
+            'Punto de venta Pasto': 'pasto99',
+            'Punto de venta Tulua': 'tulua11',
+            'Punto de venta Medellin': 'medellin22'
+        };
+        let lastSelectedRequester = '';
         const dom = {
             productList: document.getElementById('productList'),
             currentTransferRequest: document.getElementById('currentTransferRequest'),
@@ -498,6 +505,30 @@
         alert("No se pudo guardar la nota.");
     }
 }
+        
+        function handleRequesterChange() {
+            const selectedPointOfSale = dom.requesterName.value;
+            if (currentUserRole !== 'admin' || !selectedPointOfSale) {
+                lastSelectedRequester = selectedPointOfSale;
+                renderAllSections();
+                return;
+            }
+            const requiredPassword = POINT_OF_SALE_PASSWORDS[selectedPointOfSale];
+            if (!requiredPassword) {
+                lastSelectedRequester = selectedPointOfSale;
+                renderAllSections();
+                return;
+            }
+            const enteredPassword = prompt(`Por favor, ingrese la contraseña para "${selectedPointOfSale}":`);
+            
+            if (enteredPassword === requiredPassword) {
+                lastSelectedRequester = selectedPointOfSale;
+                renderAllSections();
+            } else {
+                alert("Contraseña incorrecta. Acceso denegado.");
+                dom.requesterName.value = lastSelectedRequester; // Vuelve a la selección anterior
+            }
+        }
         function loadAndTransformProducts() {
             const rawData = [
                {
@@ -5817,7 +5848,7 @@
             dom.requesterName.innerHTML = placeholder + requesterOptions.map(r => `<option value="${r}">${r}</option>`).join('');
 
             dom.roleSelector.onchange = handleRoleChange;
-            dom.requesterName.onchange = renderAllSections;
+            dom.requesterName.onchange = handleRequesterChange;
             dom.transferForm.onsubmit = handleSubmitTransferForm;
             dom.searchInput.oninput = handleSearchInput;
             
