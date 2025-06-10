@@ -161,46 +161,6 @@
             adminHistoryDateFrom: document.getElementById('adminHistoryDateFrom'),
             adminHistoryDateTo: document.getElementById('adminHistoryDateTo'),
         };
-        const POINT_OF_SALE_PASSWORDS = {
-    'Punto de venta Cali centro': 'calicentro77',
-    'Punto de venta Cali sur': 'calisur88',
-    'Punto de venta Pasto': 'pasto99',
-    'Punto de venta Tulua': 'tulua11',
-    'Punto de venta Medellin': 'medellin22'
-};
-let lastSelectedRequester = ''; // Guarda la última selección válida
-
-function handleRequesterChange() {
-    const selectedPointOfSale = dom.requesterName.value;
-
-    // Solo pide contraseña si el usuario es 'admin'
-    if (currentUserRole === 'admin' && selectedPointOfSale) {
-        const requiredPassword = POINT_OF_SALE_PASSWORDS[selectedPointOfSale];
-        
-        // Si no hay contraseña definida, permite el acceso
-        if (!requiredPassword) {
-             lastSelectedRequester = selectedPointOfSale;
-             renderAllSections();
-             return;
-        }
-
-        const enteredPassword = prompt(`Por favor, ingrese la contraseña para "${selectedPointOfSale}":`);
-
-        if (enteredPassword === requiredPassword) {
-            // Contraseña correcta
-            lastSelectedRequester = selectedPointOfSale;
-            renderAllSections();
-        } else {
-            // Contraseña incorrecta
-            alert("Contraseña incorrecta. Acceso denegado.");
-            dom.requesterName.value = lastSelectedRequester; // Revierte al valor anterior
-        }
-    } else {
-        // Si no es admin, o si se des-selecciona, actúa normal
-        lastSelectedRequester = selectedPointOfSale;
-        renderAllSections();
-    }
-}
         const getRequestStatusColor = (s) => ({'pending':'border-l-4 border-gray-400 bg-gray-50','processing_partial_items':'border-l-4 border-red-500 bg-red-50','completed':'border-l-4 border-black bg-gray-100','cancelled':'border-l-4 border-red-700 bg-red-100'}[s]||'border-l-4 border-gray-300');
         const translateStatus = (s) => ({'pending':'Pendiente','processing_partial_items':'En Revisión','completed':'Realizado','cancelled':'Cancelado'}[s]||s);
 
@@ -5858,7 +5818,6 @@ function handleRequesterChange() {
             dom.requesterName.innerHTML = placeholder + requesterOptions.map(r => `<option value="${r}">${r}</option>`).join('');
 
             dom.roleSelector.onchange = handleRoleChange;
-            dom.requesterName.onchange = handleRequesterChange;
             dom.transferForm.onsubmit = handleSubmitTransferForm;
             dom.searchInput.oninput = handleSearchInput;
             
@@ -5876,6 +5835,47 @@ function handleRequesterChange() {
             });
 
             updateUserRoleView();
+            // --- INICIO: CÓDIGO DE CONTRASEÑAS POR PUNTO DE VENTA ---
+
+const POINT_OF_SALE_PASSWORDS = {
+    'Punto de venta Cali centro': 'calicentro77',
+    'Punto de venta Cali sur': 'calisur88',
+    'Punto de venta Pasto': 'pasto99',
+    'Punto de venta Tulua': 'tulua11',
+    'Punto de venta Medellin': 'medellin22'
+};
+let lastSelectedRequester = dom.requesterName.value;
+
+function handleRequesterChange() {
+    const selectedPointOfSale = dom.requesterName.value;
+
+    // Solo pide contraseña si el usuario es 'admin'
+    if (currentUserRole === 'admin' && selectedPointOfSale) {
+        const requiredPassword = POINT_OF_SALE_PASSWORDS[selectedPointOfSale];
+        
+        if (!requiredPassword) {
+             lastSelectedRequester = selectedPointOfSale;
+             renderAllSections();
+             return;
+        }
+
+        const enteredPassword = prompt(`Por favor, ingrese la contraseña para "${selectedPointOfSale}":`);
+
+        if (enteredPassword === requiredPassword) {
+            lastSelectedRequester = selectedPointOfSale;
+            renderAllSections();
+        } else {
+            alert("Contraseña incorrecta. Acceso denegado.");
+            dom.requesterName.value = lastSelectedRequester;
+        }
+    } else {
+        lastSelectedRequester = selectedPointOfSale;
+        renderAllSections();
+    }
+}
+
+// Y ahora, aquí mismo, asignamos la nueva función al evento onchange
+dom.requesterName.onchange = handleRequesterChange;
         }
 
         initializeApp();
