@@ -390,6 +390,8 @@
         async function handleSubmitTransferForm(event) {
             event.preventDefault();
             const deliveryDateInput = document.getElementById('deliveryDate');
+            if (!dom.toWarehouse.value) { alert("Por favor, seleccione una Bodega Destino."); return; }
+            if (!dom.requesterName.value) { alert("Por favor, seleccione un Solicitante."); return; }
             if (currentTransferItems.length === 0) { alert("Agrega productos antes de enviar."); return; }
             if (!deliveryDateInput.value) { alert("Por favor, selecciona una fecha requerida."); return; }
             const newReq = {
@@ -5809,7 +5811,8 @@
 
             const warehouseOptions = ['Bodega Cali Centro', 'Bodega Cali Sur', 'Bodega Pasto', 'Bodega Tulua', 'Bodega Medellín'];
             const requesterOptions = ['Punto de venta Cali centro', 'Punto de venta Cali sur', 'Punto de venta Pasto', 'Punto de venta Tulua', 'Punto de venta Medellin'];
-            dom.toWarehouse.innerHTML = warehouseOptions.map(w => `<option value="${w}">${w}</option>`).join('');
+            const warehousePlaceholder = '<option value="" selected disabled>-- Seleccione una bodega --</option>';
+            dom.toWarehouse.innerHTML = warehousePlaceholder + warehouseOptions.map(w => `<option value="${w}">${w}</option>`).join('');
             const placeholder = '<option value="" selected disabled>-- Seleccione un punto de venta --</option>';
             dom.requesterName.innerHTML = placeholder + requesterOptions.map(r => `<option value="${r}">${r}</option>`).join('');
 
