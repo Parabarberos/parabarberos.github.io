@@ -135,6 +135,13 @@
         let allTransferRequests = [];
         let currentUserRole = 'requester';
         const ADMIN_PASSWORD = "Traslados1234";
+        const REQUESTER_PASSWORDS = {
+            "Punto de venta Cali centro": "centro123",
+            "Punto de venta Cali sur": "sur456",
+            "Punto de venta Pasto": "pasto789",
+            "Punto de venta Tulua": "tulua101",
+            "Punto de venta Medellin": "medellin112"
+        };
 
 };
 
@@ -5840,16 +5847,14 @@
             
             Object.keys(dom).forEach(key => {
                 if (key.includes('Search') || key.includes('Date')) {
-                    dom[key].addEventListener('input', renderAllSections);
+                    if(dom[key]) dom[key].addEventListener('input', renderAllSections);
                 }
             });
             
             transfersCollection.orderBy("timestamp", "desc").onSnapshot(snapshot => {
                 allTransferRequests = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                 renderAllSections();
-            }, error => {
-                console.error("Error al conectar con Firebase: ", error);
-            });
+            }, error => console.error("Error al conectar con Firebase: ", error));
 
             updateUserRoleView();
         }
