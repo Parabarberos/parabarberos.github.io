@@ -209,17 +209,15 @@
             
             // Render para Solicitante
             if (!selectedRequester) {
-    // Si no hay un solicitante seleccionado, limpia las vistas y no hagas nada más.
-    document.getElementById('myPendingRequests').innerHTML = '<p class="text-gray-500 italic text-center py-4">Selecciona un solicitante para ver sus pedidos.</p>';
-    document.getElementById('myHistoryRequests').innerHTML = '';
-} else {
-    // Si hay un solicitante, procede con el filtrado y renderizado como antes.
-    const requesterAll = sortedRequests.filter(r => r.requesterName === selectedRequester);
-    const filteredRequesterReqs = applyFilters(requesterAll, dom.requesterSearchId, dom.requesterDateFrom, dom.requesterDateTo);
-
-    renderSection(document.getElementById('myPendingRequests'), filteredRequesterReqs.filter(r => r.status === 'pending' || r.status.startsWith('processing')), 'requester', "No tienes solicitudes activas.");
-    renderSection(document.getElementById('myHistoryRequests'), filteredRequesterReqs.filter(r => r.status === 'completed' || r.status === 'cancelled'), 'requester', "No tienes historial de solicitudes.");
-}
+                document.getElementById('myPendingRequests').innerHTML = '<p class="text-gray-500 italic text-center py-4">Selecciona un solicitante para ver sus pedidos.</p>';
+                document.getElementById('myHistoryRequests').innerHTML = '';
+            } 
+            else {
+                const requesterAll = sortedRequests.filter(r => r.requesterName === selectedRequester);
+                const filteredRequesterReqs = applyFilters(requesterAll, dom.requesterSearchId, dom.requesterDateFrom, dom.requesterDateTo);
+                renderSection(document.getElementById('myPendingRequests'), filteredRequesterReqs.filter(r => r.status === 'pending' || r.status.startsWith('processing')), 'requester', "No tienes solicitudes activas.");
+                renderSection(document.getElementById('myHistoryRequests'), filteredRequesterReqs.filter(r => r.status === 'completed' || r.status === 'cancelled'), 'requester', "No tienes historial de solicitudes.");
+            }
 
             // Render para Admin
             const activeReqs = applyFilters(sortedRequests.filter(r => r.status === 'pending' || r.status.startsWith('processing')), dom.adminActiveSearchId, dom.adminActiveDateFrom, dom.adminActiveDateTo);
