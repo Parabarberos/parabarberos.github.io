@@ -360,6 +360,29 @@
         }
 
         // --- MANEJADORES DE EVENTOS Y LÓGICA DE DATOS ---
+        function handleRequesterChange() {
+            const selectedPointOfSale = dom.requesterName.value;
+            if (currentUserRole !== 'admin' || !selectedPointOfSale) {
+                lastSelectedRequester = selectedPointOfSale;
+                renderAllSections();
+                return;
+            }
+            const requiredPassword = POINT_OF_SALE_PASSWORDS[selectedPointOfSale];
+            if (!requiredPassword) {
+                lastSelectedRequester = selectedPointOfSale;
+                renderAllSections();
+                return;
+            }
+            const enteredPassword = prompt(`Por favor, ingrese la contraseña para "${selectedPointOfSale}":`);
+            
+            if (enteredPassword === requiredPassword) {
+                lastSelectedRequester = selectedPointOfSale;
+                renderAllSections();
+            } else {
+                alert("Contraseña incorrecta. Acceso denegado.");
+                dom.requesterName.value = lastSelectedRequester; // Vuelve a la selección anterior
+            }
+        }
         function handleRoleChange() {
     const selectedRole = dom.roleSelector.value;
 
@@ -506,29 +529,7 @@
     }
 }
         
-        function handleRequesterChange() {
-            const selectedPointOfSale = dom.requesterName.value;
-            if (currentUserRole !== 'admin' || !selectedPointOfSale) {
-                lastSelectedRequester = selectedPointOfSale;
-                renderAllSections();
-                return;
-            }
-            const requiredPassword = POINT_OF_SALE_PASSWORDS[selectedPointOfSale];
-            if (!requiredPassword) {
-                lastSelectedRequester = selectedPointOfSale;
-                renderAllSections();
-                return;
-            }
-            const enteredPassword = prompt(`Por favor, ingrese la contraseña para "${selectedPointOfSale}":`);
-            
-            if (enteredPassword === requiredPassword) {
-                lastSelectedRequester = selectedPointOfSale;
-                renderAllSections();
-            } else {
-                alert("Contraseña incorrecta. Acceso denegado.");
-                dom.requesterName.value = lastSelectedRequester; // Vuelve a la selección anterior
-            }
-        }
+        
         function loadAndTransformProducts() {
             const rawData = [
                {
