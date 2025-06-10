@@ -5826,15 +5826,19 @@
             lastSelectedRequester = dom.requesterName.value; 
             dom.requesterName.onchange = () => {
                 const selectedPointOfSale = dom.requesterName.value;
-                if (currentUserRole === 'admin' && selectedPointOfSale) {
+                // Ahora verificamos si el rol es 'requester' para pedir la contraseña.
+                if (currentUserRole === 'requester' && selectedPointOfSale) {
                     const requiredPassword = POINT_OF_SALE_PASSWORDS[selectedPointOfSale];
                     if (!requiredPassword) {
                         lastSelectedRequester = selectedPointOfSale;
                         renderAllSections();
                         return;
                     }
+                    
                     const enteredPassword = prompt(`Por favor, ingrese la contraseña para "${selectedPointOfSale}":`);
+                    
                     if (enteredPassword === requiredPassword) {
+                        // Contraseña correcta, actualizamos y renderizamos.
                         lastSelectedRequester = selectedPointOfSale;
                         renderAllSections();
                     } else {
