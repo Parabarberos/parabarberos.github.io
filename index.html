@@ -375,6 +375,21 @@
         }
 
         // --- MANEJADORES DE EVENTOS Y LÓGICA DE DATOS ---
+        function generateCustomId() {
+            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+            const nums = '0123456789';
+            let result = '';
+            
+            let startWithLetter = Math.random() < 0.5;
+            for (let i = 0; i < 7; i++) {
+                if ((i % 2 === 0 && startWithLetter) || (i % 2 !== 0 && !startWithLetter)) {
+                    result += chars.charAt(Math.floor(Math.random() * chars.length));
+                } else {
+                    result += nums.charAt(Math.floor(Math.random() * nums.length));
+                }
+            }
+            return result;
+        }
         function handleRoleChange() {
     const selectedRole = dom.roleSelector.value;
 
@@ -416,6 +431,7 @@
             if (!dom.requesterName.value) { alert("Por favor, seleccione un Solicitante."); return; }
             if (currentTransferItems.length === 0) { alert("Agrega productos antes de enviar."); return; }
             if (!deliveryDateInput.value) { alert("Por favor, selecciona una fecha requerida."); return; }
+            const customId = generateCustomId();
             const newReq = {
                 items: currentTransferItems.map(item => ({ ...item, sentQuantity: item.quantity })),
                 fromWarehouse: document.getElementById('fromWarehouse').value,
@@ -427,12 +443,12 @@
                 timestamp: firebase.firestore.FieldValue.serverTimestamp()
             };
             try {
-                await transfersCollection.add(newReq);
+                await transfersCollection.doc(customId).set(newReq);
                 currentTransferItems = [];
                 localStorage.removeItem('currentTransferDraft');
                 renderCurrentTransfer();
                 dom.transferForm.reset();
-                alert("¡Solicitud enviada a la nube con éxito!");
+                alert(`¡Solicitud enviada con éxito! ID de seguimiento: ${customId}`);
             } catch (error) { console.error("Error al guardar en Firebase: ", error); }
         }
         async function handleDeleteMyRequest(event) {
