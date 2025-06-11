@@ -229,50 +229,7 @@
         
         const getRequestStatusColor = (s) => ({'pending':'border-l-4 border-gray-400 bg-gray-50','processing_partial_items':'border-l-4 border-red-500 bg-red-50','completed':'border-l-4 border-black bg-gray-100','cancelled':'border-l-4 border-red-700 bg-red-100'}[s]||'border-l-4 border-gray-300');
         const translateStatus = (s) => ({'pending':'Pendiente','processing_partial_items':'En Revisión','completed':'Realizado','cancelled':'Cancelado'}[s]||s);
-        async function handleFinalizeReception(event) {
-            const button = event.currentTarget;
-            const requestId = button.dataset.requestId;
-            button.disabled = true;
-            button.textContent = 'Procesando...';
-            const receptionNotes = document.getElementById(`receptionNotes-${requestId}`).value;
-            const qtyInputs = document.querySelectorAll(`.reception-qty-input[data-request-id="${requestId}"]`);
-            const reqRef = transfersCollection.doc(requestId);
-            try {
-                const doc = await reqRef.get();
-                if (!doc.exists) {
-                    throw new Error("El documento del traslado no fue encontrado. Puede que haya sido eliminado.");
-                }
-                let items = doc.data().items;
-                let isComplete = true;
-                
-                qtyInputs.forEach(input => {
-                    const index = parseInt(input.dataset.itemIndex, 10);
-                    const receivedQty = parseInt(input.value, 10);
-                    if (items[index]) {
-                        items[index].receivedQuantity = receivedQty;
-                        if (receivedQty < items[index].sentQuantity) {
-                            isComplete = false;
-                        }
-                    }
-                });
-                const newStatus = isComplete ? 'completed' : 'completed_incomplete';
-                const updatePayload = {
-                    status: newStatus,
-                    items: items,
-                    reception: {
-                        notes: receptionNotes,
-                        timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-                        finalizedBy: currentUserData.user.email // Guardamos quién confirmó
-                        }
-                };
-                await reqRef.update(updatePayload);
-            } catch (error) {
-                console.error("Error al finalizar la recepción:", error);
-                alert("Ocurrió un error al procesar la recepción. Por favor, intenta de nuevo.");
-                button.disabled = false;
-                button.textContent = 'Finalizar y Confirmar Recepción';
-            }
-        }
+        
         function setupUIForUser() {
             if (!currentUserData) return;
             const { name, role } = currentUserData;
@@ -312,90 +269,7 @@
         function renderSection(div, data, role, emptyMessage) { div.innerHTML = ''; if (data.length === 0) { div.innerHTML = `<p class="text-gray-500 italic text-center py-4">${emptyMessage}</p>`; } else { data.forEach(req => div.appendChild(createRequestCard(req, role))); } }
         function renderProducts(productsToRender) { dom.productList.innerHTML = ''; if (!productsToRender || productsToRender.length === 0) { dom.productList.innerHTML = '<p class="text-gray-500 col-span-full text-center">No se encontraron productos.</p>'; return; } productsToRender.forEach(product => { const card = document.createElement('div'); card.className = 'border p-3 rounded-lg shadow-sm hover:shadow-md transition bg-white'; const safeId = product.id.replace(/[^a-zA-Z0-9-_]/g, ''); card.innerHTML = `<h3 class="text-sm font-semibold text-gray-900" title="${product.description}">${product.name.length > 50 ? product.name.substring(0, 47) + '...' : product.name}</h3><p class="text-xs text-gray-400 mb-2">ID: ${product.id}</p><div class="flex items-center space-x-2 mt-auto"><input type="number" min="1" value="1" id="qty-${safeId}" class="w-16 border-gray-300 rounded-md text-center p-1"><button data-product-id="${product.id}" class="add-to-transfer-btn w-full bg-gray-800 hover:bg-black text-white text-xs font-bold py-2 px-2 rounded-md transition">Añadir</button></div>`; dom.productList.appendChild(card); }); dom.productList.querySelectorAll('.add-to-transfer-btn').forEach(b => b.onclick = handleAddToTransfer); }
         function renderCurrentTransfer() { dom.currentTransferRequest.innerHTML = ''; if (currentTransferItems.length === 0) { dom.currentTransferRequest.innerHTML = '<p class="text-gray-500 italic text-center py-4">Añade productos desde la lista de arriba.</p>'; return; } const ul = document.createElement('ul'); ul.className = 'space-y-2'; currentTransferItems.forEach((item, index) => { const li = document.createElement('li'); li.className = 'flex justify-between items-center p-3 bg-white rounded-lg shadow-sm'; li.innerHTML = `<div><span class="font-medium text-gray-800">${item.productName}</span><span class="text-xs text-gray-500 block">ID: ${item.productId}</span></div><div class="flex items-center space-x-2"><input type="number" min="1" value="${item.quantity}" data-item-index="${index}" class="w-16 p-1 border rounded item-quantity-input text-center"><button data-item-index="${index}" class="remove-item-btn text-red-500 hover:text-red-700 font-bold p-1">✕</button></div>`; ul.appendChild(li); }); dom.currentTransferRequest.appendChild(ul); dom.currentTransferRequest.querySelectorAll('.item-quantity-input').forEach(input => input.onchange = handleUpdateItemQuantity); dom.currentTransferRequest.querySelectorAll('.remove-item-btn').forEach(button => button.onclick = handleRemoveItem); }
-        function createRequestCard(req, role) {
-            const card = document.createElement('div');
-            card.className = `p-4 rounded-lg shadow-sm mb-4 ${getRequestStatusColor(req.status)}`;
-            const isShipped = req.status === 'shipped';
-            const isFinalized = req.status.startsWith('completed');
-            const itemsHtml = (req.items || []).map((item, index) => {
-                let quantityDisplay = `Solicitado: <b>${item.quantity}</b>`;
-                if (item.sentQuantity !== undefined) {
-                    quantityDisplay += ` | Enviado: <b>${item.sentQuantity}</b>`;
-                }
-                if (item.receivedQuantity !== undefined) {
-                    const color = item.receivedQuantity < item.sentQuantity ? 'text-red-600' : 'text-green-700';
-                    quantityDisplay += ` | Recibido: <b class="${color}">${item.receivedQuantity}</b>`;
-                }
-                const receptionInput = (role === 'requester' && isShipped)
-                    ? `<div class="flex items-center"><label class="text-sm mr-2">Recibido:</label><input type="number" value="${item.sentQuantity}" data-request-id="${req.id}" data-item-index="${index}" class="reception-qty-input w-20 p-1 border rounded-md text-center"></div>`
-                    : '';
-                return `<li class="p-2 rounded-md bg-white flex justify-between items-center text-sm">
-                <div>
-                <span class="font-medium text-gray-800">${item.productName}</span>
-                <div class="text-xs text-gray-600">${quantityDisplay}</div>
-                    </div>
-                    ${receptionInput}
-                </li>`;
-    }).join('');
-    
-    // --- ACCIONES DEL ADMINISTRADOR (Sin cambios en su lógica) ---
-    let adminActionsHtml = '';
-    if (role === 'admin' && (req.status === 'pending' || req.status.startsWith('processing'))) {
-        let buttons = '';
-        if (req.status === 'pending') buttons += `<button data-request-id="${req.id}" data-action="start_processing" class="action-btn bg-gray-800 hover:bg-black text-white text-xs font-semibold py-2 px-3 rounded-md mr-1">Iniciar Revisión</button>`;
-        if (req.status.startsWith('processing')) {
-            buttons += `<button data-request-id="${req.id}" data-action="shipped" class="action-btn bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold py-2 px-3 rounded-md">Marcar como Enviado</button>`;
-        }
-        buttons += `<button data-request-id="${req.id}" data-action="cancel" class="action-btn bg-red-600 hover:bg-red-700 text-white text-xs font-semibold py-2 px-3 rounded-md ml-1">Cancelar</button>`;
-        adminActionsHtml = `<div class="mt-4 border-t pt-4 text-right">${buttons}</div>`;
-    }
-
-    // --- FORMULARIO DE RECEPCIÓN DEL SOLICITANTE (Simplificado) ---
-    let receptionFormHtml = '';
-    if (role === 'requester' && isShipped) {
-        receptionFormHtml = `
-            <div class="mt-4 border-t-2 border-red-200 pt-4 space-y-3">
-                <h5 class="font-bold text-md text-red-700">Confirmar Recepción</h5>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">Observaciones de Recepción:</label>
-                    <textarea id="receptionNotes-${req.id}" rows="2" class="w-full mt-1 border rounded-md p-2" placeholder="Ej: La caja llegó golpeada, un producto dañado..."></textarea>
-                </div>
-                <button data-request-id="${req.id}" class="finalize-reception-btn w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-3 rounded-md">Finalizar y Confirmar Recepción</button>
-            </div>
-        `;
-    }
-
-    // --- EVIDENCIAS DEL SOLICITANTE (Texto solamente) ---
-    let receptionEvidenceHtml = '';
-    if (isFinalized && req.reception && req.reception.notes) {
-        receptionEvidenceHtml = `
-            <div class="mt-3 p-3 bg-green-50 rounded-lg border border-green-200">
-                <p class="text-sm font-semibold text-green-800">Revisión del Solicitante:</p>
-                <p class="text-sm text-green-900 italic">"${req.reception.notes}"</p>
-            </div>
-        `;
-    }
-
-    // --- ARMADO FINAL DE LA TARJETA ---
-    card.innerHTML = `
-        <div class="flex justify-between items-start">
-            <div>
-                <h4 class="font-semibold text-lg text-gray-800">${req.requesterName}</h4>
-                <p class="text-sm text-gray-600">ID: ${req.id}</p>
-                <span class="inline-block mt-2 px-2 py-1 text-xs font-bold rounded-full ${getRequestStatusColor(req.status)}">${translateStatus(req.status)}</span>
-            </div>
-        </div>
-        <div class="mt-4"><p class="text-sm font-semibold mb-2 text-gray-600">Items:</p><ul class="space-y-2">${itemsHtml}</ul></div>
-        ${receptionEvidenceHtml}
-        ${adminActionsHtml}
-        ${receptionFormHtml}
-    `;
-
-    // Asignar eventos
-    card.querySelectorAll('.action-btn').forEach(b => b.onclick = handleAdminAction);
-    card.querySelectorAll('.finalize-reception-btn').forEach(b => b.onclick = handleFinalizeReception);
-    return card;
-}
+        function createRequestCard(req, role) { const card = document.createElement('div'); card.className = `p-4 rounded-lg shadow-sm mb-4 ${getRequestStatusColor(req.status)}`; const itemsHtml = (req.items || []).map((item, index) => { const requestedQty = item.quantity; const sentQty = (item.sentQuantity === undefined) ? item.quantity : item.sentQuantity; const isProcessing = req.status.startsWith('processing'); let quantityDisplay = `Solicitado: <b>${requestedQty}</b>`; let statusClasses = ''; if (req.status !== 'pending' && req.status !== 'cancelled') { if (sentQty < requestedQty) { quantityDisplay += `<span class="ml-2 font-bold text-red-600">Enviado: ${sentQty} (Faltan: ${requestedQty - sentQty})</span>`; statusClasses = 'bg-red-50'; } else { quantityDisplay += `<span class="ml-2 font-bold text-gray-800">✓ Enviado: ${sentQty}</span>`; statusClasses = 'bg-gray-100'; } } const adminInput = (role === 'admin' && isProcessing) ? `<input type="number" value="${sentQty}" data-request-id="${req.id}" data-item-index="${index}" class="admin-qty-input w-20 p-1 border rounded-md text-center">` : ``; return `<li class="p-2 rounded-md ${statusClasses} flex justify-between items-center text-sm"><div><span class="font-medium text-gray-800">${item.productName}</span><div class="text-xs text-gray-600">${quantityDisplay}</div></div>${adminInput}</li>`; }).join(''); let adminActionsHtml = '', requesterActionsHtml = ''; if (role === 'admin' && req.status !== 'completed' && req.status !== 'cancelled') { let buttons = ''; if (req.status === 'pending') buttons += `<button data-request-id="${req.id}" data-action="start_processing" class="action-btn bg-gray-800 hover:bg-black text-white text-xs font-semibold py-2 px-3 rounded-md mr-1">Iniciar Revisión</button>`; if (req.status.startsWith('processing')) { buttons += `<button data-request-id="${req.id}" data-action="completed" class="action-btn bg-black hover:bg-gray-800 text-white text-xs font-semibold py-2 px-3 rounded-md">Marcar Realizado</button>`; buttons += `<button data-request-id="${req.id}" data-action="revert_to_pending" class="action-btn bg-gray-500 hover:bg-gray-600 text-white text-xs font-semibold py-2 px-3 rounded-md ml-1">Revertir</button>`; } buttons += `<button data-request-id="${req.id}" data-action="cancel" class="action-btn bg-red-600 hover:bg-red-700 text-white text-xs font-semibold py-2 px-3 rounded-md ml-1">Cancelar</button>`; adminActionsHtml = `<div class="mt-4 border-t pt-4 text-right">${buttons}</div>`; } if (role === 'requester' && req.status === 'pending') { requesterActionsHtml = `<button data-request-id="${req.id}" class="delete-my-request-btn bg-red-600 hover:bg-red-700 text-white text-xs font-semibold py-1 px-2 rounded-md">Eliminar</button>`; } const reqDate = req.deliveryDate ? new Date(req.deliveryDate + 'T00:00:00').toLocaleDateString('es-CO', { year: 'numeric', month: 'long', day: 'numeric' }) : 'No especificada'; const creationDate = req.timestamp ? new Date(req.timestamp.seconds * 1000).toLocaleDateString('es-CO') : ''; card.innerHTML = `<div class="flex justify-between items-start"><div><h4 class="font-semibold text-lg text-gray-800">${req.requesterName}</h4><p class="text-sm text-gray-600">Para: <strong>${req.toWarehouse}</strong></p><p class="text-xs text-gray-400">ID: ${req.id} | Creada: ${creationDate}</p><p class="text-sm mt-1">Fecha Requerida: <b>${reqDate}</b></p><span class="inline-block mt-2 px-2 py-1 text-xs font-bold rounded-full text-gray-800 ${getRequestStatusColor(req.status)}">${translateStatus(req.status)}</span>${req.requesterNotes ? `<div class="mt-3 p-3 bg-gray-50 rounded-lg border"><p class="text-sm font-semibold text-gray-600">Observaciones del Solicitante:</p><p class="text-sm text-gray-800 italic">"${req.requesterNotes}"</p></div>` : ''}${req.adminNotes ? `<div class="mt-3 p-3 bg-red-50 rounded-lg border border-red-200"><p class="text-sm font-semibold text-red-800">Nota del Administrador:</p><p class="text-sm text-red-900 italic">"${req.adminNotes}"</p></div>` : ''}${(role === 'admin' && req.status.startsWith('processing')) ? `<div class="mt-4 border-t pt-4"><label for="adminNotes-${req.id}" class="text-sm font-medium text-gray-700">Añadir/Editar Nota de Admin:</label><textarea id="adminNotes-${req.id}" rows="2" class="w-full mt-1 border rounded-md p-2" placeholder="Ej: Se envían 5 unidades por falta de stock.">${req.adminNotes || ''}</textarea><button data-request-id="${req.id}" class="save-admin-note-btn mt-1 text-xs bg-gray-800 text-white px-3 py-1.5 rounded-md hover:bg-black">Guardar Nota</button></div>` : ''}</div>${requesterActionsHtml}</div><div class="mt-4"><p class="text-sm font-semibold mb-2 text-gray-600">Items Solicitados:</p><ul class="space-y-2">${itemsHtml}</ul></div>${adminActionsHtml}`; card.querySelectorAll('.action-btn').forEach(b => b.onclick = handleAdminAction); card.querySelectorAll('.delete-my-request-btn').forEach(b => b.onclick = handleDeleteMyRequest); card.querySelectorAll('.admin-qty-input').forEach(i => i.onchange = handleAdminQuantityChange); card.querySelectorAll('.save-admin-note-btn').forEach(b => b.onclick = handleSaveAdminNote); return card; }
         function transformRawJsonToProducts(rawData) { const uniqueProductStrings = new Set(); if (Array.isArray(rawData)) { rawData.forEach(item => { Object.keys(item).forEach(key => key && uniqueProductStrings.add(key.trim())); Object.values(item).forEach(val => val && uniqueProductStrings.add(val.trim())); }); } if (uniqueProductStrings.size === 0) return []; const productsMap = new Map(); let genericCounter = 1; uniqueProductStrings.forEach(fullProductName => { const parts = String(fullProductName).split(' - '); let idPart, namePart; if (parts.length > 1 && (/\d/.test(parts[0].trim()) || /^[a-zA-Z]{2,}/.test(parts[0].trim()))) { idPart = parts[0].trim().replace(/\s+/g, '-'); namePart = parts.slice(1).join(' - ').trim(); } else { idPart = `prod-gen-${genericCounter++}`; namePart = fullProductName; } let finalId = idPart, idCounter = 1; while (productsMap.has(finalId)) finalId = `${idPart}_${idCounter++}`; productsMap.set(finalId, { id: finalId, name: namePart, description: fullProductName }); }); return Array.from(productsMap.values()).sort((a, b) => a.name.localeCompare(b.name)); }
         async function handleProductUpload() { const fileInput = dom.productFile; const statusEl = dom.uploadStatus; if (fileInput.files.length === 0) { alert("Por favor, selecciona un archivo primero."); return; } const file = fileInput.files[0]; const reader = new FileReader(); reader.onload = async (event) => { let newProducts; try { const rawData = JSON.parse(event.target.result); newProducts = transformRawJsonToProducts(rawData); if (!newProducts || newProducts.length === 0) { throw new Error("No se pudieron procesar productos válidos desde el archivo JSON."); } } catch (e) { statusEl.textContent = `Error: ${e.message}`; statusEl.className = 'mt-3 text-sm font-medium text-red-600'; return; } statusEl.textContent = 'Actualizando, por favor espera...'; statusEl.className = 'mt-3 text-sm font-medium text-blue-600'; try { const batch = db.batch(); const oldDocsSnapshot = await productsCollection.get(); oldDocsSnapshot.forEach(doc => batch.delete(doc.ref)); newProducts.forEach(product => { const docRef = productsCollection.doc(product.id); batch.set(docRef, { name: product.name, description: product.description || '' }); }); await batch.commit(); statusEl.textContent = `¡Éxito! Se actualizaron ${newProducts.length} productos.`; statusEl.className = 'mt-3 text-sm font-medium text-green-600'; allProducts = await loadAndTransformProducts(); renderProducts(allProducts); } catch (error) { console.error("Error al actualizar productos en Firestore: ", error); statusEl.textContent = 'Error al subir a la base de datos.'; statusEl.className = 'mt-3 text-sm font-medium text-red-600'; } }; reader.onerror = () => { statusEl.textContent = 'Error al leer el archivo.'; statusEl.className = 'mt-3 text-sm font-medium text-red-600'; }; reader.readAsText(file); }
         function generateCustomId() { const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'; const nums = '0123456789'; let result = ''; let startWithLetter = Math.random() < 0.5; for (let i = 0; i < 7; i++) { if ((i % 2 === 0 && startWithLetter) || (i % 2 !== 0 && !startWithLetter)) { result += chars.charAt(Math.floor(Math.random() * chars.length)); } else { result += nums.charAt(Math.floor(Math.random() * nums.length)); } } return result; }
