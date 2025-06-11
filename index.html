@@ -109,6 +109,7 @@
                     Seleccionar Archivo JSON
                 </label>
                 <input type="file" id="productFile" class="hidden" accept=".json">
+                <span id="fileNameDisplay" class="block text-sm text-gray-500 mt-2 truncate">Ningún archivo seleccionado.</span>
                 <button id="uploadProductsBtn" class="mt-4 w-full bg-gray-800 hover:bg-black text-white font-bold py-3 px-4 rounded-lg shadow-lg">
                     Actualizar Base de Datos de Productos
                 </button>
@@ -223,6 +224,7 @@
             productFile: document.getElementById('productFile'),
             uploadProductsBtn: document.getElementById('uploadProductsBtn'),
             uploadStatus: document.getElementById('uploadStatus'),
+            document.getElementById('fileNameDisplay'),
         };
         
         // --- AQUÍ VAN TODAS TUS FUNCIONES ---
@@ -294,6 +296,14 @@
             dom.roleSelector.onchange = handleRoleChange;
             dom.exportExcelBtn.onclick = exportHistoryToExcel;
             dom.uploadProductsBtn.onclick = handleProductUpload;
+            dom.productFile.onchange = () => {
+                if (dom.productFile.files.length > 0) {
+                    dom.fileNameDisplay.textContent = dom.productFile.files[0].name;
+                    dom.uploadStatus.textContent = ''; // Limpia mensajes de error anteriores
+                } else {
+                    dom.fileNameDisplay.textContent = 'Ningún archivo seleccionado.';
+                }
+            };
             
             lastSelectedRequester = dom.requesterName.value; 
             dom.requesterName.onchange = () => {
@@ -347,7 +357,76 @@
         function renderProducts(productsToRender) { dom.productList.innerHTML = ''; if (!productsToRender || productsToRender.length === 0) { dom.productList.innerHTML = '<p class="text-gray-500 col-span-full text-center">No se encontraron productos.</p>'; return; } productsToRender.forEach(product => { const card = document.createElement('div'); card.className = 'border p-3 rounded-lg shadow-sm hover:shadow-md transition bg-white'; const safeId = product.id.replace(/[^a-zA-Z0-9-_]/g, ''); card.innerHTML = `<h3 class="text-sm font-semibold text-gray-900" title="${product.description}">${product.name.length > 50 ? product.name.substring(0, 47) + '...' : product.name}</h3><p class="text-xs text-gray-400 mb-2">ID: ${product.id}</p><div class="flex items-center space-x-2 mt-auto"><input type="number" min="1" value="1" id="qty-${safeId}" class="w-16 border-gray-300 rounded-md text-center p-1"><button data-product-id="${product.id}" class="add-to-transfer-btn w-full bg-gray-800 hover:bg-black text-white text-xs font-bold py-2 px-2 rounded-md transition">Añadir</button></div>`; dom.productList.appendChild(card); }); dom.productList.querySelectorAll('.add-to-transfer-btn').forEach(b => b.onclick = handleAddToTransfer); }
         function renderCurrentTransfer() { dom.currentTransferRequest.innerHTML = ''; if (currentTransferItems.length === 0) { dom.currentTransferRequest.innerHTML = '<p class="text-gray-500 italic text-center py-4">Añade productos desde la lista de arriba.</p>'; return; } const ul = document.createElement('ul'); ul.className = 'space-y-2'; currentTransferItems.forEach((item, index) => { const li = document.createElement('li'); li.className = 'flex justify-between items-center p-3 bg-white rounded-lg shadow-sm'; li.innerHTML = `<div><span class="font-medium text-gray-800">${item.productName}</span><span class="text-xs text-gray-500 block">ID: ${item.productId}</span></div><div class="flex items-center space-x-2"><input type="number" min="1" value="${item.quantity}" data-item-index="${index}" class="w-16 p-1 border rounded item-quantity-input text-center"><button data-item-index="${index}" class="remove-item-btn text-red-500 hover:text-red-700 font-bold p-1">✕</button></div>`; ul.appendChild(li); }); dom.currentTransferRequest.appendChild(ul); dom.currentTransferRequest.querySelectorAll('.item-quantity-input').forEach(input => input.onchange = handleUpdateItemQuantity); dom.currentTransferRequest.querySelectorAll('.remove-item-btn').forEach(button => button.onclick = handleRemoveItem); }
         function createRequestCard(req, role) { const card = document.createElement('div'); card.className = `p-4 rounded-lg shadow-sm mb-4 ${getRequestStatusColor(req.status)}`; const itemsHtml = (req.items || []).map((item, index) => { const requestedQty = item.quantity; const sentQty = (item.sentQuantity === undefined) ? item.quantity : item.sentQuantity; const isProcessing = req.status.startsWith('processing'); let quantityDisplay = `Solicitado: <b>${requestedQty}</b>`; let statusClasses = ''; if (req.status !== 'pending' && req.status !== 'cancelled') { if (sentQty < requestedQty) { quantityDisplay += `<span class="ml-2 font-bold text-red-600">Enviado: ${sentQty} (Faltan: ${requestedQty - sentQty})</span>`; statusClasses = 'bg-red-50'; } else { quantityDisplay += `<span class="ml-2 font-bold text-gray-800">✓ Enviado: ${sentQty}</span>`; statusClasses = 'bg-gray-100'; } } const adminInput = (role === 'admin' && isProcessing) ? `<input type="number" value="${sentQty}" data-request-id="${req.id}" data-item-index="${index}" class="admin-qty-input w-20 p-1 border rounded-md text-center">` : ``; return `<li class="p-2 rounded-md ${statusClasses} flex justify-between items-center text-sm"><div><span class="font-medium text-gray-800">${item.productName}</span><div class="text-xs text-gray-600">${quantityDisplay}</div></div>${adminInput}</li>`; }).join(''); let adminActionsHtml = '', requesterActionsHtml = ''; if (role === 'admin' && req.status !== 'completed' && req.status !== 'cancelled') { let buttons = ''; if (req.status === 'pending') buttons += `<button data-request-id="${req.id}" data-action="start_processing" class="action-btn bg-gray-800 hover:bg-black text-white text-xs font-semibold py-2 px-3 rounded-md mr-1">Iniciar Revisión</button>`; if (req.status.startsWith('processing')) { buttons += `<button data-request-id="${req.id}" data-action="completed" class="action-btn bg-black hover:bg-gray-800 text-white text-xs font-semibold py-2 px-3 rounded-md">Marcar Realizado</button>`; buttons += `<button data-request-id="${req.id}" data-action="revert_to_pending" class="action-btn bg-gray-500 hover:bg-gray-600 text-white text-xs font-semibold py-2 px-3 rounded-md ml-1">Revertir</button>`; } buttons += `<button data-request-id="${req.id}" data-action="cancel" class="action-btn bg-red-600 hover:bg-red-700 text-white text-xs font-semibold py-2 px-3 rounded-md ml-1">Cancelar</button>`; adminActionsHtml = `<div class="mt-4 border-t pt-4 text-right">${buttons}</div>`; } if (role === 'requester' && req.status === 'pending') { requesterActionsHtml = `<button data-request-id="${req.id}" class="delete-my-request-btn bg-red-600 hover:bg-red-700 text-white text-xs font-semibold py-1 px-2 rounded-md">Eliminar</button>`; } const reqDate = req.deliveryDate ? new Date(req.deliveryDate + 'T00:00:00').toLocaleDateString('es-CO', { year: 'numeric', month: 'long', day: 'numeric' }) : 'No especificada'; const creationDate = req.timestamp ? new Date(req.timestamp.seconds * 1000).toLocaleDateString('es-CO') : ''; card.innerHTML = `<div class="flex justify-between items-start"><div><h4 class="font-semibold text-lg text-gray-800">${req.requesterName}</h4><p class="text-sm text-gray-600">Para: <strong>${req.toWarehouse}</strong></p><p class="text-xs text-gray-400">ID: ${req.id} | Creada: ${creationDate}</p><p class="text-sm mt-1">Fecha Requerida: <b>${reqDate}</b></p><span class="inline-block mt-2 px-2 py-1 text-xs font-bold rounded-full text-gray-800 ${getRequestStatusColor(req.status)}">${translateStatus(req.status)}</span>${req.requesterNotes ? `<div class="mt-3 p-3 bg-gray-50 rounded-lg border"><p class="text-sm font-semibold text-gray-600">Observaciones del Solicitante:</p><p class="text-sm text-gray-800 italic">"${req.requesterNotes}"</p></div>` : ''}${req.adminNotes ? `<div class="mt-3 p-3 bg-red-50 rounded-lg border border-red-200"><p class="text-sm font-semibold text-red-800">Nota del Administrador:</p><p class="text-sm text-red-900 italic">"${req.adminNotes}"</p></div>` : ''}${(role === 'admin' && req.status.startsWith('processing')) ? `<div class="mt-4 border-t pt-4"><label for="adminNotes-${req.id}" class="text-sm font-medium text-gray-700">Añadir/Editar Nota de Admin:</label><textarea id="adminNotes-${req.id}" rows="2" class="w-full mt-1 border rounded-md p-2" placeholder="Ej: Se envían 5 unidades por falta de stock.">${req.adminNotes || ''}</textarea><button data-request-id="${req.id}" class="save-admin-note-btn mt-1 text-xs bg-gray-800 text-white px-3 py-1.5 rounded-md hover:bg-black">Guardar Nota</button></div>` : ''}</div>${requesterActionsHtml}</div><div class="mt-4"><p class="text-sm font-semibold mb-2 text-gray-600">Items Solicitados:</p><ul class="space-y-2">${itemsHtml}</ul></div>${adminActionsHtml}`; card.querySelectorAll('.action-btn').forEach(b => b.onclick = handleAdminAction); card.querySelectorAll('.delete-my-request-btn').forEach(b => b.onclick = handleDeleteMyRequest); card.querySelectorAll('.admin-qty-input').forEach(i => i.onchange = handleAdminQuantityChange); card.querySelectorAll('.save-admin-note-btn').forEach(b => b.onclick = handleSaveAdminNote); return card; }
-        async function handleProductUpload() { const fileInput = dom.productFile; const statusEl = dom.uploadStatus; if (fileInput.files.length === 0) { alert("Por favor, selecciona un archivo primero."); return; } const file = fileInput.files[0]; const reader = new FileReader(); reader.onload = async (event) => { let newProducts; try { newProducts = JSON.parse(event.target.result); if (!Array.isArray(newProducts) || newProducts.some(p => !p.id || !p.name)) { throw new Error("El formato del JSON es incorrecto. Debe ser un array de objetos con 'id' y 'name'."); } } catch (e) { statusEl.textContent = `Error: ${e.message}`; statusEl.className = 'mt-3 text-sm font-medium text-red-600'; return; } statusEl.textContent = 'Actualizando, por favor espera...'; statusEl.className = 'mt-3 text-sm font-medium text-blue-600'; try { const batch = db.batch(); const oldDocsSnapshot = await productsCollection.get(); oldDocsSnapshot.forEach(doc => { batch.delete(doc.ref); }); newProducts.forEach(product => { const docRef = productsCollection.doc(product.id); batch.set(docRef, { name: product.name, description: product.description || '' }); }); await batch.commit(); statusEl.textContent = `¡Éxito! Se actualizaron ${newProducts.length} productos.`; statusEl.className = 'mt-3 text-sm font-medium text-green-600'; allProducts = await loadAndTransformProducts(); renderProducts(allProducts); } catch (error) { console.error("Error al actualizar productos en Firestore: ", error); statusEl.textContent = 'Error al subir a la base de datos.'; statusEl.className = 'mt-3 text-sm font-medium text-red-600'; } }; reader.onerror = () => { statusEl.textContent = 'Error al leer el archivo.'; statusEl.className = 'mt-3 text-sm font-medium text-red-600'; }; reader.readAsText(file); }
+            async function handleProductUpload() {
+        const fileInput = dom.productFile;
+        const statusEl = dom.uploadStatus;
+    
+        if (fileInput.files.length === 0) {
+            alert("Por favor, selecciona un archivo primero.");
+            return;
+        }
+    
+        const file = fileInput.files[0];
+        const reader = new FileReader();
+    
+        reader.onload = async (event) => {
+            let newProducts;
+            try {
+                // 1. Parsear el JSON como viene
+                const rawData = JSON.parse(event.target.result);
+                
+                // 2. Transformar el JSON crudo a nuestra estructura estándar
+                newProducts = transformRawJsonToProducts(rawData);
+    
+                // 3. Validar el resultado de la transformación
+                if (!newProducts || newProducts.length === 0) {
+                    throw new Error("No se pudieron procesar productos válidos desde el archivo JSON.");
+                }
+            } catch (e) {
+                statusEl.textContent = `Error: ${e.message}`;
+                statusEl.className = 'mt-3 text-sm font-medium text-red-600';
+                return;
+            }
+    
+            statusEl.textContent = 'Actualizando, por favor espera...';
+            statusEl.className = 'mt-3 text-sm font-medium text-blue-600';
+    
+            try {
+                // El resto de la función (subir a Firestore) no necesita cambios
+                const batch = db.batch();
+                const oldDocsSnapshot = await productsCollection.get();
+                oldDocsSnapshot.forEach(doc => {
+                    batch.delete(doc.ref);
+                });
+    
+                newProducts.forEach(product => {
+                    const docRef = productsCollection.doc(product.id);
+                    // Ahora usamos el objeto producto bien formado
+                    batch.set(docRef, { name: product.name, description: product.description || '' });
+                });
+    
+                await batch.commit();
+    
+                statusEl.textContent = `¡Éxito! Se actualizaron ${newProducts.length} productos.`;
+                statusEl.className = 'mt-3 text-sm font-medium text-green-600';
+                
+                allProducts = await loadAndTransformProducts();
+                renderProducts(allProducts);
+    
+            } catch (error) {
+                console.error("Error al actualizar productos en Firestore: ", error);
+                statusEl.textContent = 'Error al subir a la base de datos.';
+                statusEl.className = 'mt-3 text-sm font-medium text-red-600';
+            }
+        };
+    
+        reader.onerror = () => {
+            statusEl.textContent = 'Error al leer el archivo.';
+            statusEl.className = 'mt-3 text-sm font-medium text-red-600';
+        };
+    
+        reader.readAsText(file);
+    }
         function generateCustomId() { const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'; const nums = '0123456789'; let result = ''; let startWithLetter = Math.random() < 0.5; for (let i = 0; i < 7; i++) { if ((i % 2 === 0 && startWithLetter) || (i % 2 !== 0 && !startWithLetter)) { result += chars.charAt(Math.floor(Math.random() * chars.length)); } else { result += nums.charAt(Math.floor(Math.random() * nums.length)); } } return result; }
         function handleRoleChange() { const selectedRole = dom.roleSelector.value; if (selectedRole === 'admin') { const password = prompt("Por favor, ingresa la contraseña de administrador:"); if (password === ADMIN_PASSWORD) { currentUserRole = 'admin'; alert("Acceso concedido. Bienvenido, Administrador."); } else { alert("Contraseña incorrecta. Acceso denegado."); dom.roleSelector.value = 'requester'; return; } } else { currentUserRole = 'requester'; } updateUserRoleView(); }
         function handleUpdateItemQuantity(event) { const input = event.currentTarget; currentTransferItems[input.dataset.itemIndex].quantity = parseInt(input.value, 10); localStorage.setItem('currentTransferDraft', JSON.stringify(currentTransferItems)); }
@@ -360,7 +439,43 @@
         function handleAddToTransfer(event) { const button = event.currentTarget; const product = allProducts.find(p => p.id === button.dataset.productId); if (!product) return; const qtyInput = document.getElementById(`qty-${product.id.replace(/[^a-zA-Z0-9-_]/g, '')}`); const quantity = parseInt(qtyInput.value, 10); if (isNaN(quantity) || quantity < 1) { alert("Cantidad inválida."); return; } const existingItem = currentTransferItems.find(i => i.productId === product.id); if (existingItem) { existingItem.quantity += quantity; } else { currentTransferItems.push({ productId: product.id, productName: product.name, quantity }); } qtyInput.value = "1"; localStorage.setItem('currentTransferDraft', JSON.stringify(currentTransferItems)); renderCurrentTransfer(); }
         async function handleSaveAdminNote(event) { const button = event.currentTarget; const requestId = button.dataset.requestId; const adminNotes = document.getElementById(`adminNotes-${requestId}`).value; const reqRef = transfersCollection.doc(requestId); try { await reqRef.update({ adminNotes: adminNotes }); alert("Nota del administrador guardada."); } catch (e) { console.error("Error al guardar la nota:", e); alert("No se pudo guardar la nota."); } }
         function exportHistoryToExcel() { const historyRequests = allTransferRequests.filter( r => r.status === 'completed' || r.status === 'cancelled' ); if (historyRequests.length === 0) { alert("No hay datos en el historial para exportar."); return; } let excelData = []; historyRequests.forEach(req => { const creationTimestamp = req.timestamp ? new Date(req.timestamp.seconds * 1000) : null; const creationDate = creationTimestamp ? creationTimestamp.toLocaleDateString('es-CO') : 'N/A'; const creationTime = creationTimestamp ? creationTimestamp.toLocaleTimeString('es-CO') : 'N/A'; if (req.items && req.items.length > 0) { req.items.forEach(item => { excelData.push({ 'ID Traslado': req.id, 'Estado': translateStatus(req.status), 'Fecha Solicitud (Requerida)': req.deliveryDate, 'Fecha Creación': creationDate, 'Hora Creación': creationTime, 'Solicitante': req.requesterName, 'Bodega Destino': req.toWarehouse, 'ID Producto': item.productId, 'Nombre Producto': item.productName, 'Unidades Solicitadas': item.quantity, 'Unidades Enviadas': item.sentQuantity, 'Observaciones Solicitante': req.requesterNotes || '', 'Notas Administrador': req.adminNotes || '' }); }); } else { excelData.push({ 'ID Traslado': req.id, 'Estado': translateStatus(req.status), 'Fecha Solicitud (Requerida)': req.deliveryDate, 'Fecha Creación': creationDate, 'Hora Creación': creationTime, 'Solicitante': req.requesterName, 'Bodega Destino': req.toWarehouse, 'ID Producto': 'N/A', 'Nombre Producto': 'Sin items registrados', 'Unidades Solicitadas': 0, 'Unidades Enviadas': 0, 'Observaciones Solicitante': req.requesterNotes || '', 'Notas Administrador': req.adminNotes || '' }); } }); const worksheet = XLSX.utils.json_to_sheet(excelData); const workbook = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(workbook, worksheet, "Historial de Traslados"); worksheet['!cols'] = [ { wch: 20 }, { wch: 15 }, { wch: 25 }, { wch: 15 }, { wch: 15 }, { wch: 25 }, { wch: 25 }, { wch: 20 }, { wch: 40 }, { wch: 20 }, { wch: 20 }, { wch: 50 }, { wch: 50 } ]; XLSX.writeFile(workbook, "Historial_Traslados_Parabarberos.xlsx"); }
+        function transformRawJsonToProducts(rawData) 
+            const uniqueProductStrings = new Set();
+        if (Array.isArray(rawData)) {
+            rawData.forEach(item => {
+            Object.keys(item).forEach(key => key && uniqueProductStrings.add(key.trim()));
+            Object.values(item).forEach(val => val && uniqueProductStrings.add(val.trim()));
+            });
+        }
+        if (uniqueProductStrings.size === 0) {
+        return []; // No se encontraron productos
+        }
+        const productsMap = new Map();
+        let genericCounter = 1;
+        uniqueProductStrings.forEach(fullProductName => {
+        const parts = String(fullProductName).split(' - ');
+        let idPart, namePart;
+            if (parts.length > 1 && (/\d/.test(parts[0].trim()) || /^[a-zA-Z]{2,}/.test(parts[0].trim()))) {
+                idPart = parts[0].trim().replace(/\s+/g, '-');
+                namePart = parts.slice(1).join(' - ').trim();
+            } else {
+                idPart = `prod-gen-${genericCounter++}`;
+                namePart = fullProductName;
+        }
+            let finalId = idPart;
+            let idCounter = 1;
+            while (productsMap.has(finalId)) {
+                finalId = `${idPart}_${idCounter++}`;
+            }
+            productsMap.set(finalId, {
+            id: finalId,
+            name: namePart,
+            description: fullProductName // La descripción será el nombre completo original
+        });
+    });
 
+    return Array.from(productsMap.values()).sort((a, b) => a.name.localeCompare(b.name));
+}
 
         // ¡Llamada final para iniciar la aplicación!
         initializeApp();
