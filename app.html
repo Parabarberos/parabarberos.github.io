@@ -73,10 +73,7 @@
             <div id="productManagementCard" class="lg:col-span-2 bg-white p-6 rounded-xl shadow-lg card" style="display: none;">
                 <h2 class="text-2xl font-semibold mb-4 text-gray-800 border-b pb-3">Gestión de Productos</h2>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
-                    <div>
-                        <p class="text-sm text-gray-600 mb-2">Sube un archivo <strong>JSON</strong> para actualizar la lista de productos.</p>
-                        <pre class="bg-gray-100 p-3 rounded-lg text-xs text-gray-700 overflow-x-auto">[{"...":"..."}]</pre>
-                    </div>
+                    <div><p class="text-sm text-gray-600 mb-2">Sube un archivo <strong>JSON</strong> para actualizar la lista de productos.</p><pre class="bg-gray-100 p-3 rounded-lg text-xs text-gray-700 overflow-x-auto">[{"...":"..."}]</pre></div>
                     <div class="text-center">
                         <label for="productFile" class="cursor-pointer w-full inline-block bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg shadow-lg">Seleccionar Archivo JSON</label>
                         <input type="file" id="productFile" class="hidden" accept=".json">
@@ -86,7 +83,6 @@
                     </div>
                 </div>
             </div>
-            
             <div class="bg-white p-6 rounded-xl shadow-lg card">
                 <h2 class="text-2xl font-semibold mb-4 text-gray-800 border-b pb-3">Traslados Activos</h2>
                 <div class="space-y-2 mb-4">
@@ -100,7 +96,6 @@
                     <div id="adminShippedRequests" class="space-y-4"></div>
                 </div>
             </div>
-
             <div class="bg-white p-6 rounded-xl shadow-lg card">
                 <div class="flex justify-between items-center border-b pb-3 mb-4">
                     <h2 class="text-2xl font-semibold text-gray-800">Historial</h2>
@@ -156,28 +151,23 @@
             requesterName: document.getElementById('requesterName'), searchInput: document.getElementById('searchInput'),
             requesterView: document.getElementById('requesterView'), adminView: document.getElementById('adminView'),
             myShippedRequests: document.getElementById('myShippedRequests'), myPendingRequests: document.getElementById('myPendingRequests'), 
-            myHistoryRequests: document.getElementById('myHistoryRequests'), 
-            adminPendingRequests: document.getElementById('adminPendingRequests'), // Nuevo para admin
-            adminShippedRequests: document.getElementById('adminShippedRequests'), // Nuevo para admin
-            adminCompletedRequests: document.getElementById('adminCompletedRequests'), adminCancelledRequests: document.getElementById('adminCancelledRequests'),
-            requesterSearchId: document.getElementById('requesterSearchId'), requesterDateFrom: document.getElementById('requesterDateFrom'),
-            requesterDateTo: document.getElementById('requesterDateTo'), adminActiveSearchId: document.getElementById('adminActiveSearchId'),
-            adminActiveDateFrom: document.getElementById('adminActiveDateFrom'), adminActiveDateTo: document.getElementById('adminActiveDateTo'),
-            adminHistorySearchId: document.getElementById('adminHistorySearchId'), adminHistoryDateFrom: document.getElementById('adminHistoryDateFrom'),
-            adminHistoryDateTo: document.getElementById('adminHistoryDateTo'), exportExcelBtn: document.getElementById('exportExcelBtn'),
-            productManagementCard: document.getElementById('productManagementCard'), productFile: document.getElementById('productFile'),
-            uploadProductsBtn: document.getElementById('uploadProductsBtn'), uploadStatus: document.getElementById('uploadStatus'),
-            fileNameDisplay: document.getElementById('fileNameDisplay'), userEmailDisplay: document.getElementById('userEmailDisplay'),
-            logoutBtn: document.getElementById('logoutBtn')
+            myHistoryRequests: document.getElementById('myHistoryRequests'), adminPendingRequests: document.getElementById('adminPendingRequests'),
+            adminShippedRequests: document.getElementById('adminShippedRequests'), adminCompletedRequests: document.getElementById('adminCompletedRequests'),
+            adminCancelledRequests: document.getElementById('adminCancelledRequests'), requesterSearchId: document.getElementById('requesterSearchId'),
+            requesterDateFrom: document.getElementById('requesterDateFrom'), requesterDateTo: document.getElementById('requesterDateTo'),
+            adminActiveSearchId: document.getElementById('adminActiveSearchId'), adminActiveDateFrom: document.getElementById('adminActiveDateFrom'),
+            adminActiveDateTo: document.getElementById('adminActiveDateTo'), adminHistorySearchId: document.getElementById('adminHistorySearchId'),
+            adminHistoryDateFrom: document.getElementById('adminHistoryDateFrom'), adminHistoryDateTo: document.getElementById('adminHistoryDateTo'),
+            exportExcelBtn: document.getElementById('exportExcelBtn'), productManagementCard: document.getElementById('productManagementCard'),
+            productFile: document.getElementById('productFile'), uploadProductsBtn: document.getElementById('uploadProductsBtn'),
+            uploadStatus: document.getElementById('uploadStatus'), fileNameDisplay: document.getElementById('fileNameDisplay'),
+            userEmailDisplay: document.getElementById('userEmailDisplay'), logoutBtn: document.getElementById('logoutBtn')
         };
         
         const getRequestStatusColor = (s) => ({
-            'pending': 'border-l-4 border-red-400 bg-red-50', // Rojo claro
-            'processing_partial_items': 'border-l-4 border-red-400 bg-red-50', // Rojo claro
-            'shipped': 'border-l-4 border-yellow-400 bg-yellow-50', // Amarillo
-            'completed': 'border-l-4 border-green-500 bg-green-50', // Verde
-            'completed_incomplete': 'border-l-4 border-green-500 bg-green-50', // Verde
-            'cancelled': 'border-l-4 border-red-700 bg-red-100' // Rojo oscuro
+            'pending': 'border-l-4 border-red-400 bg-red-50', 'processing_partial_items': 'border-l-4 border-red-400 bg-red-50',
+            'shipped': 'border-l-4 border-yellow-400 bg-yellow-50', 'completed': 'border-l-4 border-green-500 bg-green-50',
+            'completed_incomplete': 'border-l-4 border-green-500 bg-green-50', 'cancelled': 'border-l-4 border-red-700 bg-red-100'
         }[s] || 'border-l-4 border-gray-300');
 
         const translateStatus = (s) => ({
@@ -231,7 +221,6 @@
                 const pendingForReception = applyFilters(sortedRequests.filter(r => r.status === 'shipped'), dom.adminActiveSearchId, dom.adminActiveDateFrom, dom.adminActiveDateTo);
                 renderSection(dom.adminPendingRequests, pendingForReview, 'admin', "No hay solicitudes pendientes de revisión.");
                 renderSection(dom.adminShippedRequests, pendingForReception, 'admin', "No hay solicitudes pendientes por recibir.");
-                
                 const completedReqs = applyFilters(sortedRequests.filter(r => r.status.startsWith('completed')), dom.adminHistorySearchId, dom.adminHistoryDateFrom, dom.adminHistoryDateTo);
                 const cancelledReqs = applyFilters(sortedRequests.filter(r => r.status === 'cancelled'), dom.adminHistorySearchId, dom.adminHistoryDateFrom, dom.adminHistoryDateTo);
                 renderSection(dom.adminCompletedRequests, completedReqs, 'admin', "No hay solicitudes completadas.");
@@ -239,7 +228,7 @@
             }
         }
         
-        function renderSection(div, data, role, emptyMessage) { div.innerHTML = ''; if (!div) return; if (data.length === 0) { div.innerHTML = `<p class="text-gray-500 italic text-center py-4">${emptyMessage}</p>`; } else { data.forEach(req => div.appendChild(createRequestCard(req, role))); } }
+        function renderSection(div, data, role, emptyMessage) { if (!div) return; div.innerHTML = ''; if (data.length === 0) { div.innerHTML = `<p class="text-gray-500 italic text-center py-4">${emptyMessage}</p>`; } else { data.forEach(req => div.appendChild(createRequestCard(req, role))); } }
         function renderProducts(productsToRender) { dom.productList.innerHTML = ''; if (!productsToRender || productsToRender.length === 0) { dom.productList.innerHTML = '<p class="text-gray-500 col-span-full text-center">No se encontraron productos.</p>'; return; } productsToRender.forEach(product => { const card = document.createElement('div'); card.className = 'border p-3 rounded-lg shadow-sm hover:shadow-md transition bg-white'; const safeId = product.id.replace(/[^a-zA-Z0-9-_]/g, ''); card.innerHTML = `<h3 class="text-sm font-semibold text-gray-900" title="${product.description}">${product.name.length > 50 ? product.name.substring(0, 47) + '...' : product.name}</h3><p class="text-xs text-gray-400 mb-2">ID: ${product.id}</p><div class="flex items-center space-x-2 mt-auto"><input type="number" min="1" value="1" id="qty-${safeId}" class="w-16 border-gray-300 rounded-md text-center p-1"><button data-product-id="${product.id}" class="add-to-transfer-btn w-full bg-gray-800 hover:bg-black text-white text-xs font-bold py-2 px-2 rounded-md transition">Añadir</button></div>`; dom.productList.appendChild(card); }); dom.productList.querySelectorAll('.add-to-transfer-btn').forEach(b => b.onclick = handleAddToTransfer); }
         function renderCurrentTransfer() { dom.currentTransferRequest.innerHTML = ''; if (currentTransferItems.length === 0) { dom.currentTransferRequest.innerHTML = '<p class="text-gray-500 italic text-center py-4">Añade productos desde la lista de arriba.</p>'; return; } const ul = document.createElement('ul'); ul.className = 'space-y-2'; currentTransferItems.forEach((item, index) => { const li = document.createElement('li'); li.className = 'flex justify-between items-center p-3 bg-white rounded-lg shadow-sm'; li.innerHTML = `<div><span class="font-medium text-gray-800">${item.productName}</span><span class="text-xs text-gray-500 block">ID: ${item.productId}</span></div><div class="flex items-center space-x-2"><input type="number" min="1" value="${item.quantity}" data-item-index="${index}" class="w-16 p-1 border rounded item-quantity-input text-center"><button data-item-index="${index}" class="remove-item-btn text-red-500 hover:text-red-700 font-bold p-1">✕</button></div>`; ul.appendChild(li); }); dom.currentTransferRequest.appendChild(ul); dom.currentTransferRequest.querySelectorAll('.item-quantity-input').forEach(input => input.onchange = handleUpdateItemQuantity); dom.currentTransferRequest.querySelectorAll('.remove-item-btn').forEach(button => button.onclick = handleRemoveItem); }
         
@@ -250,7 +239,7 @@
             const isFinalized = req.status.startsWith('completed');
             const itemsHtml = (req.items || []).map((item, index) => {
                 let quantityDisplay = `Solicitado: <b>${item.quantity}</b>`;
-                if (item.sentQuantity !== undefined) { quantityDisplay += ` | Enviado: <b>${item.sentQuantity}</b>`; }
+                if (item.sentQuantity !== undefined && item.sentQuantity > 0) { quantityDisplay += ` | Enviado: <b>${item.sentQuantity}</b>`; }
                 if (item.receivedQuantity !== undefined) {
                     const color = item.receivedQuantity < item.sentQuantity ? 'text-red-600' : 'text-green-700';
                     quantityDisplay += ` | Recibido: <b class="${color}">${item.receivedQuantity}</b>`;
@@ -269,8 +258,13 @@
                 adminActionsHtml = `<div class="mt-4 border-t pt-4 text-right">${buttons}</div>`;
             }
             let requesterActionsHtml = '';
-            if (role === 'requester' && req.status === 'pending') { requesterActionsHtml = `<button data-request-id="${req.id}" class="delete-my-request-btn bg-red-600 hover:bg-red-700 text-white text-xs font-semibold py-1 px-2 rounded-md">Eliminar</button>`; }
-
+            if (role === 'requester' && req.status === 'pending') {
+                requesterActionsHtml = `
+                    <div class="flex flex-col space-y-2">
+                        <button data-request-id="${req.id}" class="edit-my-request-btn bg-blue-500 hover:bg-blue-600 text-white text-xs font-semibold py-1 px-2 rounded-md">Editar</button>
+                        <button data-request-id="${req.id}" class="delete-my-request-btn bg-red-600 hover:bg-red-700 text-white text-xs font-semibold py-1 px-2 rounded-md">Eliminar</button>
+                    </div>`;
+            }
             let receptionFormHtml = '';
             if (role === 'requester' && isShipped) {
                 receptionFormHtml = `<div class="mt-4 border-t-2 border-blue-200 pt-4 space-y-3"><h5 class="font-bold text-md text-blue-700">Confirmar Recepción</h5><div><label class="block text-sm font-medium text-gray-700">Observaciones de Recepción:</label><textarea id="receptionNotes-${req.id}" rows="2" class="w-full mt-1 border rounded-md p-2" placeholder="Ej: La caja llegó golpeada..."></textarea></div><button data-request-id="${req.id}" class="finalize-reception-btn w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-3 rounded-md">Finalizar y Confirmar Recepción</button></div>`;
@@ -279,7 +273,6 @@
             if (isFinalized && req.reception && req.reception.notes) {
                 receptionEvidenceHtml = `<div class="mt-3 p-3 bg-green-50 rounded-lg border border-green-200"><p class="text-sm font-semibold text-green-800">Revisión del Solicitante:</p><p class="text-sm text-green-900 italic">"${req.reception.notes}"</p></div>`;
             }
-            
             const reqDate = req.deliveryDate ? new Date(req.deliveryDate + 'T00:00:00').toLocaleDateString('es-CO', { year: 'numeric', month: 'long', day: 'numeric' }) : 'No especificada';
             const creationDate = req.timestamp ? new Date(req.timestamp.seconds * 1000).toLocaleDateString('es-CO') : '';
             card.innerHTML = `<div class="flex justify-between items-start"><div><h4 class="font-semibold text-lg text-gray-800">${req.requesterName}</h4><p class="text-sm text-gray-600">Para: <strong>${req.toWarehouse}</strong></p><p class="text-xs text-gray-400">ID: ${req.id} | Creada: ${creationDate}</p><p class="text-sm mt-1">Fecha Requerida: <b>${reqDate}</b></p><span class="inline-block mt-2 px-2 py-1 text-xs font-bold rounded-full ${getRequestStatusColor(req.status)}">${translateStatus(req.status)}</span>${req.requesterNotes ? `<div class="mt-3 p-3 bg-gray-50 rounded-lg border"><p class="text-sm font-semibold text-gray-600">Observaciones:</p><p class="text-sm text-gray-800 italic">"${req.requesterNotes}"</p></div>` : ''}${req.adminNotes ? `<div class="mt-3 p-3 bg-red-50 rounded-lg border border-red-200"><p class="text-sm font-semibold text-red-800">Nota del Admin:</p><p class="text-sm text-red-900 italic">"${req.adminNotes}"</p></div>` : ''}${(role === 'admin' && req.status.startsWith('processing')) ? `<div class="mt-4 border-t pt-4"><label for="adminNotes-${req.id}" class="text-sm font-medium text-gray-700">Añadir/Editar Nota:</label><textarea id="adminNotes-${req.id}" rows="2" class="w-full mt-1 border rounded-md p-2">${req.adminNotes || ''}</textarea><button data-request-id="${req.id}" class="save-admin-note-btn mt-1 text-xs bg-gray-800 text-white px-3 py-1.5 rounded-md hover:bg-black">Guardar Nota</button></div>` : ''}</div>${requesterActionsHtml}</div><div class="mt-4"><p class="text-sm font-semibold mb-2 text-gray-600">Items:</p><ul class="space-y-2">${itemsHtml}</ul></div>${receptionEvidenceHtml}${adminActionsHtml}${receptionFormHtml}`;
@@ -287,6 +280,7 @@
             card.querySelectorAll('.finalize-reception-btn').forEach(b => b.onclick = handleFinalizeReception);
             card.querySelectorAll('.admin-qty-input').forEach(i => i.onchange = handleAdminQuantityChange);
             card.querySelectorAll('.delete-my-request-btn').forEach(b => b.onclick = handleDeleteMyRequest);
+            card.querySelectorAll('.edit-my-request-btn').forEach(b => b.onclick = handleEditRequest);
             card.querySelectorAll('.save-admin-note-btn').forEach(b => b.onclick = handleSaveAdminNote);
             return card;
         }
@@ -324,9 +318,7 @@
                     const receivedQty = parseInt(input.value, 10);
                     if (items[index]) {
                         items[index].receivedQuantity = receivedQty;
-                        if (receivedQty < items[index].sentQuantity) {
-                            isComplete = false;
-                        }
+                        if (receivedQty < items[index].sentQuantity) { isComplete = false; }
                     }
                 });
                 const newStatus = isComplete ? 'completed' : 'completed_incomplete';
@@ -345,6 +337,37 @@
                 alert("Ocurrió un error. Inténtalo de nuevo.");
                 button.disabled = false;
                 button.textContent = 'Finalizar y Confirmar Recepción';
+            }
+        }
+        
+        async function handleEditRequest(event) {
+            const requestId = event.currentTarget.dataset.requestId;
+            if (!confirm("¿Deseas editar esta solicitud? La solicitud actual se eliminará y sus datos se cargarán en el formulario para que la modifiques y la vuelvas a enviar.")) {
+                return;
+            }
+            try {
+                const reqRef = transfersCollection.doc(requestId);
+                const doc = await reqRef.get();
+                if (!doc.exists) {
+                    alert("La solicitud que intentas editar ya no existe.");
+                    return;
+                }
+                const requestData = doc.data();
+                currentTransferItems = requestData.items.map(item => ({
+                    productId: item.productId,
+                    productName: item.productName,
+                    quantity: item.quantity
+                }));
+                renderCurrentTransfer();
+                dom.toWarehouse.value = requestData.toWarehouse;
+                dom.deliveryDate.value = requestData.deliveryDate;
+                dom.requesterNotes.value = requestData.requesterNotes || '';
+                await reqRef.delete();
+                alert("Solicitud cargada para edición. Realiza los cambios y vuelve a enviarla.");
+                dom.transferForm.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            } catch (error) {
+                console.error("Error al intentar editar la solicitud:", error);
+                alert("Ocurrió un error al cargar la solicitud para editar.");
             }
         }
 
