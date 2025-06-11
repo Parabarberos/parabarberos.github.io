@@ -1,0 +1,85 @@
+<!-- NOMBRE DEL ARCHIVO: index.html -->
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Iniciar Sesión - Traslados Parabarberos</title>
+    <link rel="icon" type="image/jpeg" href="https://parabarberos.github.io/2.jpg">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-auth-compat.js"></script>
+</head>
+<body class="bg-gray-100 flex items-center justify-center h-screen font-sans">
+    <div class="w-full max-w-md bg-white p-8 rounded-2xl shadow-xl border-t-4 border-red-600">
+        <div class="text-center mb-10">
+            <img src="https://parabarberos.github.io/2.jpg" alt="Logo Parabarberos" class="h-24 w-24 mx-auto mb-4 rounded-full">
+            <h1 class="text-3xl font-extrabold text-gray-800">TRASLADOS ENTRE BODEGAS</h1>
+            <p class="text-gray-500 mt-2">Bienvenido, por favor inicia sesión</p>
+        </div>
+        
+        <form id="loginForm">
+            <div class="mb-6">
+                <label for="email" class="block text-gray-700 text-sm font-bold mb-2">Correo Electrónico</label>
+                <input type="email" id="email" required class="shadow-sm appearance-none border rounded-lg w-full py-3 px-4 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-red-500">
+            </div>
+            <div class="mb-6">
+                <label for="password" class="block text-gray-700 text-sm font-bold mb-2">Contraseña</label>
+                <input type="password" id="password" required class="shadow-sm appearance-none border rounded-lg w-full py-3 px-4 text-gray-700 mb-3 leading-tight focus:outline-none focus:ring-2 focus:ring-red-500">
+            </div>
+            <div id="errorMessage" class="text-red-500 text-center mb-4 font-semibold h-5"></div>
+            <div class="flex items-center justify-between">
+                <button type="submit" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-4 rounded-lg focus:outline-none focus:shadow-outline transition-transform transform hover:scale-105">
+                    Ingresar
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const firebaseConfig = {
+                apiKey: "AIzaSyBmmNg525KrnOTsebzAV9dzfsKiq3o-0iQ",
+                authDomain: "base-de-datos-traslados.firebaseapp.com",
+                projectId: "base-de-datos-traslados",
+                storageBucket: "base-de-datos-traslados.appspot.com",
+                messagingSenderId: "569583717634",
+                appId: "1:569583717634:web:f7baa7aaf66a639624461b",
+                measurementId: "G-9CSBCGJRGS"
+            };
+
+            firebase.initializeApp(firebaseConfig);
+            const auth = firebase.auth();
+            const loginForm = document.getElementById('loginForm');
+            const errorMessage = document.getElementById('errorMessage');
+
+            auth.onAuthStateChanged(user => {
+                if (user) {
+                    window.location.href = 'app.html';
+                }
+            });
+
+            loginForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const email = document.getElementById('email').value;
+                const password = document.getElementById('password').value;
+                errorMessage.textContent = 'Verificando...';
+                errorMessage.classList.remove('text-red-500');
+                errorMessage.classList.add('text-gray-500');
+
+                auth.signInWithEmailAndPassword(email, password)
+                    .catch((error) => {
+                        console.error("Error de inicio de sesión:", error.code);
+                        errorMessage.classList.add('text-red-500');
+                        errorMessage.classList.remove('text-gray-500');
+                        if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
+                            errorMessage.textContent = 'Correo o contraseña incorrectos.';
+                        } else {
+                            errorMessage.textContent = 'Ocurrió un error. Inténtalo de nuevo.';
+                        }
+                    });
+            });
+        });
+    </script>
+</body>
+</html>
