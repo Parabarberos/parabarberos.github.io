@@ -142,7 +142,7 @@
             'parabarberossedemedellin@gmail.com': ['Punto de venta Medellin', 'requester']
         };
 
-        let allProducts = [], currentTransferItems = [], allTransferRequests = [], currentUserData = null;
+        let allProducts = [], currentTransferItems = [], allTransferRequests = [], currentUserData = null;let editingRequestId = null;
         currentTransferItems = JSON.parse(localStorage.getItem('currentTransferDraft')) || [];
 
         const dom = {
@@ -313,9 +313,61 @@ function createRequestCard(req, role) {
         async function handleProductUpload() { const fileInput = dom.productFile; const statusEl = dom.uploadStatus; if (fileInput.files.length === 0) { alert("Por favor, selecciona un archivo primero."); return; } const file = fileInput.files[0]; const reader = new FileReader(); reader.onload = async (event) => { let newProducts; try { const rawData = JSON.parse(event.target.result); newProducts = transformRawJsonToProducts(rawData); if (!newProducts || newProducts.length === 0) { throw new Error("No se pudieron procesar productos válidos."); } } catch (e) { statusEl.textContent = `Error: ${e.message}`; statusEl.className = 'mt-3 text-sm font-medium text-red-600'; return; } statusEl.textContent = 'Actualizando...'; statusEl.className = 'mt-3 text-sm font-medium text-blue-600'; try { const batch = db.batch(); const oldDocsSnapshot = await productsCollection.get(); oldDocsSnapshot.forEach(doc => batch.delete(doc.ref)); newProducts.forEach(product => { const docRef = productsCollection.doc(product.id); batch.set(docRef, { name: product.name, description: product.description || '' }); }); await batch.commit(); statusEl.textContent = `¡Éxito! Se actualizaron ${newProducts.length} productos.`; statusEl.className = 'mt-3 text-sm font-medium text-green-600'; allProducts = await loadAndTransformProducts(); renderProducts(allProducts); } catch (error) { console.error("Error al actualizar productos:", error); statusEl.textContent = 'Error al subir a la DB.'; statusEl.className = 'mt-3 text-sm font-medium text-red-600'; } }; reader.onerror = () => { statusEl.textContent = 'Error al leer archivo.'; statusEl.className = 'mt-3 text-sm font-medium text-red-600'; }; reader.readAsText(file); }
         function generateCustomId() { const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'; const nums = '0123456789'; let result = ''; let startWithLetter = Math.random() < 0.5; for (let i = 0; i < 7; i++) { if ((i % 2 === 0 && startWithLetter) || (i % 2 !== 0 && !startWithLetter)) { result += chars.charAt(Math.floor(Math.random() * chars.length)); } else { result += nums.charAt(Math.floor(Math.random() * nums.length)); } } return result; }
         function handleUpdateItemQuantity(event) { const input = event.currentTarget; currentTransferItems[input.dataset.itemIndex].quantity = parseInt(input.value, 10); localStorage.setItem('currentTransferDraft', JSON.stringify(currentTransferItems)); }
-        function handleRemoveItem(event) { currentTransferItems.splice(parseInt(event.currentTarget.dataset.itemIndex, 10), 1); localStorage.setItem('currentTransferDraft', JSON.stringify(currentTransferItems)); renderCurrentTransfer(); }
+        function handleRemoveItem(event) { currentTransferItems.splice(parseInt(event.currentTarget.dataset.itemIndex, 10), 1); localStorage.setItem('currentTransferDraft', JSON.stringify(currentTransferItems)); renderCurrentTransfer(); if (editingRequestId && currentTransferItems.length === 0) {
+        alert("Has eliminado todos los productos. Se cancelará el modo edición.");
+        resetTransferForm();
+    }
+}}
         function handleSearchInput() { const searchTerm = dom.searchInput.value.toLowerCase().trim(); renderProducts(allProducts.filter(p => p.name.toLowerCase().includes(searchTerm) || (p.description && p.description.toLowerCase().includes(searchTerm)) || p.id.toLowerCase().includes(searchTerm))); }
-        async function handleSubmitTransferForm(event) { event.preventDefault(); const deliveryDateInput = document.getElementById('deliveryDate'); if (!dom.toWarehouse.value) { alert("Seleccione Bodega Destino."); return; } if (!dom.requesterName.value) { alert("Seleccione Solicitante."); return; } if (currentTransferItems.length === 0) { alert("Agregue productos."); return; } if (!deliveryDateInput.value) { alert("Seleccione fecha."); return; } const customId = generateCustomId(); const newReq = { id: customId, items: currentTransferItems.map(item => ({ ...item, sentQuantity: 0, receivedQuantity: 0 })), fromWarehouse: document.getElementById('fromWarehouse').value, toWarehouse: dom.toWarehouse.value, requesterName: dom.requesterName.value, deliveryDate: deliveryDateInput.value, requesterNotes: document.getElementById('requesterNotes').value, status: 'pending', timestamp: firebase.firestore.FieldValue.serverTimestamp() }; try { await transfersCollection.doc(customId).set(newReq); currentTransferItems = []; localStorage.removeItem('currentTransferDraft'); renderCurrentTransfer(); dom.transferForm.reset(); alert(`¡Solicitud enviada! ID: ${customId}`); } catch (error) { console.error("Error al guardar en Firebase:", error); } }
+        // REEMPLAZA tu función handleSubmitTransferForm por esta
+
+async function handleSubmitTransferForm(event) {
+    event.preventDefault();
+    const deliveryDateInput = document.getElementById('deliveryDate');
+    
+    // Validaciones (sin cambios)
+    if (!dom.toWarehouse.value) { alert("Seleccione Bodega Destino."); return; }
+    if (currentTransferItems.length === 0) { alert("Agregue productos."); return; }
+    if (!deliveryDateInput.value) { alert("Seleccione fecha."); return; }
+
+    // Preparar el objeto de datos a guardar
+    const requestData = {
+        items: currentTransferItems, // Ya tiene el formato correcto
+        toWarehouse: dom.toWarehouse.value,
+        deliveryDate: deliveryDateInput.value,
+        requesterNotes: document.getElementById('requesterNotes').value,
+        // No actualizamos el resto de campos como el status o el timestamp al editar
+    };
+
+    try {
+        if (editingRequestId) {
+            // --- MODO EDICIÓN: Actualizar el documento existente ---
+            const reqRef = transfersCollection.doc(editingRequestId);
+            await reqRef.update(requestData);
+            alert(`¡Solicitud ${editingRequestId} actualizada con éxito!`);
+        } else {
+            // --- MODO CREACIÓN: Crear un nuevo documento ---
+            const customId = generateCustomId();
+            const newReq = {
+                ...requestData, // Datos del formulario
+                id: customId,
+                fromWarehouse: document.getElementById('fromWarehouse').value,
+                requesterName: dom.requesterName.value,
+                status: 'pending',
+                timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+            };
+            await transfersCollection.doc(customId).set(newReq);
+            alert(`¡Solicitud enviada! ID: ${customId}`);
+        }
+
+        // Limpiar y resetear el formulario en ambos casos
+        resetTransferForm();
+
+    } catch (error) {
+        console.error("Error al guardar en Firebase:", error);
+        alert("Ocurrió un error al guardar la solicitud.");
+    }
+}
         async function handleDeleteMyRequest(event) { const requestId = event.currentTarget.dataset.requestId; if (confirm("¿Eliminar esta solicitud?")) { try { await transfersCollection.doc(requestId).delete(); } catch (error) { console.error("Error al eliminar:", error); } } }
         async function handleAdminAction(event) { const { requestId, action } = event.currentTarget.dataset; const reqRef = transfersCollection.doc(requestId); let updateData = {}; try { if (action === 'start_processing') { const doc = await reqRef.get(); if (!doc.exists) return; const items = doc.data().items.map(item => ({ ...item, sentQuantity: item.quantity })); updateData = { status: 'processing_partial_items', items: items }; } else if (action === 'shipped') { if (!confirm("¿Marcar este traslado como ENVIADO?")) return; updateData = { status: 'shipped' }; } else if (action === 'cancel') { if (!confirm("¿Cancelar esta solicitud?")) return; updateData = { status: 'cancelled' }; } else { return; } await reqRef.update(updateData); } catch(e) { console.error("Error al actualizar la solicitud:", e); } }
         async function handleAdminQuantityChange(event) { const input = event.currentTarget; const { requestId, itemIndex } = input.dataset; const newSentQuantity = parseInt(input.value, 10); if (isNaN(newSentQuantity) || newSentQuantity < 0) return; const reqRef = transfersCollection.doc(requestId); try { const doc = await reqRef.get(); if (doc.exists) { let items = doc.data().items; if (items && items[itemIndex]) { items[itemIndex].sentQuantity = newSentQuantity; } await reqRef.update({ items }); } } catch(e) { console.error("Error al actualizar cantidad:", e); } }
@@ -363,37 +415,48 @@ function createRequestCard(req, role) {
                 button.textContent = 'Finalizar y Confirmar Recepción';
             }
         }
-        
-        async function handleEditRequest(event) {
-            const requestId = event.currentTarget.dataset.requestId;
-            if (!confirm("¿Deseas editar esta solicitud? La solicitud actual se eliminará y sus datos se cargarán en el formulario para que la modifiques y la vuelvas a enviar.")) {
-                return;
-            }
-            try {
-                const reqRef = transfersCollection.doc(requestId);
-                const doc = await reqRef.get();
-                if (!doc.exists) {
-                    alert("La solicitud que intentas editar ya no existe.");
-                    return;
-                }
-                const requestData = doc.data();
-                currentTransferItems = requestData.items.map(item => ({
-                    productId: item.productId,
-                    productName: item.productName,
-                    quantity: item.quantity
-                }));
-                renderCurrentTransfer();
-                dom.toWarehouse.value = requestData.toWarehouse;
-                dom.deliveryDate.value = requestData.deliveryDate;
-                dom.requesterNotes.value = requestData.requesterNotes || '';
-                await reqRef.delete();
-                alert("Solicitud cargada para edición. Realiza los cambios y vuelve a enviarla.");
-                dom.transferForm.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            } catch (error) {
-                console.error("Error al intentar editar la solicitud:", error);
-                alert("Ocurrió un error al cargar la solicitud para editar.");
-            }
-        }
+
+async function handleEditRequest(event) {
+    const requestId = event.currentTarget.dataset.requestId;
+    const request = allTransferRequests.find(r => r.id === requestId);
+    if (!request) {
+        alert("La solicitud que intentas editar no existe.");
+        return;
+    }
+
+    // 1. Activar el modo edición guardando el ID
+    editingRequestId = requestId;
+
+    // 2. Cargar los datos en el formulario (como antes)
+    currentTransferItems = request.items.map(item => ({
+        productId: item.productId,
+        productName: item.productName,
+        quantity: item.quantity
+    }));
+    renderCurrentTransfer();
+    
+    dom.toWarehouse.value = request.toWarehouse;
+    dom.deliveryDate.value = request.deliveryDate;
+    dom.requesterNotes.value = request.requesterNotes || '';
+    
+    // 3. Cambiar el texto del botón y el título del formulario
+    dom.transferForm.querySelector('button[type="submit"]').textContent = 'GUARDAR CAMBIOS';
+    dom.transferForm.querySelector('h2').textContent = `Editando Solicitud (ID: ${requestId})`;
+
+    // 4. Hacer scroll hacia el formulario
+    alert("Modo de edición activado. Realiza los cambios y guarda.");
+    dom.transferForm.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+        // AÑADE ESTA NUEVA FUNCIÓN
+
+function resetTransferForm() {
+    editingRequestId = null; // Salir del modo edición
+    currentTransferItems = [];
+    renderCurrentTransfer();
+    dom.transferForm.reset();
+    dom.transferForm.querySelector('button[type="submit"]').textContent = 'ENVIAR SOLICITUD DE TRASLADO';
+    dom.transferForm.querySelector('h2').textContent = 'Nueva solicitud de traslado';
+}
 
         async function initializeApp() {
             setupUIForUser();
