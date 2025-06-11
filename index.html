@@ -159,10 +159,16 @@
     </div>
 </div>
 
-<!-- REEMPLAZA TU SCRIPT COMPLETO CON ESTO -->
 <script>
     document.addEventListener('DOMContentLoaded', () => {
-
+        const productsCollection = db.collection("products");
+        let allProducts = [];
+        const dom = {
+            productManagementCard: document.getElementById('productManagementCard'),
+            productFile: document.getElementById('productFile'),
+            uploadProductsBtn: document.getElementById('uploadProductsBtn'),
+            uploadStatus: document.getElementById('uploadStatus'),
+        };
         const firebaseConfig = {
             apiKey: "AIzaSyBmmNg525KrnOTsebzAV9dzfsKiq3o-0iQ",
             authDomain: "base-de-datos-traslados.firebaseapp.com",
@@ -176,24 +182,21 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
         const transfersCollection = db.collection("transferencias");
-        const productsCollection = db.collection("products"); // Nueva colección
 
         let allProducts = [];
         let currentTransferItems = JSON.parse(localStorage.getItem('currentTransferDraft')) || [];
         let allTransferRequests = [];
         let currentUserRole = 'requester';
-        const ADMIN_PASSWORD = "Traslados1234";
+        const ADMIN_PASSWORD = "1234";
         const POINT_OF_SALE_PASSWORDS = {
-            'Punto de venta Cali centro': 'calicentro77',
-            'Punto de venta Cali sur': 'calisur88',
-            'Punto de venta Pasto': 'pasto99',
-            'Punto de venta Tulua': 'tulua11',
-            'Punto de venta Medellin': 'medellin22'
+            'Punto de venta Cali centro': '0001',
+            'Punto de venta Cali sur': '0002',
+            'Punto de venta Pasto': '0003',
+            'Punto de venta Tulua': '0004',
+            'Punto de venta Medellin': '0005'
         };
         let lastSelectedRequester = '';
-        
         const dom = {
-            // ... (Asegúrate de tener todos tus elementos del DOM aquí, como en tu código original)
             productList: document.getElementById('productList'),
             currentTransferRequest: document.getElementById('currentTransferRequest'),
             transferForm: document.getElementById('transferForm'),
@@ -218,21 +221,255 @@
             adminHistoryDateFrom: document.getElementById('adminHistoryDateFrom'),
             adminHistoryDateTo: document.getElementById('adminHistoryDateTo'),
             exportExcelBtn: document.getElementById('exportExcelBtn'),
-            productManagementCard: document.getElementById('productManagementCard'),
-            productFile: document.getElementById('productFile'),
-            uploadProductsBtn: document.getElementById('uploadProductsBtn'),
-            uploadStatus: document.getElementById('uploadStatus'),
         };
-
-        // --- FUNCIONES AUXILIARES ---
-
+        
         const getRequestStatusColor = (s) => ({'pending':'border-l-4 border-gray-400 bg-gray-50','processing_partial_items':'border-l-4 border-red-500 bg-red-50','completed':'border-l-4 border-black bg-gray-100','cancelled':'border-l-4 border-red-700 bg-red-100'}[s]||'border-l-4 border-gray-300');
         const translateStatus = (s) => ({'pending':'Pendiente','processing_partial_items':'En Revisión','completed':'Realizado','cancelled':'Cancelado'}[s]||s);
+
+        function updateUserRoleView() {
+            localStorage.setItem('userRole', currentUserRole);
+            dom.roleSelector.value = currentUserRole;
+            dom.requesterView.style.display = (currentUserRole === 'requester') ? 'grid' : 'none';
+            dom.adminView.style.display = (currentUserRole === 'admin') ? 'grid' : 'none';
+            dom.productManagementCard.style.display = (currentUserRole === 'admin') ? 'block' : 'none';
+            renderAllSections();
+        }
         
+        function applyFilters(requests, searchInput, dateFromInput, dateToInput) {
+            const searchTerm = searchInput.value.toLowerCase().trim();
+            const dateFrom = dateFromInput.value;
+            const dateTo = dateToInput.value;
+
+            let filtered = requests;
+
+            if (searchTerm) {
+                filtered = filtered.filter(req => req.id.toLowerCase().includes(searchTerm) || (req.requesterName && req.requesterName.toLowerCase().includes(searchTerm)));
+            }
+            if (dateFrom) {
+                const from = new Date(dateFrom).setHours(0,0,0,0);
+                filtered = filtered.filter(req => req.timestamp && (req.timestamp.seconds * 1000) >= from);
+            }
+            if (dateTo) {
+                const to = new Date(dateTo).setHours(23,59,59,999);
+                filtered = filtered.filter(req => req.timestamp && (req.timestamp.seconds * 1000) <= to);
+            }
+            return filtered;
+        }
+
+        function renderAllSections() {
+            const sortedRequests = allTransferRequests.sort((a,b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0));
+            const selectedRequester = dom.requesterName.value;
+            
+            if (selectedRequester) {
+                const requesterAll = sortedRequests.filter(r => r.requesterName === selectedRequester);
+                const filteredRequesterReqs = applyFilters(requesterAll, dom.requesterSearchId, dom.requesterDateFrom, dom.requesterDateTo);
+                
+                renderSection(dom.myPendingRequests, filteredRequesterReqs.filter(r => r.status === 'pending' || r.status.startsWith('processing')), 'requester', "No tienes solicitudes activas.");
+                renderSection(dom.myHistoryRequests, filteredRequesterReqs.filter(r => r.status === 'completed' || r.status === 'cancelled'), 'requester', "No tienes historial de solicitudes.");
+            
+            } else {
+                renderSection(dom.myPendingRequests, [], 'requester', "Seleccione un punto de venta para ver sus solicitudes.");
+                renderSection(dom.myHistoryRequests, [], 'requester', ""); // Dejamos el historial vacío
+                
+                const activeReqs = applyFilters(sortedRequests.filter(r => r.status === 'pending' || r.status.startsWith('processing')), dom.adminActiveSearchId, dom.adminActiveDateFrom, dom.adminActiveDateTo);
+                const completedReqs = applyFilters(sortedRequests.filter(r => r.status === 'completed'), dom.adminHistorySearchId, dom.adminHistoryDateFrom, dom.adminHistoryDateTo);
+                const cancelledReqs = applyFilters(sortedRequests.filter(r => r.status === 'cancelled'), dom.adminHistorySearchId, dom.adminHistoryDateFrom, dom.adminHistoryDateTo);
+    
+                renderSection(dom.adminTransferRequests, activeReqs, 'admin', "No hay solicitudes activas.");
+                renderSection(dom.adminCompletedRequests, completedReqs, 'admin', "No hay solicitudes completadas.");
+                renderSection(dom.adminCancelledRequests, cancelledReqs, 'admin', "No hay solicitudes canceladas.");
+            }
+        }
+            
+
+        function renderSection(div, data, role, emptyMessage) {
+            div.innerHTML = '';
+            if (data.length === 0) {
+                div.innerHTML = `<p class="text-gray-500 italic text-center py-4">${emptyMessage}</p>`;
+            } else {
+                data.forEach(req => div.appendChild(createRequestCard(req, role)));
+            }
+        }
+
+        function renderProducts(productsToRender) {
+            dom.productList.innerHTML = '';
+            if (!productsToRender || productsToRender.length === 0) {
+                dom.productList.innerHTML = '<p class="text-gray-500 col-span-full text-center">No se encontraron productos.</p>'; return;
+            }
+            productsToRender.forEach(product => {
+                const card = document.createElement('div');
+                card.className = 'border p-3 rounded-lg shadow-sm hover:shadow-md transition bg-white';
+                const safeId = product.id.replace(/[^a-zA-Z0-9-_]/g, '');
+                card.innerHTML = `<h3 class="text-sm font-semibold text-gray-900" title="${product.description}">${product.name.length > 50 ? product.name.substring(0, 47) + '...' : product.name}</h3><p class="text-xs text-gray-400 mb-2">ID: ${product.id}</p><div class="flex items-center space-x-2 mt-auto"><input type="number" min="1" value="1" id="qty-${safeId}" class="w-16 border-gray-300 rounded-md text-center p-1"><button data-product-id="${product.id}" class="add-to-transfer-btn w-full bg-gray-800 hover:bg-black text-white text-xs font-bold py-2 px-2 rounded-md transition">Añadir</button></div>`;
+                dom.productList.appendChild(card);
+            });
+            dom.productList.querySelectorAll('.add-to-transfer-btn').forEach(b => b.onclick = handleAddToTransfer);
+        }
+
+        function renderCurrentTransfer() {
+            dom.currentTransferRequest.innerHTML = '';
+            if (currentTransferItems.length === 0) {
+                dom.currentTransferRequest.innerHTML = '<p class="text-gray-500 italic text-center py-4">Añade productos desde la lista de arriba.</p>'; return;
+            }
+            const ul = document.createElement('ul');
+            ul.className = 'space-y-2';
+            currentTransferItems.forEach((item, index) => {
+                const li = document.createElement('li');
+                li.className = 'flex justify-between items-center p-3 bg-white rounded-lg shadow-sm';
+                li.innerHTML = `<div><span class="font-medium text-gray-800">${item.productName}</span><span class="text-xs text-gray-500 block">ID: ${item.productId}</span></div><div class="flex items-center space-x-2"><input type="number" min="1" value="${item.quantity}" data-item-index="${index}" class="w-16 p-1 border rounded item-quantity-input text-center"><button data-item-index="${index}" class="remove-item-btn text-red-500 hover:text-red-700 font-bold p-1">✕</button></div>`;
+                ul.appendChild(li);
+            });
+            dom.currentTransferRequest.appendChild(ul);
+            dom.currentTransferRequest.querySelectorAll('.item-quantity-input').forEach(input => input.onchange = handleUpdateItemQuantity);
+            dom.currentTransferRequest.querySelectorAll('.remove-item-btn').forEach(button => button.onclick = handleRemoveItem);
+        }
+        
+        function createRequestCard(req, role) {
+            const card = document.createElement('div');
+            card.className = `p-4 rounded-lg shadow-sm mb-4 ${getRequestStatusColor(req.status)}`;
+            
+            const itemsHtml = (req.items || []).map((item, index) => {
+                const requestedQty = item.quantity;
+                const sentQty = (item.sentQuantity === undefined) ? item.quantity : item.sentQuantity;
+                const isProcessing = req.status.startsWith('processing');
+                
+                let quantityDisplay = `Solicitado: <b>${requestedQty}</b>`;
+                let statusClasses = '';
+                
+                if (req.status !== 'pending' && req.status !== 'cancelled') {
+                    if (sentQty < requestedQty) {
+                        quantityDisplay += `<span class="ml-2 font-bold text-red-600">Enviado: ${sentQty} (Faltan: ${requestedQty - sentQty})</span>`;
+                        statusClasses = 'bg-red-50';
+                    } else {
+                        quantityDisplay += `<span class="ml-2 font-bold text-gray-800">✓ Enviado: ${sentQty}</span>`;
+                        statusClasses = 'bg-gray-100';
+                    }
+                }
+                
+                const adminInput = (role === 'admin' && isProcessing)
+                    ? `<input type="number" value="${sentQty}" data-request-id="${req.id}" data-item-index="${index}" class="admin-qty-input w-20 p-1 border rounded-md text-center">`
+                    : ``;
+
+                return `<li class="p-2 rounded-md ${statusClasses} flex justify-between items-center text-sm"><div><span class="font-medium text-gray-800">${item.productName}</span><div class="text-xs text-gray-600">${quantityDisplay}</div></div>${adminInput}</li>`;
+            }).join('');
+            
+            let adminActionsHtml = '', requesterActionsHtml = '';
+            if (role === 'admin' && req.status !== 'completed' && req.status !== 'cancelled') {
+                let buttons = '';
+                if (req.status === 'pending') buttons += `<button data-request-id="${req.id}" data-action="start_processing" class="action-btn bg-gray-800 hover:bg-black text-white text-xs font-semibold py-2 px-3 rounded-md mr-1">Iniciar Revisión</button>`;
+                if (req.status.startsWith('processing')) {
+                    buttons += `<button data-request-id="${req.id}" data-action="completed" class="action-btn bg-black hover:bg-gray-800 text-white text-xs font-semibold py-2 px-3 rounded-md">Marcar Realizado</button>`;
+                    buttons += `<button data-request-id="${req.id}" data-action="revert_to_pending" class="action-btn bg-gray-500 hover:bg-gray-600 text-white text-xs font-semibold py-2 px-3 rounded-md ml-1">Revertir</button>`;
+                }
+                buttons += `<button data-request-id="${req.id}" data-action="cancel" class="action-btn bg-red-600 hover:bg-red-700 text-white text-xs font-semibold py-2 px-3 rounded-md ml-1">Cancelar</button>`;
+                adminActionsHtml = `<div class="mt-4 border-t pt-4 text-right">${buttons}</div>`;
+            }
+            if (role === 'requester' && req.status === 'pending') {
+                 requesterActionsHtml = `<button data-request-id="${req.id}" class="delete-my-request-btn bg-red-600 hover:bg-red-700 text-white text-xs font-semibold py-1 px-2 rounded-md">Eliminar</button>`;
+            }
+            
+            const reqDate = req.deliveryDate ? new Date(req.deliveryDate + 'T00:00:00').toLocaleDateString('es-CO', { year: 'numeric', month: 'long', day: 'numeric' }) : 'No especificada';
+            const creationDate = req.timestamp ? new Date(req.timestamp.seconds * 1000).toLocaleDateString('es-CO') : '';
+
+            card.innerHTML = `
+                <div class="flex justify-between items-start">
+                    <div>
+                        <h4 class="font-semibold text-lg text-gray-800">${req.requesterName}</h4>
+                        <p class="text-sm text-gray-600">Para: <strong>${req.toWarehouse}</strong></p>
+                        <p class="text-xs text-gray-400">ID: ${req.id.substring(0, 8)} | Creada: ${creationDate}</p>
+                        <p class="text-sm mt-1">Fecha Requerida: <b>${reqDate}</b></p>
+                        <span class="inline-block mt-2 px-2 py-1 text-xs font-bold rounded-full text-gray-800 ${getRequestStatusColor(req.status)}">${translateStatus(req.status)}</span>
+                        ${req.requesterNotes ? `<div class="mt-3 p-3 bg-gray-50 rounded-lg border">
+                        <p class="text-sm font-semibold text-gray-600">Observaciones del Solicitante:</p>
+                <p class="text-sm text-gray-800 italic">"${req.requesterNotes}"</p>
+            </div>
+        ` : ''}
+        
+        <!-- Muestra la nota del admin si existe (para todos los roles en estados finales) -->
+        ${req.adminNotes ? `
+            <div class="mt-3 p-3 bg-red-50 rounded-lg border border-red-200">
+                <p class="text-sm font-semibold text-red-800">Nota del Administrador:</p>
+                <p class="text-sm text-red-900 italic">"${req.adminNotes}"</p>
+            </div>
+        ` : ''}
+
+        <!-- Muestra el campo de edición SOLO para el admin y SOLO si está en proceso -->
+        ${(role === 'admin' && req.status.startsWith('processing')) ? `
+            <div class="mt-4 border-t pt-4">
+                <label for="adminNotes-${req.id}" class="text-sm font-medium text-gray-700">Añadir/Editar Nota de Admin:</label>
+                <textarea id="adminNotes-${req.id}" rows="2" class="w-full mt-1 border rounded-md p-2" placeholder="Ej: Se envían 5 unidades por falta de stock.">${req.adminNotes || ''}</textarea>
+                <button data-request-id="${req.id}" class="save-admin-note-btn mt-1 text-xs bg-gray-800 text-white px-3 py-1.5 rounded-md hover:bg-black">Guardar Nota</button>
+            </div>
+        ` : ''}
+                    </div>
+                    ${requesterActionsHtml}
+                </div>
+                <div class="mt-4"><p class="text-sm font-semibold mb-2 text-gray-600">Items Solicitados:</p><ul class="space-y-2">${itemsHtml}</ul></div>
+                ${adminActionsHtml}
+            `;
+            card.querySelectorAll('.action-btn').forEach(b => b.onclick = handleAdminAction);
+            card.querySelectorAll('.delete-my-request-btn').forEach(b => b.onclick = handleDeleteMyRequest);
+            card.querySelectorAll('.admin-qty-input').forEach(i => i.onchange = handleAdminQuantityChange);
+            card.querySelectorAll('.save-admin-note-btn').forEach(b => b.onclick = handleSaveAdminNote);
+            return card;
+        }
+
+        // --- MANEJADORES DE EVENTOS Y LÓGICA DE DATOS ---
+        async function handleProductUpload() {
+            const fileInput = dom.productFile;
+            const statusEl = dom.uploadStatus;
+            if (fileInput.files.length === 0) {
+                alert("Por favor, selecciona un archivo primero.");
+                return;
+            }
+            const file = fileInput.files[0];
+            const reader = new FileReader();
+            reader.onload = async (event) => {
+                let newProducts;
+                try {
+                    newProducts = JSON.parse(event.target.result);
+                    if (!Array.isArray(newProducts) || newProducts.some(p => !p.id || !p.name)) {
+                        throw new Error("El formato del JSON es incorrecto. Debe ser un array de objetos con 'id' y 'name'.");
+                    }
+                } catch (e) {
+                    statusEl.textContent = `Error: ${e.message}`;
+                    statusEl.className = 'mt-3 text-sm font-medium text-red-600';
+                    return;
+                }
+                statusEl.textContent = 'Actualizando, por favor espera...';
+                statusEl.className = 'mt-3 text-sm font-medium text-blue-600';
+                try {
+                    const batch = db.batch();
+                    const oldDocsSnapshot = await productsCollection.get();
+                    oldDocsSnapshot.forEach(doc => {
+                        batch.delete(doc.ref);
+                    });
+                    newProducts.forEach(product => {
+                        const docRef = productsCollection.doc(product.id); // Usamos el ID del producto
+                        batch.set(docRef, { name: product.name, description: product.description || '' });
+                    });
+                    await batch.commit();
+                    statusEl.textContent = `¡Éxito! Se actualizaron ${newProducts.length} productos.`;
+                    statusEl.className = 'mt-3 text-sm font-medium text-green-600';
+                    allProducts = await loadAndTransformProducts();
+                    renderProducts(allProducts);
+                } catch (error) {
+                    console.error("Error al actualizar productos en Firestore: ", error);
+                    statusEl.textContent = 'Error al subir a la base de datos.';
+                    statusEl.className = 'mt-3 text-sm font-medium text-red-600';
+                }
+            };
+            reader.onerror = () => {
+                statusEl.textContent = 'Error al leer el archivo.';
+                statusEl.className = 'mt-3 text-sm font-medium text-red-600';
+            };
+            reader.readAsText(file);
+        }
         function generateCustomId() {
             const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
             const nums = '0123456789';
             let result = '';
+            
             let startWithLetter = Math.random() < 0.5;
             for (let i = 0; i < 7; i++) {
                 if ((i % 2 === 0 && startWithLetter) || (i % 2 !== 0 && !startWithLetter)) {
@@ -243,88 +480,326 @@
             }
             return result;
         }
+        function handleRoleChange() {
+    const selectedRole = dom.roleSelector.value;
 
-        // --- CARGA DE DATOS ---
+    if (selectedRole === 'admin') {
+        const password = prompt("Por favor, ingresa la contraseña de administrador:");
 
+        if (password === ADMIN_PASSWORD) {
+            currentUserRole = 'admin';
+            alert("Acceso concedido. Bienvenido, Administrador.");
+        } else {
+            alert("Contraseña incorrecta. Acceso denegado.");
+            dom.roleSelector.value = 'requester';
+            return; // Detiene la ejecución para no actualizar la vista
+        }
+    } else {
+        currentUserRole = 'requester';
+    }
+    
+    updateUserRoleView();
+}
+        function handleUpdateItemQuantity(event) {
+            const input = event.currentTarget;
+            currentTransferItems[input.dataset.itemIndex].quantity = parseInt(input.value, 10);
+            localStorage.setItem('currentTransferDraft', JSON.stringify(currentTransferItems));
+        }
+        function handleRemoveItem(event) {
+            currentTransferItems.splice(parseInt(event.currentTarget.dataset.itemIndex, 10), 1);
+            localStorage.setItem('currentTransferDraft', JSON.stringify(currentTransferItems));
+            renderCurrentTransfer();
+        }
+        function handleSearchInput() {
+            const searchTerm = dom.searchInput.value.toLowerCase().trim();
+            renderProducts(allProducts.filter(p => p.name.toLowerCase().includes(searchTerm) || p.description.toLowerCase().includes(searchTerm) || p.id.toLowerCase().includes(searchTerm)));
+        }
+        async function handleSubmitTransferForm(event) {
+            event.preventDefault();
+            const deliveryDateInput = document.getElementById('deliveryDate');
+            if (!dom.toWarehouse.value) { alert("Por favor, seleccione una Bodega Destino."); return; }
+            if (!dom.requesterName.value) { alert("Por favor, seleccione un Solicitante."); return; }
+            if (currentTransferItems.length === 0) { alert("Agrega productos antes de enviar."); return; }
+            if (!deliveryDateInput.value) { alert("Por favor, selecciona una fecha requerida."); return; }
+            const customId = generateCustomId();
+            const newReq = {
+                items: currentTransferItems.map(item => ({ ...item, sentQuantity: item.quantity })),
+                fromWarehouse: document.getElementById('fromWarehouse').value,
+                toWarehouse: dom.toWarehouse.value,
+                requesterName: dom.requesterName.value,
+                deliveryDate: deliveryDateInput.value,
+                requesterNotes: document.getElementById('requesterNotes').value,
+                status: 'pending',
+                timestamp: firebase.firestore.FieldValue.serverTimestamp()
+            };
+            try {
+                await transfersCollection.doc(customId).set(newReq);
+                currentTransferItems = [];
+                localStorage.removeItem('currentTransferDraft');
+                renderCurrentTransfer();
+                dom.transferForm.reset();
+                alert(`¡Solicitud enviada con éxito! ID de seguimiento: ${customId}`);
+            } catch (error) { console.error("Error al guardar en Firebase: ", error); }
+        }
+        async function handleDeleteMyRequest(event) {
+            const requestId = event.currentTarget.dataset.requestId;
+            if (confirm("¿Eliminar esta solicitud de la nube?")) {
+                try { await transfersCollection.doc(requestId).delete(); } 
+                catch (error) { console.error("Error al eliminar: ", error); }
+            }
+        }
+        async function handleAdminAction(event) {
+            const { requestId, action } = event.currentTarget.dataset;
+            const reqRef = transfersCollection.doc(requestId);
+            try {
+                const doc = await reqRef.get();
+                if (!doc.exists) return;
+                const currentData = doc.data();
+                let updateData = {};
+                switch(action) {
+                    case 'start_processing':
+                        updateData = { status: 'processing_partial_items', notes: 'Revisión iniciada.' };
+                        break;
+                    case 'completed':
+                        const hasMissingItems = currentData.items.some(item => item.sentQuantity < item.quantity);
+                        if (hasMissingItems && !confirm("Hay ítems faltantes. ¿Completar el traslado de todas formas?")) return;
+                        updateData = { status: 'completed', notes: (currentData.notes || "") + " Traslado completado." };
+                        break;
+                    case 'revert_to_pending':
+                        if (confirm("¿Revertir a Pendiente?")) {
+                            const resetItems = currentData.items.map(i => ({ ...i, sentQuantity: i.quantity }));
+                            updateData = { status: 'pending', notes: 'Revertido a pendiente.', items: resetItems };
+                        } else return;
+                        break;
+                    case 'cancel':
+                        if (confirm("¿Cancelar esta solicitud?")) {
+                            updateData = { status: 'cancelled', notes: (currentData.notes || "") + " Solicitud cancelada." };
+                        } else return;
+                        break;
+                }
+                await reqRef.update(updateData);
+            } catch(e) { console.error("Error al actualizar la solicitud:", e); }
+        }
+        async function handleAdminQuantityChange(event) {
+            const input = event.currentTarget;
+            const { requestId, itemIndex } = input.dataset;
+            const newSentQuantity = parseInt(input.value, 10);
+            if (isNaN(newSentQuantity) || newSentQuantity < 0) return;
+            const reqRef = transfersCollection.doc(requestId);
+            try {
+                const doc = await reqRef.get();
+                if (doc.exists) {
+                    let items = doc.data().items;
+                    if (items && items[itemIndex]) { items[itemIndex].sentQuantity = newSentQuantity; }
+                    await reqRef.update({ items });
+                }
+            } catch(e) { console.error("Error al actualizar cantidad:", e); }
+        }
+        function handleAddToTransfer(event) {
+            const button = event.currentTarget;
+            const product = allProducts.find(p => p.id === button.dataset.productId);
+            if (!product) return;
+            const qtyInput = document.getElementById(`qty-${product.id.replace(/[^a-zA-Z0-9-_]/g, '')}`);
+            const quantity = parseInt(qtyInput.value, 10);
+            if (isNaN(quantity) || quantity < 1) { alert("Cantidad inválida."); return; }
+            const existingItem = currentTransferItems.find(i => i.productId === product.id);
+            if (existingItem) {
+                existingItem.quantity += quantity;
+            } else {
+                currentTransferItems.push({ productId: product.id, productName: product.name, quantity });
+            }
+            qtyInput.value = "1";
+            localStorage.setItem('currentTransferDraft', JSON.stringify(currentTransferItems));
+            renderCurrentTransfer();
+        }
+        async function handleSaveAdminNote(event) {
+    const button = event.currentTarget;
+    const requestId = button.dataset.requestId;
+    const adminNotes = document.getElementById(`adminNotes-${requestId}`).value;
+
+    const reqRef = transfersCollection.doc(requestId);
+    try {
+        await reqRef.update({ adminNotes: adminNotes });
+        alert("Nota del administrador guardada.");
+    } catch (e) {
+        console.error("Error al guardar la nota:", e);
+        alert("No se pudo guardar la nota.");
+    }
+}
+        function exportHistoryToExcel() {
+    const historyRequests = allTransferRequests.filter(
+        r => r.status === 'completed' || r.status === 'cancelled'
+    );
+
+    if (historyRequests.length === 0) {
+        alert("No hay datos en el historial para exportar.");
+        return;
+    }
+            
+    let excelData = [];
+    historyRequests.forEach(req => {
+        const creationTimestamp = req.timestamp ? new Date(req.timestamp.seconds * 1000) : null;
+        const creationDate = creationTimestamp ? creationTimestamp.toLocaleDateString('es-CO') : 'N/A';
+        const creationTime = creationTimestamp ? creationTimestamp.toLocaleTimeString('es-CO') : 'N/A';
+
+        if (req.items && req.items.length > 0) {
+            req.items.forEach(item => {
+                excelData.push({
+                    'ID Traslado': req.id,
+                    'Estado': translateStatus(req.status),
+                    'Fecha Solicitud (Requerida)': req.deliveryDate,
+                    'Fecha Creación': creationDate,
+                    'Hora Creación': creationTime,
+                    'Solicitante': req.requesterName,
+                    'Bodega Destino': req.toWarehouse,
+                    'ID Producto': item.productId,
+                    'Nombre Producto': item.productName,
+                    'Unidades Solicitadas': item.quantity,
+                    'Unidades Enviadas': item.sentQuantity,
+                    'Observaciones Solicitante': req.requesterNotes || '', // Asegura que no sea undefined
+                    'Notas Administrador': req.adminNotes || ''
+                });
+            });
+        } else {
+            excelData.push({
+                'ID Traslado': req.id,
+                'Estado': translateStatus(req.status),
+                'Fecha Solicitud (Requerida)': req.deliveryDate,
+                'Fecha Creación': creationDate,
+                'Hora Creación': creationTime,
+                'Solicitante': req.requesterName,
+                'Bodega Destino': req.toWarehouse,
+                'ID Producto': 'N/A',
+                'Nombre Producto': 'Sin items registrados',
+                'Unidades Solicitadas': 0,
+                'Unidades Enviadas': 0,
+                'Observaciones Solicitante': req.requesterNotes || '',
+                'Notas Administrador': req.adminNotes || ''
+            });
+        }
+    });
+
+    const worksheet = XLSX.utils.json_to_sheet(excelData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Historial de Traslados");
+    worksheet['!cols'] = [
+        { wch: 20 }, // ID Traslado
+        { wch: 15 }, // Estado
+        { wch: 25 }, // Fecha Solicitud
+        { wch: 15 }, // Fecha Creación
+        { wch: 15 }, // Hora Creación
+        { wch: 25 }, // Solicitante
+        { wch: 25 }, // Bodega Destino
+        { wch: 20 }, // ID Producto
+        { wch: 40 }, // Nombre Producto
+        { wch: 20 }, // Unidades Solicitadas
+        { wch: 20 }, // Unidades Enviadas
+        { wch: 50 }, // Observaciones Solicitante
+        { wch: 50 }  // Notas Administrador
+    ];
+
+    XLSX.writeFile(workbook, "Historial_Traslados_Parabarberos.xlsx");
+}
         async function loadAndTransformProducts() {
             try {
                 const snapshot = await productsCollection.orderBy("name").get();
                 if (snapshot.empty) {
-                    console.warn("La colección 'products' está vacía. El admin debe subir una lista.");
-                    return []; 
+                    console.log("No se encontraron productos en la base de datos.");
+                    return []; // Retorna un array vacío si no hay nada
                 }
-                return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                const productsFromDB = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                return productsFromDB;
             } catch (error) {
-                console.error("ERROR AL CARGAR PRODUCTOS:", error);
-                alert("No se pudo cargar la lista de productos. Revisa las REGLAS DE SEGURIDAD de Firestore o la conexión a internet. La app puede no funcionar correctamente.");
-                return [];
+                console.error("Error al cargar productos desde Firestore: ", error);
+                alert("No se pudo cargar la lista de productos. Revisa la consola para más detalles.");
+                return []; // Retorna un array vacío en caso de error
             }
         }
-
-        // --- RENDERIZADO DE LA UI ---
-        // (Aquí van todas tus funciones de renderizado: renderProducts, renderCurrentTransfer, createRequestCard, renderSection, renderAllSections, etc. Cópialas desde tu código original)
-        // ...
-        
-        // --- MANEJADORES DE EVENTOS ---
-        // (Aquí van todas tus funciones 'handle...': handleRoleChange, handleSubmitTransferForm, handleProductUpload, etc. Cópialas desde tu código original)
-        // ...
-
-        // --- INICIALIZACIÓN DE LA APP ---
-
-        function initializeApp() {
-            // Primero, configurar todos los listeners y elementos estáticos
-            
-            // Renderiza la UI inicial con datos vacíos o de localStorage
-            renderProducts(allProducts); 
-            renderCurrentTransfer();
+            ];
+            const uniqueProductStrings = new Set();
+            rawData.forEach(item => {
+                Object.keys(item).forEach(key => uniqueProductStrings.add(key));
+                Object.values(item).forEach(val => val && uniqueProductStrings.add(val));
+            });
+            const productsMap = new Map();
+            let genericCounter = 1;
+            Array.from(uniqueProductStrings).forEach(fullProductName => {
+                const parts = String(fullProductName).split(' - ');
+                let idPart, namePart;
+                if (parts.length > 1 && (/\d/.test(parts[0].trim()) || /^[a-zA-Z]{2,}/.test(parts[0].trim()))) {
+                    idPart = parts[0].trim().replace(/\s+/g, '-');
+                    namePart = parts.slice(1).join(' - ').trim();
+                } else {
+                    idPart = `prod-gen-${genericCounter++}`; namePart = fullProductName;
+                }
+                let finalId = idPart, idCounter = 1;
+                while (productsMap.has(finalId)) finalId = `${idPart}_${idCounter++}`;
+                productsMap.set(finalId, { id: finalId, name: namePart, description: fullProductName });
+            });
+            return Array.from(productsMap.values()).sort((a, b) => a.name.localeCompare(b.name));
+        }
+    async function initializeApp() {
+        allProducts = await loadAndTransformProducts();
+        renderProducts(allProducts);
+        renderCurrentTransfer();
 
             const warehouseOptions = ['Bodega Cali Centro', 'Bodega Cali Sur', 'Bodega Pasto', 'Bodega Tulua', 'Bodega Medellín'];
             const requesterOptions = ['Punto de venta Cali centro', 'Punto de venta Cali sur', 'Punto de venta Pasto', 'Punto de venta Tulua', 'Punto de venta Medellin'];
-            dom.toWarehouse.innerHTML = '<option value="" selected disabled>-- Seleccione una bodega --</option>' + warehouseOptions.map(w => `<option value="${w}">${w}</option>`).join('');
-            dom.requesterName.innerHTML = '<option value="" selected disabled>-- Seleccione un punto de venta --</option>' + requesterOptions.map(r => `<option value="${r}">${r}</option>`).join('');
-            
-            // Asigna todos los manejadores de eventos
+            const warehousePlaceholder = '<option value="" selected disabled>-- Seleccione una bodega --</option>';
+            dom.exportExcelBtn.onclick = exportHistoryToExcel;
+            dom.uploadProductsBtn.onclick = handleProductUpload;
+            dom.toWarehouse.innerHTML = warehousePlaceholder + warehouseOptions.map(w => `<option value="${w}">${w}</option>`).join('');
+            const placeholder = '<option value="" selected disabled>-- Seleccione un punto de venta --</option>';
+            dom.requesterName.innerHTML = placeholder + requesterOptions.map(r => `<option value="${r}">${r}</option>`).join('');
             dom.roleSelector.onchange = handleRoleChange;
-            dom.requesterName.onchange = () => { /* Tu lógica de contraseña aquí */ };
+            lastSelectedRequester = dom.requesterName.value; 
+            dom.requesterName.onchange = () => {
+                const selectedPointOfSale = dom.requesterName.value;
+                // Ahora verificamos si el rol es 'requester' para pedir la contraseña.
+                if (currentUserRole === 'requester' && selectedPointOfSale) {
+                    const requiredPassword = POINT_OF_SALE_PASSWORDS[selectedPointOfSale];
+                    if (!requiredPassword) {
+                        lastSelectedRequester = selectedPointOfSale;
+                        renderAllSections();
+                        return;
+                    }
+                    
+                    const enteredPassword = prompt(`Por favor, ingrese la contraseña para "${selectedPointOfSale}":`);
+                    
+                    if (enteredPassword === requiredPassword) {
+                        // Contraseña correcta, actualizamos y renderizamos.
+                        lastSelectedRequester = selectedPointOfSale;
+                        renderAllSections();
+                    } else {
+                        alert("Contraseña incorrecta. Acceso denegado.");
+                        dom.requesterName.value = lastSelectedRequester;
+                    }
+                } else {
+                    lastSelectedRequester = selectedPointOfSale;
+                    renderAllSections();
+                }
+            };
             dom.transferForm.onsubmit = handleSubmitTransferForm;
             dom.searchInput.oninput = handleSearchInput;
-            dom.uploadProductsBtn.onclick = handleProductUpload;
-            // ... (y todos los demás)
-
-            // Ahora, inicia las cargas de datos asíncronas
-            loadAndTransformProducts().then(products => {
-                allProducts = products;
-                renderProducts(allProducts); // Vuelve a renderizar con los datos reales
+            
+            Object.keys(dom).forEach(key => {
+                if (key.includes('Search') || key.includes('Date')) {
+                    dom[key].addEventListener('input', renderAllSections);
+                }
             });
-
+            
             transfersCollection.orderBy("timestamp", "desc").onSnapshot(snapshot => {
                 allTransferRequests = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                 renderAllSections();
             }, error => {
-                console.error("Error al conectar con la colección 'transferencias': ", error);
+                console.error("Error al conectar con Firebase: ", error);
             });
 
-            // Finalmente, actualiza la vista inicial
             updateUserRoleView();
         }
 
-        // Reemplaza las secciones "..." con el código real de tus funciones
-        // Por ejemplo, aquí pongo la de updateUserRoleView completa:
-        function updateUserRoleView() {
-            localStorage.setItem('userRole', currentUserRole);
-            dom.roleSelector.value = currentUserRole;
-            dom.requesterView.style.display = (currentUserRole === 'requester') ? 'grid' : 'none';
-            dom.adminView.style.display = (currentUserRole === 'admin') ? 'grid' : 'none';
-            if (dom.productManagementCard) {
-                dom.productManagementCard.style.display = (currentUserRole === 'admin') ? 'block' : 'none';
-            }
-            renderAllSections();
-        }
-
-        // Y aquí todas las demás...
-        // ...
-
-        // ¡Y finalmente, llama a la función para empezar todo!
         initializeApp();
     });
-</script>
+    </script>
+</body>
+</html>
