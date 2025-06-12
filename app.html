@@ -1,131 +1,7 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TRASLADOS ENTRE BODEGAS PARABARBEROS S.A.S.</title>
-    <link rel="icon" type="image/jpeg" href="https://parabarberos.github.io/2.jpg">
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-firestore-compat.js"></script>
-    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
-</head>
-<body class="bg-gray-100 font-sans">
-    <div class="container mx-auto p-4 md:p-8">
-        <header class="mb-12 text-center">
-            <div class="inline-block p-2 bg-white rounded-full shadow-lg mx-auto mb-6 border-4 border-gray-200">
-                <img src="https://parabarberos.github.io/2.jpg" alt="Logo Parabarberos" class="h-24 w-24 md:h-32 md:w-32 rounded-full">
-            </div>
-            <h1 class="text-4xl md:text-5xl font-extrabold text-gray-800 tracking-tight">TRASLADOS ENTRE BODEGAS</h1>
-            <div class="mt-8 flex justify-center items-center gap-4">
-                <div>
-                    <span class="text-gray-600">Usuario:</span>
-                    <span id="userEmailDisplay" class="font-bold text-gray-800">Cargando...</span>
-                </div>
-                <button id="logoutBtn" class="bg-gray-200 hover:bg-red-200 text-red-700 font-semibold py-2 px-4 border border-red-300 rounded-lg shadow-sm">
-                    Cerrar Sesión
-                </button>
-            </div>
-        </header>
-
-        <!-- VISTA DE SOLICITANTE -->
-        <div id="requesterView" class="grid grid-cols-1 lg:grid-cols-3 gap-8" style="display: none;">
-            <div class="lg:col-span-2 space-y-8">
-                <div class="bg-white p-6 rounded-xl shadow-lg card">
-                    <h2 class="text-2xl font-semibold mb-4 text-gray-800 border-b pb-3">Nueva solicitud de traslado</h2>
-                    <div class="mb-4"><input type="search" id="searchInput" placeholder="Buscar producto..." class="w-full px-4 py-2 border border-gray-300 rounded-lg"></div>
-                    <div id="productList" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 mb-6 min-h-[200px] max-h-[50vh] overflow-y-auto p-4 bg-gray-50 rounded-lg"></div>
-                    <h3 class="text-xl font-semibold mb-3 text-gray-800"> Productos seleccionados</h3>
-                    <div id="currentTransferRequest" class="space-y-3 mb-6 min-h-[100px] max-h-[40vh] overflow-y-auto p-4 bg-gray-50 rounded-lg"></div>
-                    <form id="transferForm" class="space-y-4 border-t pt-6">
-                    <input type="hidden" id="editingRequestId">
-                        <h3 class="text-xl font-semibold mb-3 text-gray-800"> Detalles de traslado</h3>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div><label for="toWarehouse" class="block text-sm font-medium text-gray-700">Bodega Destino:</label><select id="toWarehouse" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm"></select></div>
-                            <div><label for="requesterName" class="block text-sm font-medium text-gray-700">Solicitante:</label><select id="requesterName" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm bg-gray-100" disabled></select></div>
-                            <div><label for="deliveryDate" class="block text-sm font-medium text-gray-700">Fecha de solicitud</label><input type="date" id="deliveryDate" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm"></div>
-                        </div>
-                        <input type="hidden" id="fromWarehouse" value="Bodega Principal">
-                        <div><label for="requesterNotes" class="block text-sm font-medium text-gray-700">Observaciones</label><textarea id="requesterNotes" rows="2" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm" placeholder="Ej: Necesito este pedido con urgencia..."></textarea></div>
-                        <button type="submit" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-4 rounded-lg shadow-lg">ENVIAR SOLICITUD DE TRASLADO</button>
-                    </form>
-                </div>
-            </div>
-            <div class="lg:col-span-1 bg-white p-6 rounded-xl shadow-lg card">
-                <h3 class="text-2xl font-semibold mb-4 text-gray-800 border-b pb-3">Mis solicitudes</h3>
-                <h4 class="text-xl font-bold text-blue-600 mb-2">Por Recibir</h4>
-                <div id="myShippedRequests" class="space-y-4 mb-6 border-b pb-6"></div>
-                <div class="space-y-2 mb-4">
-                    <input type="text" id="requesterSearchId" placeholder="Buscar por ID..." class="w-full px-3 py-2 border rounded-lg">
-                    <div class="grid grid-cols-2 gap-2"><input type="date" id="requesterDateFrom" class="w-full px-3 py-2 border rounded-lg text-sm" title="Fecha Desde"><input type="date" id="requesterDateTo" class="w-full px-3 py-2 border rounded-lg text-sm" title="Fecha Hasta"></div>
-                </div>
-                <div class="max-h-[80vh] overflow-y-auto">
-                    <h4 class="text-lg font-medium text-gray-700 mb-2">Activas</h4>
-                    <div id="myPendingRequests" class="space-y-4 mb-6"></div>
-                    <h4 class="text-lg font-medium text-gray-700 mb-2">Historial</h4>
-                    <div id="myHistoryRequests" class="space-y-4"></div>
-                </div>
-            </div>
-        </div>
-
-        <!-- VISTA DE ADMINISTRADOR -->
-        <div id="adminView" class="grid grid-cols-1 lg:grid-cols-2 gap-8" style="display: none;">
-            <div id="productManagementCard" class="lg:col-span-2 bg-white p-6 rounded-xl shadow-lg card" style="display: none;">
-                <h2 class="text-2xl font-semibold mb-4 text-gray-800 border-b pb-3">Gestión de Productos</h2>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
-                    <div>
-                        <p class="text-sm text-gray-600 mb-2">Sube un archivo <strong>JSON</strong> para actualizar la lista de productos.</p>
-                        <pre class="bg-gray-100 p-3 rounded-lg text-xs text-gray-700 overflow-x-auto">[{"...":"..."}]</pre>
-                    </div>
-                    <div class="text-center">
-                        <label for="productFile" class="cursor-pointer w-full inline-block bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg shadow-lg">Seleccionar Archivo JSON</label>
-                        <input type="file" id="productFile" class="hidden" accept=".json">
-                        <span id="fileNameDisplay" class="block text-sm text-gray-500 mt-2 truncate">Ningún archivo seleccionado.</span>
-                        <button id="uploadProductsBtn" class="mt-4 w-full bg-gray-800 hover:bg-black text-white font-bold py-3 px-4 rounded-lg shadow-lg">Actualizar Base de Datos</button>
-                        <p id="uploadStatus" class="mt-3 text-sm font-medium"></p>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="bg-white p-6 rounded-xl shadow-lg card">
-                <h2 class="text-2xl font-semibold mb-4 text-gray-800 border-b pb-3">Traslados Activos</h2>
-                <div class="space-y-2 mb-4">
-                    <input type="text" id="adminActiveSearchId" placeholder="Buscar por ID o Solicitante..." class="w-full px-3 py-2 border rounded-lg">
-                    <div class="grid grid-cols-2 gap-2"><input type="date" id="adminActiveDateFrom" class="w-full px-3 py-2 border rounded-lg text-sm" title="Fecha Desde"><input type="date" id="adminActiveDateTo" class="w-full px-3 py-2 border rounded-lg text-sm" title="Fecha Hasta"></div>
-                </div>
-                <div class="max-h-[80vh] overflow-y-auto">
-                    <h3 class="text-lg font-medium text-red-500 mb-2">Pendientes de Revisión</h3>
-                    <div id="adminPendingRequests" class="space-y-4 mb-6"></div>
-                    <h3 class="text-lg font-medium text-orange-500 mb-2">Pendientes por Nota de Traslado</h3>
-                    <div id="adminPendingNtRequests" class="space-y-4 mb-6"></div>
-                    <h3 class="text-lg font-medium text-yellow-500 mb-2">Pendientes por Recibir</h3>
-                    <div id="adminShippedRequests" class="space-y-4"></div>
-                </div>
-            </div>
-
-            <div class="bg-white p-6 rounded-xl shadow-lg card">
-                <div class="flex justify-between items-center border-b pb-3 mb-4">
-                    <h2 class="text-2xl font-semibold text-gray-800">Historial</h2>
-                    <button id="exportExcelBtn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg shadow-md flex items-center space-x-2"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg><span>Exportar</span></button>
-                </div>
-                <div class="space-y-2 mb-4">
-                    <input type="text" id="adminHistorySearchId" placeholder="Buscar por ID o Solicitante..." class="w-full px-3 py-2 border rounded-lg">
-                    <div class="grid grid-cols-2 gap-2"><input type="date" id="adminHistoryDateFrom" class="w-full px-3 py-2 border rounded-lg text-sm" title="Fecha Desde"><input type="date" id="adminHistoryDateTo" class="w-full px-3 py-2 border rounded-lg text-sm" title="Fecha Hasta"></div>
-                </div>
-                <div class="max-h-[80vh] overflow-y-auto">
-                    <h3 class="text-lg font-medium text-green-600 mb-2">Completadas</h3>
-                    <div id="adminCompletedRequests" class="space-y-4 mb-6"></div>
-                    <h3 class="text-lg font-medium text-red-700 mb-2">Canceladas</h3>
-                    <div id="adminCancelledRequests" class="space-y-4"></div>
-                </div>
-            </div>
-        </div>
-    </div>
-
 <script>
     document.addEventListener('DOMContentLoaded', () => {
 
+        // --- CONFIGURACIÓN DE FIREBASE ---
         const firebaseConfig = {
             apiKey: "AIzaSyBmmNg525KrnOTsebzAV9dzfsKiq3o-0iQ",
             authDomain: "base-de-datos-traslados.firebaseapp.com",
@@ -141,6 +17,7 @@
         const transfersCollection = db.collection("transferencias");
         const productsCollection = db.collection("products");
 
+        // --- ROLES DE USUARIO ---
         const USER_ROLES = {
             'inventarios.parabarberos@gmail.com': ['Administrador', 'admin'],
             'parabarberossedecentro@gmail.com': ['Punto de venta Cali centro', 'requester'],
@@ -150,6 +27,7 @@
             'parabarberossedemedellin@gmail.com': ['Punto de venta Medellin', 'requester']
         };
 
+        // --- ESTADO GLOBAL DE LA APLICACIÓN ---
         let allProducts = [], currentTransferItems = [], allTransferRequests = [], currentUserData = null;
         const expandedRequestsState = new Set();
         const sectionDisplayCounts = {};
@@ -157,6 +35,7 @@
         const LOAD_MORE_COUNT = 10;  
         currentTransferItems = JSON.parse(localStorage.getItem('currentTransferDraft')) || [];
 
+        // --- REFERENCIAS AL DOM ---
         const dom = {
             productList: document.getElementById('productList'), currentTransferRequest: document.getElementById('currentTransferRequest'),
             transferForm: document.getElementById('transferForm'), toWarehouse: document.getElementById('toWarehouse'),
@@ -164,43 +43,43 @@
             requesterView: document.getElementById('requesterView'), adminView: document.getElementById('adminView'),
             myShippedRequests: document.getElementById('myShippedRequests'), myPendingRequests: document.getElementById('myPendingRequests'), 
             myHistoryRequests: document.getElementById('myHistoryRequests'), 
-            adminPendingRequests: document.getElementById('adminPendingRequests'), // Nuevo para admin
-            adminPendingNtRequests: document.getElementById('adminPendingNtRequests'),
-            adminShippedRequests: document.getElementById('adminShippedRequests'), // Nuevo para admin
-            adminCompletedRequests: document.getElementById('adminCompletedRequests'), adminCancelledRequests: document.getElementById('adminCancelledRequests'),
-            requesterSearchId: document.getElementById('requesterSearchId'), requesterDateFrom: document.getElementById('requesterDateFrom'),
-            requesterDateTo: document.getElementById('requesterDateTo'), adminActiveSearchId: document.getElementById('adminActiveSearchId'),
-            adminActiveDateFrom: document.getElementById('adminActiveDateFrom'), adminActiveDateTo: document.getElementById('adminActiveDateTo'),
-            adminHistorySearchId: document.getElementById('adminHistorySearchId'), adminHistoryDateFrom: document.getElementById('adminHistoryDateFrom'),
-            adminHistoryDateTo: document.getElementById('adminHistoryDateTo'), exportExcelBtn: document.getElementById('exportExcelBtn'),
-            productManagementCard: document.getElementById('productManagementCard'), productFile: document.getElementById('productFile'),
-            uploadProductsBtn: document.getElementById('uploadProductsBtn'), uploadStatus: document.getElementById('uploadStatus'),
-            fileNameDisplay: document.getElementById('fileNameDisplay'), userEmailDisplay: document.getElementById('userEmailDisplay'),
-            logoutBtn: document.getElementById('logoutBtn')
+            adminPendingRequests: document.getElementById('adminPendingRequests'), adminPendingNtRequests: document.getElementById('adminPendingNtRequests'),
+            adminShippedRequests: document.getElementById('adminShippedRequests'), adminCompletedRequests: document.getElementById('adminCompletedRequests'), 
+            adminCancelledRequests: document.getElementById('adminCancelledRequests'), requesterSearchId: document.getElementById('requesterSearchId'), 
+            requesterDateFrom: document.getElementById('requesterDateFrom'), requesterDateTo: document.getElementById('requesterDateTo'),
+            adminActiveSearchId: document.getElementById('adminActiveSearchId'), adminActiveDateFrom: document.getElementById('adminActiveDateFrom'),
+            adminActiveDateTo: document.getElementById('adminActiveDateTo'), adminHistorySearchId: document.getElementById('adminHistorySearchId'),
+            adminHistoryDateFrom: document.getElementById('adminHistoryDateFrom'), adminHistoryDateTo: document.getElementById('adminHistoryDateTo'),
+            exportExcelBtn: document.getElementById('exportExcelBtn'), productManagementCard: document.getElementById('productManagementCard'),
+            productFile: document.getElementById('productFile'), uploadProductsBtn: document.getElementById('uploadProductsBtn'),
+            uploadStatus: document.getElementById('uploadStatus'), fileNameDisplay: document.getElementById('fileNameDisplay'),
+            userEmailDisplay: document.getElementById('userEmailDisplay'), logoutBtn: document.getElementById('logoutBtn')
         };
         
+        // --- FUNCIONES AUXILIARES: ESTADOS Y COLORES ---
         const getRequestStatusColor = (s) => ({
-    'pending': 'border-l-4 border-red-400 bg-red-50',
-    'processing_partial_items': 'border-l-4 border-red-400 bg-red-50', 
-    'pending_nt_start': 'border-l-4 border-orange-400 bg-orange-50', // Nuevo estado
-    'pending_nt_active': 'border-l-4 border-orange-400 bg-orange-50', // Nuevo estado
-    'shipped': 'border-l-4 border-yellow-400 bg-yellow-50',
-    'completed': 'border-l-4 border-green-500 bg-green-50',
-    'completed_incomplete': 'border-l-4 border-green-500 bg-green-50',
-    'cancelled': 'border-l-4 border-red-700 bg-red-100'
-}[s] || 'border-l-4 border-gray-300');
+            'pending': 'border-l-4 border-red-400 bg-red-50',
+            'processing_partial_items': 'border-l-4 border-red-400 bg-red-50', 
+            'pending_nt_start': 'border-l-4 border-orange-400 bg-orange-50',
+            'pending_nt_active': 'border-l-4 border-orange-400 bg-orange-50',
+            'shipped': 'border-l-4 border-yellow-400 bg-yellow-50',
+            'completed': 'border-l-4 border-green-500 bg-green-50',
+            'completed_incomplete': 'border-l-4 border-green-500 bg-green-50',
+            'cancelled': 'border-l-4 border-red-700 bg-red-100'
+        }[s] || 'border-l-4 border-gray-300');
 
-const translateStatus = (s) => ({
-    'pending':'Pendiente (Click para Iniciar Revisión)', 
-    'processing_partial_items':'En Revisión',
-    'pending_nt_start': 'Pendiente por NT (Click para Iniciar)', // Nuevo estado
-    'pending_nt_active': 'Preparando NT', // Nuevo estado
-    'shipped': 'Enviado (Por Recibir)',
-    'completed':'Recibido Completo', 
-    'completed_incomplete':'Recibido Incompleto',
-    'cancelled':'Cancelado'
-}[s] || s);
+        const translateStatus = (s) => ({
+            'pending':'Pendiente (Click para Iniciar Revisión)', 
+            'processing_partial_items':'En Revisión',
+            'pending_nt_start': 'Pendiente por NT (Click para Iniciar)',
+            'pending_nt_active': 'Preparando NT',
+            'shipped': 'Enviado (Por Recibir)',
+            'completed':'Recibido Completo', 
+            'completed_incomplete':'Recibido Incompleto',
+            'cancelled':'Cancelado'
+        }[s] || s);
 
+        // --- AUTENTICACIÓN Y ARRANQUE ---
         auth.onAuthStateChanged(user => {
             if (user) {
                 const userDataFromMap = USER_ROLES[user.email];
@@ -229,449 +108,480 @@ const translateStatus = (s) => ({
             }
         }
         
-        function applyFilters(requests, searchInput, dateFromInput, dateToInput) { const searchTerm = searchInput.value.toLowerCase().trim(); const dateFrom = dateFromInput.value; const dateTo = dateToInput.value; let filtered = requests; if (searchTerm) { filtered = filtered.filter(req => req.id.toLowerCase().includes(searchTerm) || (req.requesterName && req.requesterName.toLowerCase().includes(searchTerm))); } if (dateFrom) { const from = new Date(dateFrom).setHours(0,0,0,0); filtered = filtered.filter(req => req.timestamp && (req.timestamp.seconds * 1000) >= from); } if (dateTo) { const to = new Date(dateTo).setHours(23,59,59,999); filtered = filtered.filter(req => req.timestamp && (req.timestamp.seconds * 1000) <= to); } return filtered; }
+        // --- LÓGICA DE RENDERIZADO Y FILTROS ---
+        function applyFilters(requests, searchInput, dateFromInput, dateToInput) {
+             const searchTerm = searchInput.value.toLowerCase().trim();
+             const dateFrom = dateFromInput.value;
+             const dateTo = dateToInput.value;
+             let filtered = requests;
+             if (searchTerm) {
+                 filtered = filtered.filter(req => req.id.toLowerCase().includes(searchTerm) || (req.requesterName && req.requesterName.toLowerCase().includes(searchTerm)));
+             }
+             if (dateFrom) {
+                 const from = new Date(dateFrom).setHours(0,0,0,0);
+                 filtered = filtered.filter(req => req.timestamp && (req.timestamp.seconds * 1000) >= from);
+             }
+             if (dateTo) {
+                 const to = new Date(dateTo).setHours(23,59,59,999);
+                 filtered = filtered.filter(req => req.timestamp && (req.timestamp.seconds * 1000) <= to);
+             }
+             return filtered;
+        }
         
         function renderAllSections() {
-    if (!currentUserData) return;
-    const { name, role } = currentUserData;
-    const sortedRequests = allTransferRequests.sort((a, b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0));
+            if (!currentUserData) return;
+            const { name, role } = currentUserData;
+            const sortedRequests = allTransferRequests.sort((a, b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0));
 
-    if (role === 'requester') {
-        const allMyRequests = sortedRequests.filter(r => r.requesterName === name);
-        
-        // Lógica del solicitante con paginación
-        const myShipped = allMyRequests.filter(r => r.status === 'shipped');
-        const myActive = applyFilters(allMyRequests.filter(r => ['pending', 'processing_partial_items', 'pending_nt'].includes(r.status)), dom.requesterSearchId, dom.requesterDateFrom, dom.requesterDateTo);
-        const myHistory = applyFilters(allMyRequests.filter(r => r.status.startsWith('completed') || r.status === 'cancelled'), dom.requesterSearchId, dom.requesterDateFrom, dom.requesterDateTo);
+            if (role === 'requester') {
+                const allMyRequests = sortedRequests.filter(r => r.requesterName === name);
+                const myShipped = allMyRequests.filter(r => r.status === 'shipped');
+                const myActive = applyFilters(allMyRequests.filter(r => ['pending', 'processing_partial_items', 'pending_nt_start', 'pending_nt_active'].includes(r.status)), dom.requesterSearchId, dom.requesterDateFrom, dom.requesterDateTo);
+                const myHistory = applyFilters(allMyRequests.filter(r => r.status.startsWith('completed') || r.status === 'cancelled'), dom.requesterSearchId, dom.requesterDateFrom, dom.requesterDateTo);
 
-        renderSection('myShippedRequests', dom.myShippedRequests, myShipped, 'requester', "No tienes traslados para recibir.");
-        renderSection('myPendingRequests', dom.myPendingRequests, myActive, 'requester', "No tienes solicitudes activas.");
-        renderSection('myHistoryRequests', dom.myHistoryRequests, myHistory, 'requester', "No tienes historial de solicitudes.");
-
-    } else { // Lógica del Administrador con paginación
-        // Activos
-        const pendingForReview = applyFilters(sortedRequests.filter(r => r.status === 'pending' || r.status === 'processing_partial_items'), dom.adminActiveSearchId, dom.adminActiveDateFrom, dom.adminActiveDateTo);
-        const pendingForNt = applyFilters(sortedRequests.filter(r => r.status === 'pending_nt'), dom.adminActiveSearchId, dom.adminActiveDateFrom, dom.adminActiveDateTo);
-        const pendingForReception = applyFilters(sortedRequests.filter(r => r.status === 'shipped'), dom.adminActiveSearchId, dom.adminActiveDateFrom, dom.adminActiveDateTo);
-
-        renderSection('adminPendingRequests', dom.adminPendingRequests, pendingForReview, 'admin', "No hay solicitudes pendientes de revisión.");
-        renderSection('adminPendingNtRequests', dom.adminPendingNtRequests, pendingForNt, 'admin', "No hay solicitudes pendientes de NT.");
-        renderSection('adminShippedRequests', dom.adminShippedRequests, pendingForReception, 'admin', "No hay solicitudes pendientes de recibir.");
-
-        // Historial
-        const completedReqs = applyFilters(sortedRequests.filter(r => r.status.startsWith('completed')), dom.adminHistorySearchId, dom.adminHistoryDateFrom, dom.adminHistoryDateTo);
-        const cancelledReqs = applyFilters(sortedRequests.filter(r => r.status === 'cancelled'), dom.adminHistorySearchId, dom.adminHistoryDateFrom, dom.adminHistoryDateTo);
-        
-        renderSection('adminCompletedRequests', dom.adminCompletedRequests, completedReqs, 'admin', "No hay solicitudes completadas.");
-        renderSection('adminCancelledRequests', dom.adminCancelledRequests, cancelledReqs, 'admin', "No hay solicitudes canceladas.");
-    }
-}
+                renderSection('myShippedRequests', dom.myShippedRequests, myShipped, 'requester', "No tienes traslados para recibir.");
+                renderSection('myPendingRequests', dom.myPendingRequests, myActive, 'requester', "No tienes solicitudes activas.");
+                renderSection('myHistoryRequests', dom.myHistoryRequests, myHistory, 'requester', "No tienes historial de solicitudes.");
+            } else {
+                const pendingForReview = applyFilters(sortedRequests.filter(r => r.status === 'pending' || r.status === 'processing_partial_items'), dom.adminActiveSearchId, dom.adminActiveDateFrom, dom.adminActiveDateTo);
+                // CORRECCIÓN CLAVE: Usar startsWith para agrupar todos los estados de NT
+                const pendingForNt = applyFilters(sortedRequests.filter(r => r.status.startsWith('pending_nt')), dom.adminActiveSearchId, dom.adminActiveDateFrom, dom.adminActiveDateTo);
+                const pendingForReception = applyFilters(sortedRequests.filter(r => r.status === 'shipped'), dom.adminActiveSearchId, dom.adminActiveDateFrom, dom.adminActiveDateTo);
+                
+                renderSection('adminPendingRequests', dom.adminPendingRequests, pendingForReview, 'admin', "No hay solicitudes pendientes de revisión.");
+                renderSection('adminPendingNtRequests', dom.adminPendingNtRequests, pendingForNt, 'admin', "No hay solicitudes pendientes de NT.");
+                renderSection('adminShippedRequests', dom.adminShippedRequests, pendingForReception, 'admin', "No hay solicitudes pendientes de recibir.");
+                
+                const completedReqs = applyFilters(sortedRequests.filter(r => r.status.startsWith('completed')), dom.adminHistorySearchId, dom.adminHistoryDateFrom, dom.adminHistoryDateTo);
+                const cancelledReqs = applyFilters(sortedRequests.filter(r => r.status === 'cancelled'), dom.adminHistorySearchId, dom.adminHistoryDateFrom, dom.adminHistoryDateTo);
+                
+                renderSection('adminCompletedRequests', dom.adminCompletedRequests, completedReqs, 'admin', "No hay solicitudes completadas.");
+                renderSection('adminCancelledRequests', dom.adminCancelledRequests, cancelledReqs, 'admin', "No hay solicitudes canceladas.");
+            }
+        }
         
         function renderSection(sectionId, div, data, role, emptyMessage) {
-    // El ID de la sección es ahora el primer parámetro
-    div.innerHTML = '';
-    if (!div) return;
-
-    // Si no hay datos, muestra el mensaje y termina
-    if (data.length === 0) {
-        div.innerHTML = `<p class="text-gray-500 italic text-center py-4">${emptyMessage}</p>`;
-        return;
-    }
-
-    // Inicializa el contador para esta sección si no existe
-    if (!sectionDisplayCounts[sectionId]) {
-        sectionDisplayCounts[sectionId] = INITIAL_DISPLAY_COUNT;
-    }
-
-    const totalCount = data.length;
-    const displayCount = sectionDisplayCounts[sectionId];
-
-    // Corta el array para mostrar solo los elementos necesarios
-    const requestsToShow = data.slice(0, displayCount);
-
-    // Renderiza solo las tarjetas que se deben mostrar
-    requestsToShow.forEach(req => div.appendChild(createRequestCard(req, role)));
-
-    // Si hay más tarjetas por mostrar, añade el botón "Ver más"
-    if (totalCount > displayCount) {
-        const remaining = totalCount - displayCount;
-        const loadAmount = Math.min(LOAD_MORE_COUNT, remaining); // Muestra 10 o los que queden
-        
-        const button = document.createElement('button');
-        button.textContent = `Ver ${loadAmount} más... (${remaining} restantes)`;
-        button.className = 'w-full mt-4 text-sm font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 py-2 px-4 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500';
-        button.dataset.sectionId = sectionId; // Pasa el ID de la sección al botón
-        button.onclick = handleLoadMore;      // Asigna el manejador de eventos
-        
-        div.appendChild(button);
-    }
-}
-        function renderProducts(productsToRender) { dom.productList.innerHTML = ''; if (!productsToRender || productsToRender.length === 0) { dom.productList.innerHTML = '<p class="text-gray-500 col-span-full text-center">No se encontraron productos.</p>'; return; } productsToRender.forEach(product => { const card = document.createElement('div'); card.className = 'border p-3 rounded-lg shadow-sm hover:shadow-md transition bg-white'; const safeId = product.id.replace(/[^a-zA-Z0-9-_]/g, ''); card.innerHTML = `<h3 class="text-sm font-semibold text-gray-900" title="${product.description}">${product.name.length > 50 ? product.name.substring(0, 47) + '...' : product.name}</h3><p class="text-xs text-gray-400 mb-2">ID: ${product.id}</p><div class="flex items-center space-x-2 mt-auto"><input type="number" min="1" value="1" id="qty-${safeId}" class="w-16 border-gray-300 rounded-md text-center p-1"><button data-product-id="${product.id}" class="add-to-transfer-btn w-full bg-gray-800 hover:bg-black text-white text-xs font-bold py-2 px-2 rounded-md transition">Añadir</button></div>`; dom.productList.appendChild(card); }); dom.productList.querySelectorAll('.add-to-transfer-btn').forEach(b => b.onclick = handleAddToTransfer); }
-        function renderCurrentTransfer() { dom.currentTransferRequest.innerHTML = ''; if (currentTransferItems.length === 0) { dom.currentTransferRequest.innerHTML = '<p class="text-gray-500 italic text-center py-4">Añade productos desde la lista de arriba.</p>'; return; } const ul = document.createElement('ul'); ul.className = 'space-y-2'; currentTransferItems.forEach((item, index) => { const li = document.createElement('li'); li.className = 'flex justify-between items-center p-3 bg-white rounded-lg shadow-sm'; li.innerHTML = `<div><span class="font-medium text-gray-800">${item.productName}</span><span class="text-xs text-gray-500 block">ID: ${item.productId}</span></div><div class="flex items-center space-x-2"><input type="number" min="1" value="${item.quantity}" data-item-index="${index}" class="w-16 p-1 border rounded item-quantity-input text-center"><button data-item-index="${index}" class="remove-item-btn text-red-500 hover:text-red-700 font-bold p-1">✕</button></div>`; ul.appendChild(li); }); dom.currentTransferRequest.appendChild(ul); dom.currentTransferRequest.querySelectorAll('.item-quantity-input').forEach(input => input.onchange = handleUpdateItemQuantity); dom.currentTransferRequest.querySelectorAll('.remove-item-btn').forEach(button => button.onclick = handleRemoveItem); }
-        
-function createRequestCard(req, role) {
-    const isExpanded = expandedRequestsState.has(req.id);
-    const card = document.createElement('div');
-    card.className = `p-4 rounded-lg shadow-sm mb-4 ${getRequestStatusColor(req.status)}`;
-
-    // --- Lógica de datos ---
-    const isShipped = req.status === 'shipped';
-    const hasItems = req.items && req.items.length > 0;
-    const allNtItemsChecked = hasItems && req.status === 'pending_nt_active' && req.items.every(item => item.nt_checked);
-    
-    // --- Lógica de renderizado de items ---
-    const itemsHtml = hasItems ? (req.items || []).map((item, index) => {
-        if (role === 'admin' && req.status === 'pending_nt_active') {
-            const itemChecked = item.nt_checked === true;
-            const itemBgColor = itemChecked ? 'bg-green-100' : 'bg-red-100';
-            const itemBorderColor = itemChecked ? 'border-green-200' : 'border-red-200';
-            return `<li class="p-2 rounded-md border ${itemBorderColor} ${itemBgColor} flex justify-between items-center text-sm transition-colors"><div><span class="font-medium text-gray-800">${item.productName}</span><div class="text-xs text-gray-600">Enviado: <b>${item.sentQuantity}</b></div></div><input type="checkbox" ${itemChecked ? 'checked' : ''} data-request-id="${req.id}" data-item-index="${index}" class="nt-checkbox h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"></li>`;
-        }
-        
-        let quantityDisplay = `Solicitado: <b>${item.quantity}</b>`;
-        if (item.sentQuantity !== undefined) { quantityDisplay += ` | Enviado: <b>${item.sentQuantity}</b>`; }
-        if (item.receivedQuantity !== undefined) {
-            const color = item.receivedQuantity < item.sentQuantity ? 'text-red-600' : 'text-green-700';
-            quantityDisplay += ` | Recibido: <b class="${color}">${item.receivedQuantity}</b>`;
-        }
-        const receptionInput = (role === 'requester' && isShipped) ? `<div class="flex items-center"><label class="text-sm mr-2">Recibido:</label><input type="number" value="${item.sentQuantity}" data-request-id="${req.id}" data-item-index="${index}" class="reception-qty-input w-20 p-1 border rounded-md text-center"></div>` : ``;
-        const adminInput = (role === 'admin' && req.status === 'processing_partial_items') ? `<input type="number" value="${item.sentQuantity ?? item.quantity}" data-request-id="${req.id}" data-item-index="${index}" class="admin-qty-input w-20 p-1 border rounded-md text-center">` : ``;
-        
-        return `<li class="p-2 rounded-md bg-white flex justify-between items-center text-sm"><div><span class="font-medium text-gray-800">${item.productName}</span><div class="text-xs text-gray-600">${quantityDisplay}</div></div>${receptionInput}${adminInput}</li>`;
-    }).join('') : '<p class="text-sm text-gray-500 italic">No hay artículos en esta solicitud.</p>';
-
-    // --- LÓGICA DE BOTONES DEL ADMIN ---
-    let adminActionsHtml = '';
-    if (role === 'admin') {
-        let buttons = '';
-        if (req.status === 'pending') {
-            buttons += `<button data-request-id="${req.id}" data-action="start_processing" class="action-btn bg-gray-800 hover:bg-black text-white text-xs font-semibold py-2 px-3 rounded-md">Iniciar revisión</button>`;
-        }
-        if (req.status.startsWith('processing')) {
-            buttons += `<button data-request-id="${req.id}" data-action="finalize_processing" class="action-btn bg-teal-600 hover:bg-teal-700 text-white text-xs font-semibold py-2 px-3 rounded-md">Finalizar Revisión</button>`;
-        }
-        if (req.status === 'pending_nt_start') {
-            buttons += `<button data-request-id="${req.id}" data-action="start_nt_preparation" class="action-btn bg-orange-500 hover:bg-orange-600 text-white text-xs font-semibold py-2 px-3 rounded-md">Iniciar Preparación NT</button>`;
-        }
-        if (req.status === 'pending_nt_active') {
-            buttons += `<button data-request-id="${req.id}" data-action="return_to_pending" class="action-btn bg-yellow-600 hover:bg-yellow-700 text-white text-xs font-semibold py-2 px-3 rounded-md">Devolver a Revisión</button>`;
-            buttons += `<button data-request-id="${req.id}" data-action="shipped" class="action-btn bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold py-2 px-3 rounded-md disabled:bg-gray-400 disabled:cursor-not-allowed" ${!allNtItemsChecked ? 'disabled' : ''}>Marcar como enviado</button>`;
-        }
-        if (['pending', 'processing_partial_items', 'pending_nt_start', 'pending_nt_active'].includes(req.status)) {
-            buttons += `<button data-request-id="${req.id}" data-action="cancel" class="action-btn bg-red-700 hover:bg-red-800 text-white text-xs font-semibold py-2 px-3 rounded-md">Cancelar</button>`;
-        }
-        if (buttons) {
-            adminActionsHtml = `<div class="mt-4 border-t pt-4 flex justify-end items-center flex-wrap gap-2">${buttons}</div>`;
-        }
-    }
-    
-    // --- LÓGICA BOTONES SOLICITANTE ---
-    let requesterActionsHtml = '';
-    if (role === 'requester' && req.status === 'pending') {
-        requesterActionsHtml = `<div class="flex flex-col space-y-2"><button data-request-id="${req.id}" class="edit-my-request-btn bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold py-1 px-2 rounded-md">Editar</button><button data-request-id="${req.id}" class="delete-my-request-btn bg-red-600 hover:bg-red-700 text-white text-xs font-semibold py-1 px-2 rounded-md">Eliminar</button></div>`;
-    }
-
-    // --- LÓGICA FORMULARIO RECEPCIÓN ---
-    let receptionFormHtml = '';
-    if (role === 'requester' && isShipped) {
-        receptionFormHtml = `<div class="mt-4 border-t-2 border-blue-200 pt-4 space-y-3"><h5 class="font-bold text-md text-blue-700">Confirmar recepción</h5><div><label class="block text-sm font-medium text-gray-700">Observaciones de recepción:</label><textarea id="receptionNotes-${req.id}" rows="2" class="w-full mt-1 border rounded-md p-2" placeholder="Ej: La caja llegó dañada..."></textarea></div><button data-request-id="${req.id}" class="finalize-reception-btn w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-3 rounded-md">Finalizar y confirmar Recepción</button></div>`;
-    }
-    
-    // --- VARIABLES PARA EL HTML ---
-    const reqDate = req.deliveryDate ? new Date(req.deliveryDate + 'T00:00:00').toLocaleDateString('es-CO', { year: 'numeric', month: 'long', day: 'numeric' }) : 'No especificada';
-    const creationDate = req.timestamp ? new Date(req.timestamp.seconds * 1000).toLocaleDateString('es-CO') : '';
-    const hasDetailsToShow = hasItems || req.requesterNotes || req.adminNotes || adminActionsHtml || receptionFormHtml;
-
-    // --- ESTRUCTURA HTML DE LA TARJETA (LA PARTE QUE FALTABA) ---
-    card.innerHTML = `
-        <div class="flex justify-between items-start">
-            <div>
-                <h4 class="font-semibold text-lg text-gray-800">${req.requesterName}</h4>
-                <p class="text-sm text-gray-600">Para: <strong>${req.toWarehouse}</strong></p>
-                <p class="text-xs text-gray-400">ID: ${req.id} | Creada: ${creationDate}</p>
-                <p class="text-sm mt-1">Fecha Requerida: <b>${reqDate}</b></p>
-                <span class="inline-block mt-2 px-2 py-1 text-xs font-bold rounded-full ${getRequestStatusColor(req.status)} text-black">${translateStatus(req.status)}</span>
-            </div>
-            ${requesterActionsHtml}
-        </div>
-
-        <div id="details-${req.id}" class="${isExpanded ? '' : 'hidden'} mt-4 pt-4 border-t border-gray-200">
-            ${req.requesterNotes ? `<div class="mb-3 p-3 bg-gray-50 rounded-lg border"><p class="text-sm font-semibold text-gray-600">Observaciones:</p><p class="text-sm text-gray-800 italic">"${req.requesterNotes}"</p></div>` : ''}
-            ${req.adminNotes ? `<div class="mb-3 p-3 bg-red-50 rounded-lg border border-red-200"><p class="text-sm font-semibold text-red-800">Nota del Admin:</p><p class="text-sm text-red-900 italic">"${req.adminNotes}"</p></div>` : ''}
-            
-            ${(role === 'admin' && req.status.startsWith('processing')) ? `
-                <div class="mt-4">
-                    <label for="adminNotes-${req.id}" class="text-sm font-medium text-gray-700">Añadir/Editar Nota:</label>
-                    <textarea id="adminNotes-${req.id}" rows="2" class="w-full mt-1 border rounded-md p-2">${req.adminNotes || ''}</textarea>
-                    <button data-request-id="${req.id}" class="save-admin-note-btn mt-1 text-xs bg-gray-800 text-white px-3 py-1.5 rounded-md hover:bg-black">Guardar Nota</button>
-                </div>
-            ` : ''}
-            
-            <h5 class="font-bold text-gray-700 mt-3 mb-2">Items:</h5>
-            <ul class="space-y-2">${itemsHtml}</ul>
-            
-            ${adminActionsHtml}
-            ${receptionFormHtml}
-        </div>
-
-        ${hasDetailsToShow ? `
-            <div class="text-center mt-2">
-                <button data-request-id="${req.id}" class="toggle-details-btn text-sm font-semibold text-blue-600 hover:text-blue-800 py-1 px-3 rounded-full hover:bg-blue-50 transition-colors">
-                    ${isExpanded ? 'Ver menos' : 'Ver más'}
-                </button>
-            </div>
-        ` : ''}
-    `;
-
-    // --- VINCULACIÓN DE EVENTOS ---
-    card.querySelectorAll('.action-btn').forEach(b => b.onclick = handleAdminAction);
-    card.querySelectorAll('.finalize-reception-btn').forEach(b => b.onclick = handleFinalizeReception);
-    card.querySelectorAll('.admin-qty-input').forEach(i => i.onchange = handleAdminQuantityChange);
-    card.querySelectorAll('.delete-my-request-btn').forEach(b => b.onclick = handleDeleteMyRequest);
-    card.querySelectorAll('.save-admin-note-btn').forEach(b => b.onclick = handleSaveAdminNote);
-    card.querySelectorAll('.edit-my-request-btn').forEach(b => b.onclick = handleStartEdit);
-    card.querySelectorAll('.toggle-details-btn').forEach(b => b.onclick = handleToggleDetails);
-    card.querySelectorAll('.nt-checkbox').forEach(c => c.onchange = handleNtCheckboxChange);
-
-    return card;
-}
-        function transformRawJsonToProducts(rawData) { const uniqueProductStrings = new Set(); if (Array.isArray(rawData)) { rawData.forEach(item => { Object.keys(item).forEach(key => key && uniqueProductStrings.add(key.trim())); Object.values(item).forEach(val => val && uniqueProductStrings.add(val.trim())); }); } if (uniqueProductStrings.size === 0) return []; const productsMap = new Map(); let genericCounter = 1; uniqueProductStrings.forEach(fullProductName => { const parts = String(fullProductName).split(' - '); let idPart, namePart; if (parts.length > 1 && (/\d/.test(parts[0].trim()) || /^[a-zA-Z]{2,}/.test(parts[0].trim()))) { idPart = parts[0].trim().replace(/\s+/g, '-'); namePart = parts.slice(1).join(' - ').trim(); } else { idPart = `prod-gen-${genericCounter++}`; namePart = fullProductName; } let finalId = idPart, idCounter = 1; while (productsMap.has(finalId)) finalId = `${idPart}_${idCounter++}`; productsMap.set(finalId, { id: finalId, name: namePart, description: fullProductName }); }); return Array.from(productsMap.values()).sort((a, b) => a.name.localeCompare(b.name)); }
-        async function handleProductUpload() { const fileInput = dom.productFile; const statusEl = dom.uploadStatus; if (fileInput.files.length === 0) { alert("Por favor, selecciona un archivo primero."); return; } const file = fileInput.files[0]; const reader = new FileReader(); reader.onload = async (event) => { let newProducts; try { const rawData = JSON.parse(event.target.result); newProducts = transformRawJsonToProducts(rawData); if (!newProducts || newProducts.length === 0) { throw new Error("No se pudieron procesar productos válidos."); } } catch (e) { statusEl.textContent = `Error: ${e.message}`; statusEl.className = 'mt-3 text-sm font-medium text-red-600'; return; } statusEl.textContent = 'Actualizando...'; statusEl.className = 'mt-3 text-sm font-medium text-blue-600'; try { const batch = db.batch(); const oldDocsSnapshot = await productsCollection.get(); oldDocsSnapshot.forEach(doc => batch.delete(doc.ref)); newProducts.forEach(product => { const docRef = productsCollection.doc(product.id); batch.set(docRef, { name: product.name, description: product.description || '' }); }); await batch.commit(); statusEl.textContent = `¡Éxito! Se actualizaron ${newProducts.length} productos.`; statusEl.className = 'mt-3 text-sm font-medium text-green-600'; allProducts = await loadAndTransformProducts(); renderProducts(allProducts); } catch (error) { console.error("Error al actualizar productos:", error); statusEl.textContent = 'Error al subir a la DB.'; statusEl.className = 'mt-3 text-sm font-medium text-red-600'; } }; reader.onerror = () => { statusEl.textContent = 'Error al leer archivo.'; statusEl.className = 'mt-3 text-sm font-medium text-red-600'; }; reader.readAsText(file); }
-        function generateCustomId() { const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'; const nums = '0123456789'; let result = ''; let startWithLetter = Math.random() < 0.5; for (let i = 0; i < 7; i++) { if ((i % 2 === 0 && startWithLetter) || (i % 2 !== 0 && !startWithLetter)) { result += chars.charAt(Math.floor(Math.random() * chars.length)); } else { result += nums.charAt(Math.floor(Math.random() * nums.length)); } } return result; }
-        function handleUpdateItemQuantity(event) { const input = event.currentTarget; currentTransferItems[input.dataset.itemIndex].quantity = parseInt(input.value, 10); localStorage.setItem('currentTransferDraft', JSON.stringify(currentTransferItems)); }
-        function handleRemoveItem(event) { currentTransferItems.splice(parseInt(event.currentTarget.dataset.itemIndex, 10), 1); localStorage.setItem('currentTransferDraft', JSON.stringify(currentTransferItems)); renderCurrentTransfer(); }
-        function handleSearchInput() { const searchTerm = dom.searchInput.value.toLowerCase().trim(); renderProducts(allProducts.filter(p => p.name.toLowerCase().includes(searchTerm) || (p.description && p.description.toLowerCase().includes(searchTerm)) || p.id.toLowerCase().includes(searchTerm))); }
-        async function handleSubmitTransferForm(event) {
-    event.preventDefault();
-    const editingId = document.getElementById('editingRequestId').value;
-
-    // --- Validación (sin cambios) ---
-    const deliveryDateInput = document.getElementById('deliveryDate');
-    if (!dom.toWarehouse.value) { alert("Seleccione Bodega Destino."); return; }
-    if (!dom.requesterName.value) { alert("Seleccione Solicitante."); return; }
-    if (currentTransferItems.length === 0) { alert("Agregue productos."); return; }
-    if (!deliveryDateInput.value) { alert("Seleccione fecha."); return; }
-
-    // --- Objeto de datos común para crear y editar ---
-    const transferData = {
-        items: currentTransferItems.map(item => ({ 
-            productId: item.productId, 
-            productName: item.productName, 
-            quantity: item.quantity,
-            // Aseguramos que los campos de admin/recepción existan si no estaban antes
-            sentQuantity: item.sentQuantity || 0, 
-            receivedQuantity: item.receivedQuantity || 0 
-        })),
-        fromWarehouse: document.getElementById('fromWarehouse').value,
-        toWarehouse: dom.toWarehouse.value,
-        requesterName: dom.requesterName.value,
-        deliveryDate: deliveryDateInput.value,
-        requesterNotes: document.getElementById('requesterNotes').value,
-    };
-    
-    try {
-        if (editingId) {
-            // --- MODO EDICIÓN: Actualiza el documento existente ---
-            const reqRef = transfersCollection.doc(editingId);
-            await reqRef.update(transferData); // Usamos update() para no sobreescribir el timestamp
-            alert(`¡Solicitud ${editingId} actualizada con éxito!`);
-        } else {
-            // --- MODO CREACIÓN: Crea un nuevo documento (lógica original) ---
-            const customId = generateCustomId();
-            const newReq = {
-                ...transferData,
-                id: customId,
-                status: 'pending',
-                timestamp: firebase.firestore.FieldValue.serverTimestamp()
-            };
-            await transfersCollection.doc(customId).set(newReq);
-            alert(`¡Solicitud enviada! ID: ${customId}`);
-        }
-        
-        // Limpia y resetea el formulario en ambos casos
-        resetFormToCreateMode();
-
-    } catch (error) {
-        console.error("Error al guardar en Firebase:", error);
-        alert("Ocurrió un error al guardar la solicitud. Por favor, inténtalo de nuevo.");
-    }
-}
-        async function handleStartEdit(event) {
-    const requestId = event.currentTarget.dataset.requestId;
-    const requestToEdit = allTransferRequests.find(r => r.id === requestId);
-
-    if (!requestToEdit) {
-        alert("Error: No se encontró la solicitud para editar.");
-        return;
-    }
-
-    // 1. Rellenar el formulario con los datos de la solicitud
-    document.getElementById('editingRequestId').value = requestId;
-    dom.toWarehouse.value = requestToEdit.toWarehouse;
-    document.getElementById('deliveryDate').value = requestToEdit.deliveryDate;
-    document.getElementById('requesterNotes').value = requestToEdit.requesterNotes || '';
-
-    // 2. Cargar los productos de la solicitud en la lista de "productos seleccionados"
-    // Usamos JSON.parse(JSON.stringify(...)) para crear una copia profunda y evitar modificar el original por accidente
-    currentTransferItems = JSON.parse(JSON.stringify(requestToEdit.items));
-    renderCurrentTransfer();
-
-    // 3. Cambiar el texto del botón y el estilo para indicar el modo edición
-    const submitButton = dom.transferForm.querySelector('button[type="submit"]');
-    submitButton.textContent = 'GUARDAR CAMBIOS';
-    submitButton.classList.remove('bg-red-600', 'hover:bg-red-700');
-    submitButton.classList.add('bg-blue-600', 'hover:bg-blue-700');
-
-    // 4. (Opcional) Hacer scroll hasta el formulario para que el usuario vea que se ha cargado
-    dom.transferForm.scrollIntoView({ behavior: 'smooth' });
-}
-        function handleToggleDetails(evento) {
-    const button = evento.currentTarget;
-    const requestId = button.dataset.requestId;
-    const detailsContainer = document.getElementById(`details-${requestId}`);
-    if (!detailsContainer) return;
-
-    const isHidden = detailsContainer.classList.contains('hidden');
-
-    if (isHidden) {
-        // Si estaba oculto, lo mostramos y lo AÑADIMOS a la memoria
-        detailsContainer.classList.remove('hidden');
-        button.innerHTML = 'Ver menos';
-        expandedRequestsState.add(requestId); // <-- AÑADIDO
-    } else {
-        // Si estaba visible, lo ocultamos y lo ELIMINAMOS de la memoria
-        detailsContainer.classList.add('hidden');
-        button.innerHTML = 'Ver más';
-        expandedRequestsState.delete(requestId); // <-- AÑADIDO
-    }
-}
-
-// NUEVA FUNCIÓN DE AYUDA: Resetea el formulario al modo "Crear"
-function resetFormToCreateMode() {
-    currentTransferItems = [];
-    localStorage.removeItem('currentTransferDraft');
-    renderCurrentTransfer();
-    
-    dom.transferForm.reset(); // Limpia todos los campos del formulario
-    document.getElementById('editingRequestId').value = ''; // Limpia el ID de edición
-
-    // Restaura el botón de envío a su estado original
-    const submitButton = dom.transferForm.querySelector('button[type="submit"]');
-    submitButton.textContent = 'ENVIAR SOLICITUD DE TRASLADO';
-    submitButton.classList.remove('bg-blue-600', 'hover:bg-blue-700');
-    submitButton.classList.add('bg-red-600', 'hover:bg-red-700');
-
-    // Vuelve a seleccionar el nombre del solicitante, ya que form.reset() lo borra
-    if (currentUserData && currentUserData.role === 'requester') {
-        dom.requesterName.innerHTML = `<option value="${currentUserData.name}">${currentUserData.name}</option>`;
-        dom.requesterName.value = currentUserData.name;
-    }
-}
-function handleLoadMore(event) {
-    const sectionId = event.currentTarget.dataset.sectionId;
-    if (sectionDisplayCounts[sectionId]) {
-        // Incrementa el contador de la sección específica
-        sectionDisplayCounts[sectionId] += LOAD_MORE_COUNT;
-    }
-    // Vuelve a renderizar todas las secciones para aplicar el cambio
-    renderAllSections();
-}
-async function handleNtCheckboxChange(event) {
-    const checkbox = event.currentTarget;
-    const { requestId, itemIndex } = checkbox.dataset;
-    const isChecked = checkbox.checked;
-
-    const reqRef = transfersCollection.doc(requestId);
-    try {
-        const doc = await reqRef.get();
-        if (!doc.exists) return;
-
-        let items = doc.data().items;
-        // Actualizamos el estado del 'chuleo' en el item específico
-        if (items && items[itemIndex]) {
-            items[itemIndex].nt_checked = isChecked;
-        }
-        // Guardamos el array de items actualizado en Firebase
-        await reqRef.update({ items });
-    } catch (e) {
-        console.error("Error al actualizar el estado del item NT:", e);
-        // Si hay un error, revertimos el checkbox para que la UI no mienta
-        checkbox.checked = !isChecked;
-    }
-}
-        async function handleDeleteMyRequest(event) { const requestId = event.currentTarget.dataset.requestId; if (confirm("¿Eliminar esta solicitud?")) { try { await transfersCollection.doc(requestId).delete(); } catch (error) { console.error("Error al eliminar:", error); } } }
-async function handleAdminAction(evento) {
-    const { requestId, action } = evento.currentTarget.dataset;
-    const reqRef = transfersCollection.doc(requestId);
-    let updateData = {};
-
-    try {
-        switch (action) {
-            case 'start_processing':
-                const doc = await reqRef.get();
-                if (!doc.exists) return;
-                const items = doc.data().items.map(item => ({ ...item, sentQuantity: item.quantity, nt_checked: false }));
-                updateData = { status: 'processing_partial_items', items: items };
-                break;
-            
-            // CAMBIADO: 'move_to_nt' ahora es 'finalize_processing'
-            case 'finalize_processing':
-                if (!confirm("¿Estás seguro de que has finalizado la revisión de esta solicitud?")) return;
-                // Pasa al estado inicial de NT, listo para ser activado.
-                updateData = { status: 'pending_nt_start' };
-                // Al finalizar la revisión, colapsamos la tarjeta para forzar la nueva interacción.
-                expandedRequestsState.delete(requestId);
-                break;
-
-            // NUEVO: Activa la preparación de NT
-            case 'start_nt_preparation':
-                updateData = { status: 'pending_nt_active' };
-                // Al iniciar, expandimos la tarjeta para que el usuario vea los checkboxes.
-                expandedRequestsState.add(requestId);
-                break;
-
-            // CAMBIADO: 'return_to_processing' ahora es 'return_to_pending'
-            case 'return_to_pending':
-                if (!confirm("¿Seguro que quieres devolver esta solicitud a la cola de revisión?")) return;
-                // Vuelve al estado inicial 'pending', forzando el click en "Iniciar Revisión" de nuevo.
-                updateData = { status: 'pending' };
-                expandedRequestsState.delete(requestId);
-                break;
-            
-            case 'shipped':
-                if (!confirm("¿Marcar este traslado como ENVIADO?")) return;
-                updateData = { status: 'shipped' };
-                expandedRequestsState.delete(requestId);
-                break;
-
-            case 'cancel':
-                if (!confirm("¿Cancelar esta solicitud?")) return;
-                updateData = { status: 'cancelled' };
-                expandedRequestsState.delete(requestId);
-                break;
-            
-            default:
+            div.innerHTML = '';
+            if (!div) return;
+            if (data.length === 0) {
+                div.innerHTML = `<p class="text-gray-500 italic text-center py-4">${emptyMessage}</p>`;
                 return;
+            }
+            if (!sectionDisplayCounts[sectionId]) {
+                sectionDisplayCounts[sectionId] = INITIAL_DISPLAY_COUNT;
+            }
+            const requestsToShow = data.slice(0, sectionDisplayCounts[sectionId]);
+            requestsToShow.forEach(req => div.appendChild(createRequestCard(req, role)));
+            if (data.length > sectionDisplayCounts[sectionId]) {
+                const remaining = data.length - sectionDisplayCounts[sectionId];
+                const loadAmount = Math.min(LOAD_MORE_COUNT, remaining);
+                const button = document.createElement('button');
+                button.textContent = `Ver ${loadAmount} más... (${remaining} restantes)`;
+                button.className = 'w-full mt-4 text-sm font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 py-2 px-4 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500';
+                button.dataset.sectionId = sectionId;
+                button.onclick = handleLoadMore;
+                div.appendChild(button);
+            }
         }
 
-        if (Object.keys(updateData).length > 0) {
-            await reqRef.update(updateData);
-        } else {
-            // Si no hay actualización de DB, pero sí de UI (como expandir/colapsar), re-renderizamos.
+        function createRequestCard(req, role) {
+            const isExpanded = expandedRequestsState.has(req.id);
+            const card = document.createElement('div');
+            card.className = `p-4 rounded-lg shadow-sm mb-4 ${getRequestStatusColor(req.status)}`;
+        
+            const isShipped = req.status === 'shipped';
+            const hasItems = req.items && req.items.length > 0;
+            const allNtItemsChecked = hasItems && req.status === 'pending_nt_active' && req.items.every(item => item.nt_checked);
+            
+            const itemsHtml = hasItems ? (req.items || []).map((item, index) => {
+                if (role === 'admin' && req.status === 'pending_nt_active') {
+                    const itemChecked = item.nt_checked === true;
+                    const itemBgColor = itemChecked ? 'bg-green-100' : 'bg-red-100';
+                    const itemBorderColor = itemChecked ? 'border-green-200' : 'border-red-200';
+                    return `<li class="p-2 rounded-md border ${itemBorderColor} ${itemBgColor} flex justify-between items-center text-sm transition-colors"><div><span class="font-medium text-gray-800">${item.productName}</span><div class="text-xs text-gray-600">Enviado: <b>${item.sentQuantity}</b></div></div><input type="checkbox" ${itemChecked ? 'checked' : ''} data-request-id="${req.id}" data-item-index="${index}" class="nt-checkbox h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"></li>`;
+                }
+                
+                let quantityDisplay = `Solicitado: <b>${item.quantity}</b>`;
+                if (item.sentQuantity !== undefined) { quantityDisplay += ` | Enviado: <b>${item.sentQuantity}</b>`; }
+                if (item.receivedQuantity !== undefined) {
+                    const color = item.receivedQuantity < item.sentQuantity ? 'text-red-600' : 'text-green-700';
+                    quantityDisplay += ` | Recibido: <b class="${color}">${item.receivedQuantity}</b>`;
+                }
+                const receptionInput = (role === 'requester' && isShipped) ? `<div class="flex items-center"><label class="text-sm mr-2">Recibido:</label><input type="number" value="${item.sentQuantity}" data-request-id="${req.id}" data-item-index="${index}" class="reception-qty-input w-20 p-1 border rounded-md text-center"></div>` : ``;
+                const adminInput = (role === 'admin' && req.status === 'processing_partial_items') ? `<input type="number" value="${item.sentQuantity ?? item.quantity}" data-request-id="${req.id}" data-item-index="${index}" class="admin-qty-input w-20 p-1 border rounded-md text-center">` : ``;
+                
+                return `<li class="p-2 rounded-md bg-white flex justify-between items-center text-sm"><div><span class="font-medium text-gray-800">${item.productName}</span><div class="text-xs text-gray-600">${quantityDisplay}</div></div>${receptionInput}${adminInput}</li>`;
+            }).join('') : '<p class="text-sm text-gray-500 italic">No hay artículos en esta solicitud.</p>';
+        
+            let adminActionsHtml = '';
+            if (role === 'admin') {
+                let buttons = '';
+                if (req.status === 'pending') {
+                    buttons += `<button data-request-id="${req.id}" data-action="start_processing" class="action-btn bg-gray-800 hover:bg-black text-white text-xs font-semibold py-2 px-3 rounded-md">Iniciar revisión</button>`;
+                }
+                if (req.status.startsWith('processing')) {
+                    buttons += `<button data-request-id="${req.id}" data-action="finalize_processing" class="action-btn bg-teal-600 hover:bg-teal-700 text-white text-xs font-semibold py-2 px-3 rounded-md">Finalizar Revisión</button>`;
+                }
+                if (req.status === 'pending_nt_start') {
+                    buttons += `<button data-request-id="${req.id}" data-action="start_nt_preparation" class="action-btn bg-orange-500 hover:bg-orange-600 text-white text-xs font-semibold py-2 px-3 rounded-md">Iniciar Preparación NT</button>`;
+                }
+                if (req.status === 'pending_nt_active') {
+                    buttons += `<button data-request-id="${req.id}" data-action="return_to_pending" class="action-btn bg-yellow-600 hover:bg-yellow-700 text-white text-xs font-semibold py-2 px-3 rounded-md">Devolver a Revisión</button>`;
+                    buttons += `<button data-request-id="${req.id}" data-action="shipped" class="action-btn bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold py-2 px-3 rounded-md disabled:bg-gray-400 disabled:cursor-not-allowed" ${!allNtItemsChecked ? 'disabled' : ''}>Marcar como enviado</button>`;
+                }
+                if (['pending', 'processing_partial_items', 'pending_nt_start', 'pending_nt_active'].includes(req.status)) {
+                    buttons += `<button data-request-id="${req.id}" data-action="cancel" class="action-btn bg-red-700 hover:bg-red-800 text-white text-xs font-semibold py-2 px-3 rounded-md">Cancelar</button>`;
+                }
+                if (buttons) {
+                    adminActionsHtml = `<div class="mt-4 border-t pt-4 flex justify-end items-center flex-wrap gap-2">${buttons}</div>`;
+                }
+            }
+            
+            let requesterActionsHtml = '';
+            if (role === 'requester' && req.status === 'pending') {
+                requesterActionsHtml = `<div class="flex flex-col space-y-2"><button data-request-id="${req.id}" class="edit-my-request-btn bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold py-1 px-2 rounded-md">Editar</button><button data-request-id="${req.id}" class="delete-my-request-btn bg-red-600 hover:bg-red-700 text-white text-xs font-semibold py-1 px-2 rounded-md">Eliminar</button></div>`;
+            }
+        
+            let receptionFormHtml = '';
+            if (role === 'requester' && isShipped) {
+                receptionFormHtml = `<div class="mt-4 border-t-2 border-blue-200 pt-4 space-y-3"><h5 class="font-bold text-md text-blue-700">Confirmar recepción</h5><div><label class="block text-sm font-medium text-gray-700">Observaciones de recepción:</label><textarea id="receptionNotes-${req.id}" rows="2" class="w-full mt-1 border rounded-md p-2" placeholder="Ej: La caja llegó dañada..."></textarea></div><button data-request-id="${req.id}" class="finalize-reception-btn w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-3 rounded-md">Finalizar y confirmar Recepción</button></div>`;
+            }
+            
+            const reqDate = req.deliveryDate ? new Date(req.deliveryDate + 'T00:00:00').toLocaleDateString('es-CO', { year: 'numeric', month: 'long', day: 'numeric' }) : 'No especificada';
+            const creationDate = req.timestamp ? new Date(req.timestamp.seconds * 1000).toLocaleDateString('es-CO') : '';
+            const hasDetailsToShow = hasItems || req.requesterNotes || req.adminNotes || adminActionsHtml || receptionFormHtml;
+        
+            card.innerHTML = `
+                <div class="flex justify-between items-start">
+                    <div>
+                        <h4 class="font-semibold text-lg text-gray-800">${req.requesterName}</h4>
+                        <p class="text-sm text-gray-600">Para: <strong>${req.toWarehouse}</strong></p>
+                        <p class="text-xs text-gray-400">ID: ${req.id} | Creada: ${creationDate}</p>
+                        <p class="text-sm mt-1">Fecha Requerida: <b>${reqDate}</b></p>
+                        <span class="inline-block mt-2 px-2 py-1 text-xs font-bold rounded-full ${getRequestStatusColor(req.status)} text-black">${translateStatus(req.status)}</span>
+                    </div>
+                    ${requesterActionsHtml}
+                </div>
+                <div id="details-${req.id}" class="${isExpanded ? '' : 'hidden'} mt-4 pt-4 border-t border-gray-200">
+                    ${req.requesterNotes ? `<div class="mb-3 p-3 bg-gray-50 rounded-lg border"><p class="text-sm font-semibold text-gray-600">Observaciones:</p><p class="text-sm text-gray-800 italic">"${req.requesterNotes}"</p></div>` : ''}
+                    ${req.adminNotes ? `<div class="mb-3 p-3 bg-red-50 rounded-lg border border-red-200"><p class="text-sm font-semibold text-red-800">Nota del Admin:</p><p class="text-sm text-red-900 italic">"${req.adminNotes}"</p></div>` : ''}
+                    ${(role === 'admin' && req.status.startsWith('processing')) ? `<div class="mt-4"><label for="adminNotes-${req.id}" class="text-sm font-medium text-gray-700">Añadir/Editar Nota:</label><textarea id="adminNotes-${req.id}" rows="2" class="w-full mt-1 border rounded-md p-2">${req.adminNotes || ''}</textarea><button data-request-id="${req.id}" class="save-admin-note-btn mt-1 text-xs bg-gray-800 text-white px-3 py-1.5 rounded-md hover:bg-black">Guardar Nota</button></div>` : ''}
+                    <h5 class="font-bold text-gray-700 mt-3 mb-2">Items:</h5>
+                    <ul class="space-y-2">${itemsHtml}</ul>
+                    ${adminActionsHtml}
+                    ${receptionFormHtml}
+                </div>
+                ${hasDetailsToShow ? `<div class="text-center mt-2"><button data-request-id="${req.id}" class="toggle-details-btn text-sm font-semibold text-blue-600 hover:text-blue-800 py-1 px-3 rounded-full hover:bg-blue-50 transition-colors">${isExpanded ? 'Ver menos' : 'Ver más'}</button></div>` : ''}
+            `;
+        
+            card.querySelectorAll('.action-btn').forEach(b => b.onclick = handleAdminAction);
+            card.querySelectorAll('.finalize-reception-btn').forEach(b => b.onclick = handleFinalizeReception);
+            card.querySelectorAll('.admin-qty-input').forEach(i => i.onchange = handleAdminQuantityChange);
+            card.querySelectorAll('.delete-my-request-btn').forEach(b => b.onclick = handleDeleteMyRequest);
+            card.querySelectorAll('.save-admin-note-btn').forEach(b => b.onclick = handleSaveAdminNote);
+            card.querySelectorAll('.edit-my-request-btn').forEach(b => b.onclick = handleStartEdit);
+            card.querySelectorAll('.toggle-details-btn').forEach(b => b.onclick = handleToggleDetails);
+            card.querySelectorAll('.nt-checkbox').forEach(c => c.onchange = handleNtCheckboxChange);
+        
+            return card;
+        }
+
+        function renderProducts(productsToRender) {
+            dom.productList.innerHTML = '';
+            if (!productsToRender || productsToRender.length === 0) {
+                dom.productList.innerHTML = '<p class="text-gray-500 col-span-full text-center">No se encontraron productos.</p>';
+                return;
+            }
+            productsToRender.forEach(product => {
+                const card = document.createElement('div');
+                card.className = 'border p-3 rounded-lg shadow-sm hover:shadow-md transition bg-white';
+                const safeId = product.id.replace(/[^a-zA-Z0-9-_]/g, '');
+                card.innerHTML = `<h3 class="text-sm font-semibold text-gray-900" title="${product.description}">${product.name.length > 50 ? product.name.substring(0, 47) + '...' : product.name}</h3><p class="text-xs text-gray-400 mb-2">ID: ${product.id}</p><div class="flex items-center space-x-2 mt-auto"><input type="number" min="1" value="1" id="qty-${safeId}" class="w-16 border-gray-300 rounded-md text-center p-1"><button data-product-id="${product.id}" class="add-to-transfer-btn w-full bg-gray-800 hover:bg-black text-white text-xs font-bold py-2 px-2 rounded-md transition">Añadir</button></div>`;
+                dom.productList.appendChild(card);
+            });
+            dom.productList.querySelectorAll('.add-to-transfer-btn').forEach(b => b.onclick = handleAddToTransfer);
+        }
+
+        function renderCurrentTransfer() {
+            dom.currentTransferRequest.innerHTML = '';
+            if (currentTransferItems.length === 0) {
+                dom.currentTransferRequest.innerHTML = '<p class="text-gray-500 italic text-center py-4">Añade productos desde la lista de arriba.</p>';
+                return;
+            }
+            const ul = document.createElement('ul');
+            ul.className = 'space-y-2';
+            currentTransferItems.forEach((item, index) => {
+                const li = document.createElement('li');
+                li.className = 'flex justify-between items-center p-3 bg-white rounded-lg shadow-sm';
+                li.innerHTML = `<div><span class="font-medium text-gray-800">${item.productName}</span><span class="text-xs text-gray-500 block">ID: ${item.productId}</span></div><div class="flex items-center space-x-2"><input type="number" min="1" value="${item.quantity}" data-item-index="${index}" class="w-16 p-1 border rounded item-quantity-input text-center"><button data-item-index="${index}" class="remove-item-btn text-red-500 hover:text-red-700 font-bold p-1">✕</button></div>`;
+                ul.appendChild(li);
+            });
+            dom.currentTransferRequest.appendChild(ul);
+            dom.currentTransferRequest.querySelectorAll('.item-quantity-input').forEach(input => input.onchange = handleUpdateItemQuantity);
+            dom.currentTransferRequest.querySelectorAll('.remove-item-btn').forEach(button => button.onclick = handleRemoveItem);
+        }
+        
+        // --- MANEJADORES DE EVENTOS Y ACCIONES ---
+        
+        async function handleAdminAction(evento) {
+            const { requestId, action } = evento.currentTarget.dataset;
+            const reqRef = transfersCollection.doc(requestId);
+            let updateData = {};
+        
+            try {
+                switch (action) {
+                    case 'start_processing':
+                        const doc = await reqRef.get();
+                        if (!doc.exists) return;
+                        const items = doc.data().items.map(item => ({ ...item, sentQuantity: item.quantity, nt_checked: false }));
+                        updateData = { status: 'processing_partial_items', items: items };
+                        expandedRequestsState.add(requestId);
+                        break;
+                    
+                    case 'finalize_processing':
+                        if (!confirm("¿Estás seguro de que has finalizado la revisión de esta solicitud?")) return;
+                        updateData = { status: 'pending_nt_start' };
+                        expandedRequestsState.delete(requestId);
+                        break;
+        
+                    case 'start_nt_preparation':
+                        updateData = { status: 'pending_nt_active' };
+                        expandedRequestsState.add(requestId);
+                        break;
+        
+                    case 'return_to_pending':
+                        if (!confirm("¿Seguro que quieres devolver esta solicitud a la cola de revisión?")) return;
+                        updateData = { status: 'pending' };
+                        expandedRequestsState.delete(requestId);
+                        break;
+                    
+                    case 'shipped':
+                        if (!confirm("¿Marcar este traslado como ENVIADO?")) return;
+                        updateData = { status: 'shipped' };
+                        expandedRequestsState.delete(requestId);
+                        break;
+        
+                    case 'cancel':
+                        if (!confirm("¿Cancelar esta solicitud?")) return;
+                        updateData = { status: 'cancelled' };
+                        expandedRequestsState.delete(requestId);
+                        break;
+                    
+                    default:
+                        return;
+                }
+        
+                if (Object.keys(updateData).length > 0) {
+                    await reqRef.update(updateData);
+                } else {
+                    renderAllSections();
+                }
+        
+            } catch(e) {
+                console.error("Error al actualizar la solicitud:", e);
+                alert("Ocurrió un error al procesar la acción.");
+            }
+        }
+        
+        function handleToggleDetails(evento) {
+            const button = evento.currentTarget;
+            const requestId = button.dataset.requestId;
+            const detailsContainer = document.getElementById(`details-${requestId}`);
+            if (!detailsContainer) return;
+        
+            const isHidden = detailsContainer.classList.contains('hidden');
+        
+            if (isHidden) {
+                detailsContainer.classList.remove('hidden');
+                button.innerHTML = 'Ver menos';
+                expandedRequestsState.add(requestId);
+            } else {
+                detailsContainer.classList.add('hidden');
+                button.innerHTML = 'Ver más';
+                expandedRequestsState.delete(requestId);
+            }
+        }
+        
+        function handleLoadMore(event) {
+            const sectionId = event.currentTarget.dataset.sectionId;
+            if (sectionDisplayCounts[sectionId]) {
+                sectionDisplayCounts[sectionId] += LOAD_MORE_COUNT;
+            }
             renderAllSections();
         }
 
-    } catch(e) {
-        console.error("Error al actualizar la solicitud:", e);
-        alert("Ocurrió un error al procesar la acción.");
-    }
-}
-        async function handleAdminQuantityChange(event) { const input = event.currentTarget; const { requestId, itemIndex } = input.dataset; const newSentQuantity = parseInt(input.value, 10); if (isNaN(newSentQuantity) || newSentQuantity < 0) return; const reqRef = transfersCollection.doc(requestId); try { const doc = await reqRef.get(); if (doc.exists) { let items = doc.data().items; if (items && items[itemIndex]) { items[itemIndex].sentQuantity = newSentQuantity; } await reqRef.update({ items }); } } catch(e) { console.error("Error al actualizar cantidad:", e); } }
-        function handleAddToTransfer(event) { const button = event.currentTarget; const product = allProducts.find(p => p.id === button.dataset.productId); if (!product) return; const qtyInput = document.getElementById(`qty-${product.id.replace(/[^a-zA-Z0-9-_]/g, '')}`); const quantity = parseInt(qtyInput.value, 10); if (isNaN(quantity) || quantity < 1) { alert("Cantidad inválida."); return; } const existingItem = currentTransferItems.find(i => i.productId === product.id); if (existingItem) { existingItem.quantity += quantity; } else { currentTransferItems.push({ productId: product.id, productName: product.name, quantity }); } qtyInput.value = "1"; localStorage.setItem('currentTransferDraft', JSON.stringify(currentTransferItems)); renderCurrentTransfer(); }
-        async function handleSaveAdminNote(event) { const button = event.currentTarget; const requestId = button.dataset.requestId; const adminNotes = document.getElementById(`adminNotes-${requestId}`).value; const reqRef = transfersCollection.doc(requestId); try { await reqRef.update({ adminNotes: adminNotes }); alert("Nota guardada."); } catch (e) { console.error("Error al guardar nota:", e); alert("No se pudo guardar la nota."); } }
-        function exportHistoryToExcel() { const historyRequests = allTransferRequests.filter( r => r.status.startsWith('completed') || r.status === 'cancelled' ); if (historyRequests.length === 0) { alert("No hay datos en historial."); return; } let excelData = []; historyRequests.forEach(req => { const creationDate = req.timestamp ? new Date(req.timestamp.seconds * 1000).toLocaleDateString('es-CO') : 'N/A'; if (req.items && req.items.length > 0) { req.items.forEach(item => { excelData.push({ 'ID Traslado': req.id, 'Estado': translateStatus(req.status), 'Fecha Creación': creationDate, 'Solicitante': req.requesterName, 'Bodega Destino': req.toWarehouse, 'ID Producto': item.productId, 'Nombre Producto': item.productName, 'U. Solicitadas': item.quantity, 'U. Enviadas': item.sentQuantity, 'U. Recibidas': item.receivedQuantity, 'Obs. Solicitante': req.requesterNotes || '', 'Obs. Admin': req.adminNotes || '', 'Obs. Recepción': req.reception?.notes || '' }); }); } else { excelData.push({ 'ID Traslado': req.id, 'Estado': translateStatus(req.status), 'Fecha Creación': creationDate, 'Solicitante': req.requesterName, 'Bodega Destino': req.toWarehouse, 'ID Producto': 'N/A', 'Nombre Producto': 'Sin items', 'U. Solicitadas': 0, 'U. Enviadas': 0, 'U. Recibidas': 0, 'Obs. Solicitante': req.requesterNotes || '', 'Obs. Admin': req.adminNotes || '', 'Obs. Recepción': req.reception?.notes || '' }); } }); const worksheet = XLSX.utils.json_to_sheet(excelData); const workbook = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(workbook, worksheet, "Historial"); worksheet['!cols'] = [ { wch: 15 }, { wch: 25 }, { wch: 15 }, { wch: 25 }, { wch: 25 }, { wch: 20 }, { wch: 40 }, { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 50 }, { wch: 50 }, { wch: 50 } ]; XLSX.writeFile(workbook, "Historial_Traslados_Parabarberos.xlsx"); }
-        async function loadAndTransformProducts() { try { const snapshot = await productsCollection.orderBy("name").get(); if (snapshot.empty) { console.warn("La colección 'products' está vacía."); return []; } return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })); } catch (error) { console.error("Error al cargar productos: ", error); alert("No se pudo cargar la lista de productos."); return []; } }
+        async function handleNtCheckboxChange(event) {
+            const checkbox = event.currentTarget;
+            const { requestId, itemIndex } = checkbox.dataset;
+            const isChecked = checkbox.checked;
         
+            const reqRef = transfersCollection.doc(requestId);
+            try {
+                const doc = await reqRef.get();
+                if (!doc.exists) return;
+        
+                let items = doc.data().items;
+                if (items && items[itemIndex]) {
+                    items[itemIndex].nt_checked = isChecked;
+                }
+                await reqRef.update({ items });
+            } catch (e) {
+                console.error("Error al actualizar el estado del item NT:", e);
+                checkbox.checked = !isChecked;
+            }
+        }
+
+        async function handleDeleteMyRequest(event) {
+             const requestId = event.currentTarget.dataset.requestId;
+             if (confirm("¿Eliminar esta solicitud?")) {
+                 try {
+                     await transfersCollection.doc(requestId).delete();
+                 } catch (error) {
+                     console.error("Error al eliminar:", error);
+                 }
+             }
+        }
+
+        async function handleAdminQuantityChange(event) {
+            const input = event.currentTarget;
+            const { requestId, itemIndex } = input.dataset;
+            const newSentQuantity = parseInt(input.value, 10);
+            if (isNaN(newSentQuantity) || newSentQuantity < 0) return;
+            const reqRef = transfersCollection.doc(requestId);
+            try {
+                const doc = await reqRef.get();
+                if (doc.exists) {
+                    let items = doc.data().items;
+                    if (items && items[itemIndex]) {
+                        items[itemIndex].sentQuantity = newSentQuantity;
+                    }
+                    await reqRef.update({ items });
+                }
+            } catch (e) {
+                console.error("Error al actualizar cantidad:", e);
+            }
+        }
+
+        function handleAddToTransfer(event) {
+            const button = event.currentTarget;
+            const product = allProducts.find(p => p.id === button.dataset.productId);
+            if (!product) return;
+            const qtyInput = document.getElementById(`qty-${product.id.replace(/[^a-zA-Z0-9-_]/g, '')}`);
+            const quantity = parseInt(qtyInput.value, 10);
+            if (isNaN(quantity) || quantity < 1) {
+                alert("Cantidad inválida.");
+                return;
+            }
+            const existingItem = currentTransferItems.find(i => i.productId === product.id);
+            if (existingItem) {
+                existingItem.quantity += quantity;
+            } else {
+                currentTransferItems.push({ productId: product.id, productName: product.name, quantity });
+            }
+            qtyInput.value = "1";
+            localStorage.setItem('currentTransferDraft', JSON.stringify(currentTransferItems));
+            renderCurrentTransfer();
+        }
+
+        async function handleSaveAdminNote(event) {
+            const button = event.currentTarget;
+            const requestId = button.dataset.requestId;
+            const adminNotes = document.getElementById(`adminNotes-${requestId}`).value;
+            const reqRef = transfersCollection.doc(requestId);
+            try {
+                await reqRef.update({ adminNotes: adminNotes });
+                alert("Nota guardada.");
+            } catch (e) {
+                console.error("Error al guardar nota:", e);
+                alert("No se pudo guardar la nota.");
+            }
+        }
+
+        // --- MANEJADORES DE FORMULARIOS ---
+
+        async function handleSubmitTransferForm(event) {
+            event.preventDefault();
+            const editingId = document.getElementById('editingRequestId').value;
+            const deliveryDateInput = document.getElementById('deliveryDate');
+            if (!dom.toWarehouse.value) { alert("Seleccione Bodega Destino."); return; }
+            if (!dom.requesterName.value) { alert("Seleccione Solicitante."); return; }
+            if (currentTransferItems.length === 0) { alert("Agregue productos."); return; }
+            if (!deliveryDateInput.value) { alert("Seleccione fecha."); return; }
+
+            const transferData = {
+                items: currentTransferItems.map(item => ({ 
+                    productId: item.productId, 
+                    productName: item.productName, 
+                    quantity: item.quantity,
+                    sentQuantity: item.sentQuantity || 0, 
+                    receivedQuantity: item.receivedQuantity || 0 
+                })),
+                fromWarehouse: document.getElementById('fromWarehouse').value,
+                toWarehouse: dom.toWarehouse.value,
+                requesterName: dom.requesterName.value,
+                deliveryDate: deliveryDateInput.value,
+                requesterNotes: document.getElementById('requesterNotes').value,
+            };
+            
+            try {
+                if (editingId) {
+                    const reqRef = transfersCollection.doc(editingId);
+                    await reqRef.update(transferData);
+                    alert(`¡Solicitud ${editingId} actualizada con éxito!`);
+                } else {
+                    const customId = generateCustomId();
+                    const newReq = {
+                        ...transferData,
+                        id: customId,
+                        status: 'pending',
+                        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                    };
+                    await transfersCollection.doc(customId).set(newReq);
+                    alert(`¡Solicitud enviada! ID: ${customId}`);
+                }
+                resetFormToCreateMode();
+            } catch (error) {
+                console.error("Error al guardar en Firebase:", error);
+                alert("Ocurrió un error al guardar la solicitud. Por favor, inténtalo de nuevo.");
+            }
+        }
+
+        async function handleStartEdit(event) {
+            const requestId = event.currentTarget.dataset.requestId;
+            const requestToEdit = allTransferRequests.find(r => r.id === requestId);
+            if (!requestToEdit) {
+                alert("Error: No se encontró la solicitud para editar.");
+                return;
+            }
+            document.getElementById('editingRequestId').value = requestId;
+            dom.toWarehouse.value = requestToEdit.toWarehouse;
+            document.getElementById('deliveryDate').value = requestToEdit.deliveryDate;
+            document.getElementById('requesterNotes').value = requestToEdit.requesterNotes || '';
+            currentTransferItems = JSON.parse(JSON.stringify(requestToEdit.items));
+            renderCurrentTransfer();
+            const submitButton = dom.transferForm.querySelector('button[type="submit"]');
+            submitButton.textContent = 'GUARDAR CAMBIOS';
+            submitButton.classList.remove('bg-red-600', 'hover:bg-red-700');
+            submitButton.classList.add('bg-blue-600', 'hover:bg-blue-700');
+            dom.transferForm.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function resetFormToCreateMode() {
+            currentTransferItems = [];
+            localStorage.removeItem('currentTransferDraft');
+            renderCurrentTransfer();
+            dom.transferForm.reset();
+            document.getElementById('editingRequestId').value = '';
+            const submitButton = dom.transferForm.querySelector('button[type="submit"]');
+            submitButton.textContent = 'ENVIAR SOLICITUD DE TRASLADO';
+            submitButton.classList.remove('bg-blue-600', 'hover:bg-blue-700');
+            submitButton.classList.add('bg-red-600', 'hover:bg-red-700');
+            if (currentUserData && currentUserData.role === 'requester') {
+                dom.requesterName.innerHTML = `<option value="${currentUserData.name}">${currentUserData.name}</option>`;
+                dom.requesterName.value = currentUserData.name;
+            }
+        }
+
         async function handleFinalizeReception(event) {
             const button = event.currentTarget;
             const requestId = button.dataset.requestId;
@@ -714,29 +624,157 @@ async function handleAdminAction(evento) {
             }
         }
 
+        // --- FUNCIONES DE UTILIDAD Y GESTIÓN DE PRODUCTOS ---
+        
+        function exportHistoryToExcel() {
+            const historyRequests = allTransferRequests.filter(r => r.status.startsWith('completed') || r.status === 'cancelled');
+            if (historyRequests.length === 0) { alert("No hay datos en historial."); return; }
+            let excelData = [];
+            historyRequests.forEach(req => {
+                const creationDate = req.timestamp ? new Date(req.timestamp.seconds * 1000).toLocaleDateString('es-CO') : 'N/A';
+                if (req.items && req.items.length > 0) {
+                    req.items.forEach(item => {
+                        excelData.push({ 'ID Traslado': req.id, 'Estado': translateStatus(req.status), 'Fecha Creación': creationDate, 'Solicitante': req.requesterName, 'Bodega Destino': req.toWarehouse, 'ID Producto': item.productId, 'Nombre Producto': item.productName, 'U. Solicitadas': item.quantity, 'U. Enviadas': item.sentQuantity, 'U. Recibidas': item.receivedQuantity, 'Obs. Solicitante': req.requesterNotes || '', 'Obs. Admin': req.adminNotes || '', 'Obs. Recepción': req.reception?.notes || '' });
+                    });
+                } else {
+                    excelData.push({ 'ID Traslado': req.id, 'Estado': translateStatus(req.status), 'Fecha Creación': creationDate, 'Solicitante': req.requesterName, 'Bodega Destino': req.toWarehouse, 'ID Producto': 'N/A', 'Nombre Producto': 'Sin items', 'U. Solicitadas': 0, 'U. Enviadas': 0, 'U. Recibidas': 0, 'Obs. Solicitante': req.requesterNotes || '', 'Obs. Admin': req.adminNotes || '', 'Obs. Recepción': req.reception?.notes || '' });
+                }
+            });
+            const worksheet = XLSX.utils.json_to_sheet(excelData);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "Historial");
+            worksheet['!cols'] = [ { wch: 15 }, { wch: 25 }, { wch: 15 }, { wch: 25 }, { wch: 25 }, { wch: 20 }, { wch: 40 }, { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 50 }, { wch: 50 }, { wch: 50 } ];
+            XLSX.writeFile(workbook, "Historial_Traslados_Parabarberos.xlsx");
+        }
+        
+        async function loadAndTransformProducts() {
+            try {
+                const snapshot = await productsCollection.orderBy("name").get();
+                if (snapshot.empty) { console.warn("La colección 'products' está vacía."); return []; }
+                return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            } catch (error) {
+                console.error("Error al cargar productos: ", error);
+                alert("No se pudo cargar la lista de productos.");
+                return [];
+            }
+        }
+        
+        async function handleProductUpload() {
+            const fileInput = dom.productFile;
+            const statusEl = dom.uploadStatus;
+            if (fileInput.files.length === 0) { alert("Por favor, selecciona un archivo primero."); return; }
+            const file = fileInput.files[0];
+            const reader = new FileReader();
+            reader.onload = async (event) => {
+                let newProducts;
+                try {
+                    const rawData = JSON.parse(event.target.result);
+                    newProducts = transformRawJsonToProducts(rawData);
+                    if (!newProducts || newProducts.length === 0) { throw new Error("No se pudieron procesar productos válidos."); }
+                } catch (e) {
+                    statusEl.textContent = `Error: ${e.message}`; statusEl.className = 'mt-3 text-sm font-medium text-red-600'; return;
+                }
+                statusEl.textContent = 'Actualizando...'; statusEl.className = 'mt-3 text-sm font-medium text-blue-600';
+                try {
+                    const batch = db.batch();
+                    const oldDocsSnapshot = await productsCollection.get();
+                    oldDocsSnapshot.forEach(doc => batch.delete(doc.ref));
+                    newProducts.forEach(product => {
+                        const docRef = productsCollection.doc(product.id);
+                        batch.set(docRef, { name: product.name, description: product.description || '' });
+                    });
+                    await batch.commit();
+                    statusEl.textContent = `¡Éxito! Se actualizaron ${newProducts.length} productos.`; statusEl.className = 'mt-3 text-sm font-medium text-green-600';
+                    allProducts = await loadAndTransformProducts();
+                    renderProducts(allProducts);
+                } catch (error) {
+                    console.error("Error al actualizar productos:", error); statusEl.textContent = 'Error al subir a la DB.'; statusEl.className = 'mt-3 text-sm font-medium text-red-600';
+                }
+            };
+            reader.onerror = () => { statusEl.textContent = 'Error al leer archivo.'; statusEl.className = 'mt-3 text-sm font-medium text-red-600'; };
+            reader.readAsText(file);
+        }
+
+        function transformRawJsonToProducts(rawData) {
+            const uniqueProductStrings = new Set();
+            if (Array.isArray(rawData)) {
+                rawData.forEach(item => {
+                    Object.keys(item).forEach(key => key && uniqueProductStrings.add(key.trim()));
+                    Object.values(item).forEach(val => val && uniqueProductStrings.add(val.trim()));
+                });
+            }
+            if (uniqueProductStrings.size === 0) return [];
+            const productsMap = new Map();
+            let genericCounter = 1;
+            uniqueProductStrings.forEach(fullProductName => {
+                const parts = String(fullProductName).split(' - ');
+                let idPart, namePart;
+                if (parts.length > 1 && (/\d/.test(parts[0].trim()) || /^[a-zA-Z]{2,}/.test(parts[0].trim()))) {
+                    idPart = parts[0].trim().replace(/\s+/g, '-');
+                    namePart = parts.slice(1).join(' - ').trim();
+                } else {
+                    idPart = `prod-gen-${genericCounter++}`;
+                    namePart = fullProductName;
+                }
+                let finalId = idPart, idCounter = 1;
+                while (productsMap.has(finalId)) finalId = `${idPart}_${idCounter++}`;
+                productsMap.set(finalId, { id: finalId, name: namePart, description: fullProductName });
+            });
+            return Array.from(productsMap.values()).sort((a, b) => a.name.localeCompare(b.name));
+        }
+        
+        function generateCustomId() {
+            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+            const nums = '0123456789';
+            let result = '';
+            let startWithLetter = Math.random() < 0.5;
+            for (let i = 0; i < 7; i++) {
+                if ((i % 2 === 0 && startWithLetter) || (i % 2 !== 0 && !startWithLetter)) {
+                    result += chars.charAt(Math.floor(Math.random() * chars.length));
+                } else {
+                    result += nums.charAt(Math.floor(Math.random() * nums.length));
+                }
+            }
+            return result;
+        }
+
+        function handleUpdateItemQuantity(event) {
+            const input = event.currentTarget;
+            currentTransferItems[input.dataset.itemIndex].quantity = parseInt(input.value, 10);
+            localStorage.setItem('currentTransferDraft', JSON.stringify(currentTransferItems));
+        }
+        
+        function handleRemoveItem(event) {
+            currentTransferItems.splice(parseInt(event.currentTarget.dataset.itemIndex, 10), 1);
+            localStorage.setItem('currentTransferDraft', JSON.stringify(currentTransferItems));
+            renderCurrentTransfer();
+        }
+        
+        function handleSearchInput() {
+            const searchTerm = dom.searchInput.value.toLowerCase().trim();
+            renderProducts(allProducts.filter(p => p.name.toLowerCase().includes(searchTerm) || (p.description && p.description.toLowerCase().includes(searchTerm)) || p.id.toLowerCase().includes(searchTerm)));
+        }
+
+        // --- FUNCIÓN DE INICIALIZACIÓN PRINCIPAL ---
         async function initializeApp() {
             setupUIForUser();
             allProducts = await loadAndTransformProducts();
             renderProducts(allProducts);
             renderCurrentTransfer();
+            
             const deliveryDateInput = document.getElementById('deliveryDate');
-            const today = new Date().toISOString().slice(0, 10);
-            deliveryDateInput.value = today;
+            deliveryDateInput.value = new Date().toISOString().slice(0, 10);
+            
             const warehouseOptions = ['Bodega Cali Centro', 'Bodega Cali Sur', 'Bodega Pasto', 'Bodega Tulua', 'Bodega Medellín'];
-            const warehousePlaceholder = '<option value="" selected disabled>-- Seleccione una bodega --</option>';
-            dom.toWarehouse.innerHTML = warehousePlaceholder + warehouseOptions.map(w => `<option value="${w}">${w}</option>`).join('');
+            dom.toWarehouse.innerHTML = '<option value="" selected disabled>-- Seleccione una bodega --</option>' + warehouseOptions.map(w => `<option value="${w}">${w}</option>`).join('');
             
             dom.exportExcelBtn.onclick = exportHistoryToExcel;
             dom.uploadProductsBtn.onclick = handleProductUpload;
             dom.transferForm.onsubmit = handleSubmitTransferForm;
             dom.searchInput.oninput = handleSearchInput;
             dom.productFile.onchange = () => {
-                if (dom.productFile.files.length > 0) {
-                    dom.fileNameDisplay.textContent = dom.productFile.files[0].name;
-                    dom.uploadStatus.textContent = '';
-                } else {
-                    dom.fileNameDisplay.textContent = 'Ningún archivo seleccionado.';
-                }
+                dom.fileNameDisplay.textContent = dom.productFile.files.length > 0 ? dom.productFile.files[0].name : 'Ningún archivo seleccionado.';
+                dom.uploadStatus.textContent = '';
             };
             
             const filterInputs = ['requesterSearchId', 'requesterDateFrom', 'requesterDateTo', 'adminActiveSearchId', 'adminActiveDateFrom', 'adminActiveDateTo', 'adminHistorySearchId', 'adminHistoryDateFrom', 'adminHistoryDateTo'];
@@ -751,5 +789,3 @@ async function handleAdminAction(evento) {
         }
     });
 </script>
-</body>
-</html>
