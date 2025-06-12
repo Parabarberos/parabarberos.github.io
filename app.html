@@ -457,8 +457,15 @@ async function handleAdminAction(evento) {
             case 'start_processing':
                 const doc = await reqRef.get();
                 if (!doc.exists) return;
-                const itemsToProcess = doc.data().items.map(item => ({ ...item, sentQuantity: item.quantity, nt_checked: false }));
-                updateData = { status: 'processing_partial_items', items: itemsToProcess };
+                const itemsToProcess = doc.data().items.map(item => ({ 
+                    ...item, 
+                    sentQuantity: item.quantity, 
+                    nt_checked: false 
+                }));
+                updateData = { 
+                    status: 'processing_partial_items', 
+                    items: itemsToProcess 
+                };
                 expandedRequestsState.add(requestId);
                 break;
             
@@ -479,22 +486,23 @@ async function handleAdminAction(evento) {
                     return;
                 }
                 
-                // Obtenemos los datos actuales para poder resetear los items
                 const docToReset = await reqRef.get();
                 if (!docToReset.exists) return;
 
-                // Mapeamos los items, reseteando 'sentQuantity' a 0 y borrando 'nt_checked'
-                const resetItems = docToReset.data().items.map(item => ({
-                    ...item,
-                    sentQuantity: 0, // Reseteamos la cantidad enviada
-                    nt_checked: firebase.firestore.FieldValue.delete() // Eliminamos el campo nt_checked si existe
-                }));
+                // Forma más segura de resetear los items.
+                // Simplemente establecemos los valores deseados sin intentar borrar campos.
+                const resetItems = docToReset.data().items.map(item => {
+                    // Copiamos los campos originales que queremos conservar
+                    const { productId, productName, quantity } = item; 
+                    // Creamos un nuevo objeto solo con los campos necesarios para el estado 'pending'.
+                    return { productId, productName, quantity }; 
+                });
                 
-                // Preparamos la actualización
                 updateData = { 
-                    status: 'pending', // Vuelve al estado inicial
-                    adminNotes: firebase.firestore.FieldValue.delete(), // Elimina por completo la nota del admin
-                    items: resetItems // Usa la nueva lista de items reseteados
+                    status: 'pending',
+                    // Borrar el campo de nota del admin sigue siendo seguro.
+                    adminNotes: firebase.firestore.FieldValue.delete(), 
+                    items: resetItems 
                 };
                 
                 expandedRequestsState.delete(requestId);
@@ -524,7 +532,7 @@ async function handleAdminAction(evento) {
         }
 
     } catch(e) {
-        console.error("Error al actualizar la solicitud:", e);
+        console.error("Error al procesar la acción:", e);
         alert("Ocurrió un error al procesar la acción.");
     }
 }
