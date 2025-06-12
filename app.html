@@ -269,34 +269,70 @@
                 buttons += `<button data-request-id="${req.id}" data-action="cancel" class="action-btn bg-red-700 hover:bg-red-800 text-white text-xs font-semibold py-2 px-3 rounded-md ml-1">Cancelar</button>`;
                 adminActionsHtml = `<div class="mt-4 border-t pt-4 text-right">${buttons}</div>`;
             }
-            let requesterActionsHtml = '';
-            if (role === 'requester' && req.status === 'pending') {
-                requesterActionsHtml = `
-                <div class="flex items-center space-x-2">
-                <button data-request-id="${req.id}" class="edit-my-request-btn bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold py-1 px-2 rounded-md">Editar</button>
-                <button data-request-id="${req.id}" class="delete-my-request-btn bg-red-600 hover:bg-red-700 text-white text-xs font-semibold py-1 px-2 rounded-md">Eliminar</button>
-                </div>`;
+    
+    let requesterActionsHtml = '';
+    if (role === 'requester' && req.status === 'pending') {
+        requesterActionsHtml = `<div class="flex flex-col space-y-2">
+            <button data-request-id="${req.id}" class="edit-my-request-btn bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold py-1 px-2 rounded-md">Editar</button>
+            <button data-request-id="${req.id}" class="delete-my-request-btn bg-red-600 hover:bg-red-700 text-white text-xs font-semibold py-1 px-2 rounded-md">Eliminar</button>
+        </div>`;
     }
-            let receptionFormHtml = '';
-            if (role === 'requester' && isShipped) {
-                receptionFormHtml = `<div class="mt-4 border-t-2 border-blue-200 pt-4 space-y-3"><h5 class="font-bold text-md text-blue-700">Confirmar Recepción</h5><div><label class="block text-sm font-medium text-gray-700">Observaciones de Recepción:</label><textarea id="receptionNotes-${req.id}" rows="2" class="w-full mt-1 border rounded-md p-2" placeholder="Ej: La caja llegó golpeada..."></textarea></div><button data-request-id="${req.id}" class="finalize-reception-btn w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-3 rounded-md">Finalizar y Confirmar Recepción</button></div>`;
-            }
-            let receptionEvidenceHtml = '';
-            if (isFinalized && req.reception && req.reception.notes) {
-                receptionEvidenceHtml = `<div class="mt-3 p-3 bg-green-50 rounded-lg border border-green-200"><p class="text-sm font-semibold text-green-800">Revisión del Solicitante:</p><p class="text-sm text-green-900 italic">"${req.reception.notes}"</p></div>`;
-            }
+
+    let receptionFormHtml = '';
+    if (role === 'requester' && isShipped) {
+        receptionFormHtml = `<div class="mt-4 border-t-2 border-blue-200 pt-4 space-y-3"><h5 class="font-bold text-md text-blue-700">Confirmar Recepción</h5><div><label class="block text-sm font-medium text-gray-700">Observaciones de Recepción:</label><textarea id="receptionNotes-${req.id}" rows="2" class="w-full mt-1 border rounded-md p-2" placeholder="Ej: La caja llegó golpeada..."></textarea></div><button data-request-id="${req.id}" class="finalize-reception-btn w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-3 rounded-md">Finalizar y Confirmar Recepción</button></div>`;
+    }
+
+    const reqDate = req.deliveryDate ? new Date(req.deliveryDate + 'T00:00:00').toLocaleDateString('es-CO', { year: 'numeric', month: 'long', day: 'numeric' }) : 'No especificada';
+    const creationDate = req.timestamp ? new Date(req.timestamp.seconds * 1000).toLocaleDateString('es-CO') : '';
+    
+    // --- NUEVA ESTRUCTURA HTML ---
+    card.innerHTML = `
+        <!-- PARTE SIEMPRE VISIBLE (CABECERA) -->
+        <div class="flex justify-between items-start">
+            <div>
+                <h4 class="font-semibold text-lg text-gray-800">${req.requesterName}</h4>
+                <p class="text-sm text-gray-600">Para: <strong>${req.toWarehouse}</strong></p>
+                <p class="text-xs text-gray-400">ID: ${req.id} | Creada: ${creationDate}</p>
+                <p class="text-sm mt-1">Fecha Requerida: <b>${reqDate}</b></p>
+                <span class="inline-block mt-2 px-2 py-1 text-xs font-bold rounded-full ${getRequestStatusColor(req.status)}">${translateStatus(req.status)}</span>
+            </div>
+            ${requesterActionsHtml}
+        </div>
+
+        <!-- CONTENEDOR OCULTO CON LOS DETALLES -->
+        <div id="details-${req.id}" class="hidden mt-4 pt-4 border-t border-gray-200">
+            ${req.requesterNotes ? `<div class="mb-3 p-3 bg-gray-50 rounded-lg border"><p class="text-sm font-semibold text-gray-600">Observaciones:</p><p class="text-sm text-gray-800 italic">"${req.requesterNotes}"</p></div>` : ''}
+            ${req.adminNotes ? `<div class="mb-3 p-3 bg-red-50 rounded-lg border border-red-200"><p class="text-sm font-semibold text-red-800">Nota del Admin:</p><p class="text-sm text-red-900 italic">"${req.adminNotes}"</p></div>` : ''}
+            ${(role === 'admin' && req.status.startsWith('processing')) ? `<div class="mt-4"><label for="adminNotes-${req.id}" class="text-sm font-medium text-gray-700">Añadir/Editar Nota:</label><textarea id="adminNotes-${req.id}" rows="2" class="w-full mt-1 border rounded-md p-2">${req.adminNotes || ''}</textarea><button data-request-id="${req.id}" class="save-admin-note-btn mt-1 text-xs bg-gray-800 text-white px-3 py-1.5 rounded-md hover:bg-black">Guardar Nota</button></div>` : ''}
             
-            const reqDate = req.deliveryDate ? new Date(req.deliveryDate + 'T00:00:00').toLocaleDateString('es-CO', { year: 'numeric', month: 'long', day: 'numeric' }) : 'No especificada';
-            const creationDate = req.timestamp ? new Date(req.timestamp.seconds * 1000).toLocaleDateString('es-CO') : '';
-            card.innerHTML = `<div class="flex justify-between items-start"><div><h4 class="font-semibold text-lg text-gray-800">${req.requesterName}</h4><p class="text-sm text-gray-600">Para: <strong>${req.toWarehouse}</strong></p><p class="text-xs text-gray-400">ID: ${req.id} | Creada: ${creationDate}</p><p class="text-sm mt-1">Fecha Requerida: <b>${reqDate}</b></p><span class="inline-block mt-2 px-2 py-1 text-xs font-bold rounded-full ${getRequestStatusColor(req.status)}">${translateStatus(req.status)}</span>${req.requesterNotes ? `<div class="mt-3 p-3 bg-gray-50 rounded-lg border"><p class="text-sm font-semibold text-gray-600">Observaciones:</p><p class="text-sm text-gray-800 italic">"${req.requesterNotes}"</p></div>` : ''}${req.adminNotes ? `<div class="mt-3 p-3 bg-red-50 rounded-lg border border-red-200"><p class="text-sm font-semibold text-red-800">Nota del Admin:</p><p class="text-sm text-red-900 italic">"${req.adminNotes}"</p></div>` : ''}${(role === 'admin' && req.status.startsWith('processing')) ? `<div class="mt-4 border-t pt-4"><label for="adminNotes-${req.id}" class="text-sm font-medium text-gray-700">Añadir/Editar Nota:</label><textarea id="adminNotes-${req.id}" rows="2" class="w-full mt-1 border rounded-md p-2">${req.adminNotes || ''}</textarea><button data-request-id="${req.id}" class="save-admin-note-btn mt-1 text-xs bg-gray-800 text-white px-3 py-1.5 rounded-md hover:bg-black">Guardar Nota</button></div>` : ''}</div>${requesterActionsHtml}</div><div class="mt-4"><p class="text-sm font-semibold mb-2 text-gray-600">Items:</p><ul class="space-y-2">${itemsHtml}</ul></div>${receptionEvidenceHtml}${adminActionsHtml}${receptionFormHtml}`;
-            card.querySelectorAll('.action-btn').forEach(b => b.onclick = handleAdminAction);
-            card.querySelectorAll('.finalize-reception-btn').forEach(b => b.onclick = handleFinalizeReception);
-            card.querySelectorAll('.admin-qty-input').forEach(i => i.onchange = handleAdminQuantityChange);
-            card.querySelectorAll('.delete-my-request-btn').forEach(b => b.onclick = handleDeleteMyRequest);
-            card.querySelectorAll('.save-admin-note-btn').forEach(b => b.onclick = handleSaveAdminNote);
-            card.querySelectorAll('.edit-my-request-btn').forEach(b => b.onclick = handleStartEdit);
-            return card;
-        }
+            <p class="text-sm font-semibold mb-2 text-gray-600">Items:</p>
+            <ul class="space-y-2">${itemsHtml}</ul>
+            
+            ${adminActionsHtml}
+            ${receptionFormHtml}
+        </div>
+
+        <!-- BOTÓN PARA MOSTRAR/OCULTAR -->
+        <div class="text-center mt-2">
+            <button data-request-id="${req.id}" class="toggle-details-btn text-sm font-semibold text-blue-600 hover:text-blue-800 py-1 px-3 rounded-full hover:bg-blue-50 transition-colors">
+                Ver más
+            </button>
+        </div>
+    `;
+
+    // --- Vinculación de eventos (AÑADIMOS EL NUEVO BOTÓN) ---
+    card.querySelectorAll('.action-btn').forEach(b => b.onclick = handleAdminAction);
+    card.querySelectorAll('.finalize-reception-btn').forEach(b => b.onclick = handleFinalizeReception);
+    card.querySelectorAll('.admin-qty-input').forEach(i => i.onchange = handleAdminQuantityChange);
+    card.querySelectorAll('.delete-my-request-btn').forEach(b => b.onclick = handleDeleteMyRequest);
+    card.querySelectorAll('.save-admin-note-btn').forEach(b => b.onclick = handleSaveAdminNote);
+    card.querySelectorAll('.edit-my-request-btn').forEach(b => b.onclick = handleStartEdit);
+    // ¡AÑADIMOS EL EVENTO AL NUEVO BOTÓN!
+    card.querySelectorAll('.toggle-details-btn').forEach(b => b.onclick = handleToggleDetails);
+
+    return card;
+}
 
         function transformRawJsonToProducts(rawData) { const uniqueProductStrings = new Set(); if (Array.isArray(rawData)) { rawData.forEach(item => { Object.keys(item).forEach(key => key && uniqueProductStrings.add(key.trim())); Object.values(item).forEach(val => val && uniqueProductStrings.add(val.trim())); }); } if (uniqueProductStrings.size === 0) return []; const productsMap = new Map(); let genericCounter = 1; uniqueProductStrings.forEach(fullProductName => { const parts = String(fullProductName).split(' - '); let idPart, namePart; if (parts.length > 1 && (/\d/.test(parts[0].trim()) || /^[a-zA-Z]{2,}/.test(parts[0].trim()))) { idPart = parts[0].trim().replace(/\s+/g, '-'); namePart = parts.slice(1).join(' - ').trim(); } else { idPart = `prod-gen-${genericCounter++}`; namePart = fullProductName; } let finalId = idPart, idCounter = 1; while (productsMap.has(finalId)) finalId = `${idPart}_${idCounter++}`; productsMap.set(finalId, { id: finalId, name: namePart, description: fullProductName }); }); return Array.from(productsMap.values()).sort((a, b) => a.name.localeCompare(b.name)); }
         async function handleProductUpload() { const fileInput = dom.productFile; const statusEl = dom.uploadStatus; if (fileInput.files.length === 0) { alert("Por favor, selecciona un archivo primero."); return; } const file = fileInput.files[0]; const reader = new FileReader(); reader.onload = async (event) => { let newProducts; try { const rawData = JSON.parse(event.target.result); newProducts = transformRawJsonToProducts(rawData); if (!newProducts || newProducts.length === 0) { throw new Error("No se pudieron procesar productos válidos."); } } catch (e) { statusEl.textContent = `Error: ${e.message}`; statusEl.className = 'mt-3 text-sm font-medium text-red-600'; return; } statusEl.textContent = 'Actualizando...'; statusEl.className = 'mt-3 text-sm font-medium text-blue-600'; try { const batch = db.batch(); const oldDocsSnapshot = await productsCollection.get(); oldDocsSnapshot.forEach(doc => batch.delete(doc.ref)); newProducts.forEach(product => { const docRef = productsCollection.doc(product.id); batch.set(docRef, { name: product.name, description: product.description || '' }); }); await batch.commit(); statusEl.textContent = `¡Éxito! Se actualizaron ${newProducts.length} productos.`; statusEl.className = 'mt-3 text-sm font-medium text-green-600'; allProducts = await loadAndTransformProducts(); renderProducts(allProducts); } catch (error) { console.error("Error al actualizar productos:", error); statusEl.textContent = 'Error al subir a la DB.'; statusEl.className = 'mt-3 text-sm font-medium text-red-600'; } }; reader.onerror = () => { statusEl.textContent = 'Error al leer archivo.'; statusEl.className = 'mt-3 text-sm font-medium text-red-600'; }; reader.readAsText(file); }
@@ -388,6 +424,20 @@
     // 4. (Opcional) Hacer scroll hasta el formulario para que el usuario vea que se ha cargado
     dom.transferForm.scrollIntoView({ behavior: 'smooth' });
 }
+        function handleToggleDetails(event) {
+            const button = event.currentTarget;
+            const requestId = button.dataset.requestId;
+            const detailsContainer = document.getElementById(`details-${requestId}`);
+            if (!detailsContainer) return; // Medida de seguridad
+            const isHidden = detailsContainer.classList.contains('hidden');
+            if (isHidden) {
+                detailsContainer.classList.remove('hidden');
+                button.innerHTML = 'Ver menos'; // Usamos innerHTML para poder añadir un ícono si quisiéramos
+            } else {
+                detailsContainer.classList.add('hidden');
+                button.innerHTML = 'Ver más';
+            }
+        }
 
 // NUEVA FUNCIÓN DE AYUDA: Resetea el formulario al modo "Crear"
 function resetFormToCreateMode() {
