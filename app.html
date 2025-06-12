@@ -97,6 +97,8 @@
                 <div class="max-h-[80vh] overflow-y-auto">
                     <h3 class="text-lg font-medium text-red-500 mb-2">Pendientes de Revisión</h3>
                     <div id="adminPendingRequests" class="space-y-4 mb-6"></div>
+                    <h3 class="text-lg font-medium text-orange-500 mb-2">Pendientes por Nota de Traslado</h3>
+                    <div id="adminPendingNtRequests" class="space-y-4 mb-6"></div>
                     <h3 class="text-lg font-medium text-yellow-500 mb-2">Pendientes por Recibir</h3>
                     <div id="adminShippedRequests" class="space-y-4"></div>
                 </div>
@@ -159,6 +161,7 @@
             myShippedRequests: document.getElementById('myShippedRequests'), myPendingRequests: document.getElementById('myPendingRequests'), 
             myHistoryRequests: document.getElementById('myHistoryRequests'), 
             adminPendingRequests: document.getElementById('adminPendingRequests'), // Nuevo para admin
+            adminPendingNtRequests: document.getElementById('adminPendingNtRequests'),
             adminShippedRequests: document.getElementById('adminShippedRequests'), // Nuevo para admin
             adminCompletedRequests: document.getElementById('adminCompletedRequests'), adminCancelledRequests: document.getElementById('adminCancelledRequests'),
             requesterSearchId: document.getElementById('requesterSearchId'), requesterDateFrom: document.getElementById('requesterDateFrom'),
@@ -222,29 +225,46 @@
         
         function applyFilters(requests, searchInput, dateFromInput, dateToInput) { const searchTerm = searchInput.value.toLowerCase().trim(); const dateFrom = dateFromInput.value; const dateTo = dateToInput.value; let filtered = requests; if (searchTerm) { filtered = filtered.filter(req => req.id.toLowerCase().includes(searchTerm) || (req.requesterName && req.requesterName.toLowerCase().includes(searchTerm))); } if (dateFrom) { const from = new Date(dateFrom).setHours(0,0,0,0); filtered = filtered.filter(req => req.timestamp && (req.timestamp.seconds * 1000) >= from); } if (dateTo) { const to = new Date(dateTo).setHours(23,59,59,999); filtered = filtered.filter(req => req.timestamp && (req.timestamp.seconds * 1000) <= to); } return filtered; }
         
-        function renderAllSections() {
-            if (!currentUserData) return;
-            const { name, role } = currentUserData;
-            const sortedRequests = allTransferRequests.sort((a,b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0));
-            if (role === 'requester') {
-                const allMyRequests = sortedRequests.filter(r => r.requesterName === name);
-                renderSection(dom.myShippedRequests, allMyRequests.filter(r => r.status === 'shipped'), 'requester', "No tienes traslados por recibir.");
-                const activeRequests = allMyRequests.filter(r => r.status === 'pending' || r.status.startsWith('processing'));
-                const historyRequests = allMyRequests.filter(r => r.status.startsWith('completed') || r.status === 'cancelled');
-                renderSection(dom.myPendingRequests, activeRequests, 'requester', "No tienes solicitudes activas.");
-                renderSection(dom.myHistoryRequests, historyRequests, 'requester', "No tienes historial de solicitudes.");
-            } else {
-                const pendingForReview = applyFilters(sortedRequests.filter(r => r.status === 'pending' || r.status.startsWith('processing')), dom.adminActiveSearchId, dom.adminActiveDateFrom, dom.adminActiveDateTo);
-                const pendingForReception = applyFilters(sortedRequests.filter(r => r.status === 'shipped'), dom.adminActiveSearchId, dom.adminActiveDateFrom, dom.adminActiveDateTo);
-                renderSection(dom.adminPendingRequests, pendingForReview, 'admin', "No hay solicitudes pendientes de revisión.");
-                renderSection(dom.adminShippedRequests, pendingForReception, 'admin', "No hay solicitudes pendientes por recibir.");
-                
-                const completedReqs = applyFilters(sortedRequests.filter(r => r.status.startsWith('completed')), dom.adminHistorySearchId, dom.adminHistoryDateFrom, dom.adminHistoryDateTo);
-                const cancelledReqs = applyFilters(sortedRequests.filter(r => r.status === 'cancelled'), dom.adminHistorySearchId, dom.adminHistoryDateFrom, dom.adminHistoryDateTo);
-                renderSection(dom.adminCompletedRequests, completedReqs, 'admin', "No hay solicitudes completadas.");
-                renderSection(dom.adminCancelledRequests, cancelledReqs, 'admin', "No hay solicitudes canceladas.");
-            }
-        }
+        function renderAllSections() { 
+    if (!currentUserData) return; 
+    const { name, role } = currentUserData; 
+    const sortedRequests = allTransferRequests.sort((a,b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0)); 
+    
+    if (role === 'requester') { 
+        // La lógica del solicitante no cambia
+        const allMyRequests = sortedRequests.filter(r => r.requesterName === name);
+        renderSection(dom.myShippedRequests, allMyRequests.filter(r => r.status === 'shipped'), 'requester', "No tienes traslados para recibir.");
+        
+        const myActiveRequests = applyFilters(
+            allMyRequests.filter(r => ['pending', 'processing_partial_items', 'pending_nt'].includes(r.status)),
+            dom.requesterSearchId, dom.requesterDateFrom, dom.requesterDateTo
+        );
+        const myHistoryRequests = applyFilters(
+            allMyRequests.filter(r => r.status.startsWith('completed') || r.status === 'cancelled'),
+            dom.requesterSearchId, dom.requesterDateFrom, dom.requesterDateTo
+        );
+
+        renderSection(dom.myPendingRequests, myActiveRequests, 'requester', "No tienes solicitudes activas."); 
+        renderSection(dom.myHistoryRequests, myHistoryRequests, 'requester', "No tienes historial de solicitudes."); 
+
+    } else { // Lógica del Administrador CORREGIDA
+        // 1. Filtra las solicitudes para cada sección de "Activos"
+        const pendingForReview = applyFilters(sortedRequests.filter(r => r.status === 'pending' || r.status === 'processing_partial_items'), dom.adminActiveSearchId, dom.adminActiveDateFrom, dom.adminActiveDateTo);
+        const pendingForNt = applyFilters(sortedRequests.filter(r => r.status === 'pending_nt'), dom.adminActiveSearchId, dom.adminActiveDateFrom, dom.adminActiveDateTo);
+        const pendingForReception = applyFilters(sortedRequests.filter(r => r.status === 'shipped'), dom.adminActiveSearchId, dom.adminActiveDateFrom, dom.adminActiveDateTo); 
+        
+        // 2. Renderiza cada sección en su contenedor correspondiente
+        renderSection(dom.adminPendingRequests, pendingForReview, 'admin', "No hay solicitudes pendientes de revisión."); 
+        renderSection(dom.adminPendingNtRequests, pendingForNt, 'admin', "No hay solicitudes pendientes de NT."); // <-- LÍNEA NUEVA Y CLAVE
+        renderSection(dom.adminShippedRequests, pendingForReception, 'admin', "No hay solicitudes pendientes de recibir."); 
+        
+        // La lógica del historial no cambia
+        const completedReqs = applyFilters(sortedRequests.filter(r => r.status.startsWith('completed')), dom.adminHistorySearchId, dom.adminHistoryDateFrom, dom.adminHistoryDateTo); 
+        const cancelledReqs = applyFilters(sortedRequests.filter(r => r.status === 'cancelled'), dom.adminHistorySearchId, dom.adminHistoryDateFrom, dom.adminHistoryDateTo); 
+        renderSection(dom.adminCompletedRequests, completedReqs, 'admin', "No hay solicitudes completadas."); 
+        renderSection(dom.adminCancelledRequests, cancelledReqs, 'admin', "No hay solicitudes canceladas."); 
+    } 
+}
         
         function renderSection(div, data, role, emptyMessage) { div.innerHTML = ''; if (!div) return; if (data.length === 0) { div.innerHTML = `<p class="text-gray-500 italic text-center py-4">${emptyMessage}</p>`; } else { data.forEach(req => div.appendChild(createRequestCard(req, role))); } }
         function renderProducts(productsToRender) { dom.productList.innerHTML = ''; if (!productsToRender || productsToRender.length === 0) { dom.productList.innerHTML = '<p class="text-gray-500 col-span-full text-center">No se encontraron productos.</p>'; return; } productsToRender.forEach(product => { const card = document.createElement('div'); card.className = 'border p-3 rounded-lg shadow-sm hover:shadow-md transition bg-white'; const safeId = product.id.replace(/[^a-zA-Z0-9-_]/g, ''); card.innerHTML = `<h3 class="text-sm font-semibold text-gray-900" title="${product.description}">${product.name.length > 50 ? product.name.substring(0, 47) + '...' : product.name}</h3><p class="text-xs text-gray-400 mb-2">ID: ${product.id}</p><div class="flex items-center space-x-2 mt-auto"><input type="number" min="1" value="1" id="qty-${safeId}" class="w-16 border-gray-300 rounded-md text-center p-1"><button data-product-id="${product.id}" class="add-to-transfer-btn w-full bg-gray-800 hover:bg-black text-white text-xs font-bold py-2 px-2 rounded-md transition">Añadir</button></div>`; dom.productList.appendChild(card); }); dom.productList.querySelectorAll('.add-to-transfer-btn').forEach(b => b.onclick = handleAddToTransfer); }
