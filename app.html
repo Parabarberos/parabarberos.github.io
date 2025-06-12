@@ -354,6 +354,7 @@ function createRequestCard(req, role) {
         // --- FIN DEL CAMBIO CLAVE ---
         
         if (req.status === 'pending_nt') {
+            buttons += `<button data-request-id="${req.id}" data-action="return_to_processing" class="action-btn bg-yellow-600 hover:bg-yellow-700 text-white text-xs font-semibold py-2 px-3 rounded-md mr-2">Devolver a Revisión</button>`;
             buttons += `<button data-request-id="${req.id}" data-action="shipped" class="action-btn bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold py-2 px-3 rounded-md disabled:bg-gray-400 disabled:cursor-not-allowed" ${!allNtItemsChecked ? 'disabled' : ''}>Marcar como enviado</button>`;
         }
 
@@ -604,44 +605,55 @@ async function handleAdminAction(evento) {
     let updateData = {};
 
     try {
-        const doc = await reqRef.get();
-        if (!doc.exists) return;
-        const currentItems = doc.data().items || [];
+        // No necesitamos get() aquí si solo vamos a actualizar, 
+        // a menos que necesitemos un dato previo, que no es el caso para esta acción.
 
         switch (action) {
             case 'start_processing':
-                // Inicializa la revisión: Pone el estado en 'processing' y copia las cantidades solicitadas a las enviadas.
+                // Para esta acción sí necesitamos los datos actuales para inicializar las cantidades.
+                const doc = await reqRef.get();
+                if (!doc.exists) return;
+                const currentItems = doc.data().items || [];
                 const items = currentItems.map(item => ({ ...item, sentQuantity: item.quantity, nt_checked: false }));
                 updateData = { status: 'processing_partial_items', items: items };
                 break;
 
+            // --- INICIO DEL CAMBIO ---
+            case 'return_to_processing':
+                // Acción para devolver de 'pending_nt' a 'processing'
+                if (!confirm("¿Seguro que quieres devolver esta solicitud a revisión? Se perderá el progreso de las casillas marcadas.")) {
+                    return;
+                }
+                // Simplemente cambiamos el estado. Los datos de 'sentQuantity' se conservan.
+                updateData = { status: 'processing_partial_items' };
+                break;
+            // --- FIN DEL CAMBIO ---
+            
             case 'move_to_nt':
-                // Mueve la solicitud a la siguiente fase (Pendiente por NT)
                 if (!confirm("¿Estás seguro de que quieres finalizar la revisión y mover esta solicitud a 'Pendiente por NT'? Ya no podrás editar las cantidades.")) {
                     return;
                 }
-                const itemsWithNt = currentItems.map(item => ({ ...item, nt_checked: item.nt_checked || false }));
-                updateData = { status: 'pending_nt', items: itemsWithNt };
+                // No necesitamos get() aquí, pero nos aseguramos de que nt_checked exista
+                const moveDoc = await reqRef.get();
+                if (!moveDoc.exists) return;
+                const itemsToMove = moveDoc.data().items.map(item => ({ ...item, nt_checked: item.nt_checked || false }));
+                updateData = { status: 'pending_nt', items: itemsToMove };
                 break;
 
             case 'shipped':
-                // Marca la solicitud como enviada
                 if (!confirm("¿Marcar este traslado como ENVIADO?")) return;
                 updateData = { status: 'shipped' };
                 break;
 
             case 'cancel':
-                // Cancela la solicitud
                 if (!confirm("¿Cancelar esta solicitud?")) return;
                 updateData = { status: 'cancelled' };
                 break;
             
             default:
-                // Si la acción no es reconocida, no hace nada.
                 return;
         }
 
-        // Si se preparó alguna actualización, se ejecuta aquí.
         if (Object.keys(updateData).length > 0) {
             await reqRef.update(updateData);
         }
