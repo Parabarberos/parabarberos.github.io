@@ -307,12 +307,12 @@
             }
         }
 
-        // --- FUNCIÓN 'createRequestCard' CORREGIDA ---
+        // --- FUNCIÓN 'createRequestCard' CORREGIDA FINAL ---
         function createRequestCard(req, role) {
             const isExpanded = expandedRequestsState.has(req.id);
             const card = document.createElement('div');
-            // AÑADIMOS 'flex flex-col' para que la tarjeta pueda estirarse
-            card.className = `p-4 rounded-lg shadow-sm mb-4 flex flex-col ${getRequestStatusColor(req.status)}`;
+            // *** CAMBIO 1: Añadimos 'flex flex-col' a la tarjeta principal ***
+            card.className = `p-4 rounded-lg shadow-sm flex flex-col ${getRequestStatusColor(req.status)}`;
         
             const isShipped = req.status === 'shipped';
             const hasItems = req.items && req.items.length > 0;
@@ -376,7 +376,7 @@
             const creationDate = req.timestamp ? new Date(req.timestamp.seconds * 1000).toLocaleDateString('es-CO') : '';
             const hasDetailsToShow = hasItems || req.requesterNotes || req.adminNotes || adminActionsHtml || receptionFormHtml;
         
-            // AÑADIMOS 'flex-grow' al contenedor de los detalles para que ocupe el espacio sobrante
+            // *** CAMBIO 2: Añadimos 'flex-grow' al div de detalles para que se estire ***
             card.innerHTML = `
                 <div class="flex justify-between items-start">
                     <div>
