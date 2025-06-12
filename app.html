@@ -608,32 +608,43 @@ async function handleAdminAction(evento) {
         if (!doc.exists) return;
         const currentItems = doc.data().items || [];
 
-        if (action === 'start_processing') {
-            const items = currentItems.map(item => ({ ...item, sentQuantity: item.quantity, nt_checked: false }));
-            updateData = { status: 'processing_partial_items', items: items };
-        
-        } else if (action === 'move_to_nt') { // <-- NUEVA ACCIÓN
-            // Esta acción ahora es la que mueve la solicitud a la fase de NT
-            if (!confirm("¿Estás seguro de que quieres finalizar la revisión y mover esta solicitud a 'Pendiente por NT'? Ya no podrás editar las cantidades.")) {
-                return;
-            }
-            // Prepara los items para la fase de NT
-            const itemsWithNt = currentItems.map(item => ({ ...item, nt_checked: item.nt_checked || false }));
-            updateData = { status: 'pending_nt', items: itemsWithNt };
+        switch (action) {
+            case 'start_processing':
+                // Inicializa la revisión: Pone el estado en 'processing' y copia las cantidades solicitadas a las enviadas.
+                const items = currentItems.map(item => ({ ...item, sentQuantity: item.quantity, nt_checked: false }));
+                updateData = { status: 'processing_partial_items', items: items };
+                break;
 
-        } else if (action === 'shipped') {
-            if (!confirm("¿Marcar este traslado como ENVIADO?")) return;
-            updateData = { status: 'shipped' };
-        
-        } else if (action === 'cancel') {
-            if (!confirm("¿Cancelar esta solicitud?")) return;
-            updateData = { status: 'cancelled' };
-        
-        } else {
-            return;
+            case 'move_to_nt':
+                // Mueve la solicitud a la siguiente fase (Pendiente por NT)
+                if (!confirm("¿Estás seguro de que quieres finalizar la revisión y mover esta solicitud a 'Pendiente por NT'? Ya no podrás editar las cantidades.")) {
+                    return;
+                }
+                const itemsWithNt = currentItems.map(item => ({ ...item, nt_checked: item.nt_checked || false }));
+                updateData = { status: 'pending_nt', items: itemsWithNt };
+                break;
+
+            case 'shipped':
+                // Marca la solicitud como enviada
+                if (!confirm("¿Marcar este traslado como ENVIADO?")) return;
+                updateData = { status: 'shipped' };
+                break;
+
+            case 'cancel':
+                // Cancela la solicitud
+                if (!confirm("¿Cancelar esta solicitud?")) return;
+                updateData = { status: 'cancelled' };
+                break;
+            
+            default:
+                // Si la acción no es reconocida, no hace nada.
+                return;
         }
 
-        await reqRef.update(updateData);
+        // Si se preparó alguna actualización, se ejecuta aquí.
+        if (Object.keys(updateData).length > 0) {
+            await reqRef.update(updateData);
+        }
 
     } catch(e) {
         console.error("Error al actualizar la solicitud:", e);
