@@ -1,3 +1,127 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TRASLADOS ENTRE BODEGAS PARABARBEROS S.A.S.</title>
+    <link rel="icon" type="image/jpeg" href="https://parabarberos.github.io/2.jpg">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-firestore-compat.js"></script>
+    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+    <style>
+        .modal-backdrop {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-color: rgba(0, 0, 0, 0.6); display: flex;
+            justify-content: center; align-items: center; z-index: 1000;
+        }
+        .modal-content {
+            background-color: white; padding: 2rem; border-radius: 0.75rem;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1); width: 90%;
+            max-width: 600px; max-height: 90vh; overflow-y: auto;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 font-sans">
+    <div class="container mx-auto p-4 md:p-8">
+        <header class="mb-12 text-center">
+            <div class="inline-block p-2 bg-white rounded-full shadow-lg mx-auto mb-6 border-4 border-gray-200">
+                <img src="https://parabarberos.github.io/2.jpg" alt="Logo Parabarberos" class="h-24 w-24 md:h-32 md:w-32 rounded-full">
+            </div>
+            <h1 class="text-4xl md:text-5xl font-extrabold text-gray-800 tracking-tight">TRASLADOS ENTRE BODEGAS</h1>
+            <div class="mt-8 flex justify-center items-center gap-4">
+                <div><span class="text-gray-600">Usuario:</span><span id="userEmailDisplay" class="font-bold text-gray-800">Cargando...</span></div>
+                <button id="logoutBtn" class="bg-gray-200 hover:bg-red-200 text-red-700 font-semibold py-2 px-4 border border-red-300 rounded-lg shadow-sm">Cerrar Sesión</button>
+            </div>
+        </header>
+
+        <!-- VISTA DE SOLICITANTE -->
+        <div id="requesterView" class="grid grid-cols-1 lg:grid-cols-3 gap-8" style="display: none;">
+            <div class="lg:col-span-2 space-y-8">
+                <div class="bg-white p-6 rounded-xl shadow-lg card">
+                    <h2 id="formTitle" class="text-2xl font-semibold mb-4 text-gray-800 border-b pb-3">Nueva solicitud de traslado</h2>
+                    <div class="mb-4"><input type="search" id="searchInput" placeholder="Buscar producto..." class="w-full px-4 py-2 border border-gray-300 rounded-lg"></div>
+                    <div id="productList" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 mb-6 min-h-[200px] max-h-[50vh] overflow-y-auto p-4 bg-gray-50 rounded-lg"></div>
+                    <h3 class="text-xl font-semibold mb-3 text-gray-800"> Productos seleccionados</h3>
+                    <div id="currentTransferRequest" class="space-y-3 mb-6 min-h-[100px] max-h-[40vh] overflow-y-auto p-4 bg-gray-50 rounded-lg"></div>
+                    <form id="transferForm" class="space-y-4 border-t pt-6">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div><label for="toWarehouse" class="block text-sm font-medium text-gray-700">Bodega Destino:</label><select id="toWarehouse" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm"></select></div>
+                            <div><label for="requesterName" class="block text-sm font-medium text-gray-700">Solicitante:</label><select id="requesterName" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm bg-gray-100" disabled></select></div>
+                            <div><label for="deliveryDate" class="block text-sm font-medium text-gray-700">Fecha de solicitud</label><input type="date" id="deliveryDate" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm"></div>
+                        </div>
+                        <input type="hidden" id="fromWarehouse" value="Bodega Principal">
+                        <div><label for="requesterNotes" class="block text-sm font-medium text-gray-700">Observaciones</label><textarea id="requesterNotes" rows="2" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm" placeholder="Ej: Necesito este pedido con urgencia..."></textarea></div>
+                        <div class="flex space-x-2"><button type="submit" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-4 rounded-lg shadow-lg">ENVIAR SOLICITUD</button><button type="button" id="cancelEditBtn" class="w-1/3 bg-gray-500 hover:bg-gray-600 text-white font-bold py-3 px-4 rounded-lg shadow-lg" style="display: none;">Cancelar Edición</button></div>
+                    </form>
+                </div>
+            </div>
+            <div class="lg:col-span-1 bg-white p-6 rounded-xl shadow-lg card">
+                <h3 class="text-2xl font-semibold mb-4 text-gray-800 border-b pb-3">Mis solicitudes</h3>
+                <h4 class="text-xl font-bold text-blue-600 mb-2">Por Recibir</h4>
+                <div id="myShippedRequests" class="space-y-4 mb-6 border-b pb-6"></div>
+                <div class="space-y-2 mb-4">
+                    <input type="text" id="requesterSearchId" placeholder="Buscar por ID..." class="w-full px-3 py-2 border rounded-lg">
+                    <div class="grid grid-cols-2 gap-2"><input type="date" id="requesterDateFrom" class="w-full px-3 py-2 border rounded-lg text-sm" title="Fecha Desde"><input type="date" id="requesterDateTo" class="w-full px-3 py-2 border rounded-lg text-sm" title="Fecha Hasta"></div>
+                </div>
+                <div class="max-h-[80vh] overflow-y-auto">
+                    <h4 class="text-lg font-medium text-gray-700 mb-2">Activas</h4>
+                    <div id="myPendingRequests" class="space-y-4 mb-6"></div>
+                    <h4 class="text-lg font-medium text-gray-700 mb-2">Historial</h4>
+                    <div id="myHistoryRequests" class="space-y-4"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- VISTA DE ADMINISTRADOR -->
+        <div id="adminView" class="grid grid-cols-1 lg:grid-cols-2 gap-8" style="display: none;">
+            <div id="productManagementCard" class="lg:col-span-2 bg-white p-6 rounded-xl shadow-lg card" style="display: none;">
+                <h2 class="text-2xl font-semibold mb-4 text-gray-800 border-b pb-3">Gestión de Productos</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+                    <div><p class="text-sm text-gray-600 mb-2">Sube un archivo <strong>JSON</strong> para actualizar la lista de productos.</p><pre class="bg-gray-100 p-3 rounded-lg text-xs text-gray-700 overflow-x-auto">[{"...":"..."}]</pre></div>
+                    <div class="text-center">
+                        <label for="productFile" class="cursor-pointer w-full inline-block bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg shadow-lg">Seleccionar Archivo JSON</label>
+                        <input type="file" id="productFile" class="hidden" accept=".json">
+                        <span id="fileNameDisplay" class="block text-sm text-gray-500 mt-2 truncate">Ningún archivo seleccionado.</span>
+                        <button id="uploadProductsBtn" class="mt-4 w-full bg-gray-800 hover:bg-black text-white font-bold py-3 px-4 rounded-lg shadow-lg">Actualizar Base de Datos</button>
+                        <p id="uploadStatus" class="mt-3 text-sm font-medium"></p>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-white p-6 rounded-xl shadow-lg card">
+                <h2 class="text-2xl font-semibold mb-4 text-gray-800 border-b pb-3">Traslados Activos</h2>
+                <div class="space-y-2 mb-4">
+                    <input type="text" id="adminActiveSearchId" placeholder="Buscar por ID o Solicitante..." class="w-full px-3 py-2 border rounded-lg">
+                    <div class="grid grid-cols-2 gap-2"><input type="date" id="adminActiveDateFrom" class="w-full px-3 py-2 border rounded-lg text-sm" title="Fecha Desde"><input type="date" id="adminActiveDateTo" class="w-full px-3 py-2 border rounded-lg text-sm" title="Fecha Hasta"></div>
+                </div>
+                <div class="max-h-[80vh] overflow-y-auto">
+                    <h3 class="text-lg font-medium text-red-500 mb-2">Pendientes de Revisión</h3>
+                    <div id="adminPendingRequests" class="space-y-4 mb-6"></div>
+                    <h3 class="text-lg font-medium text-yellow-500 mb-2">Pendientes por Recibir</h3>
+                    <div id="adminShippedRequests" class="space-y-4"></div>
+                </div>
+            </div>
+            <div class="bg-white p-6 rounded-xl shadow-lg card">
+                <div class="flex justify-between items-center border-b pb-3 mb-4">
+                    <h2 class="text-2xl font-semibold text-gray-800">Historial</h2>
+                    <button id="exportExcelBtn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg shadow-md flex items-center space-x-2"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg><span>Exportar</span></button>
+                </div>
+                <div class="space-y-2 mb-4">
+                    <input type="text" id="adminHistorySearchId" placeholder="Buscar por ID o Solicitante..." class="w-full px-3 py-2 border rounded-lg">
+                    <div class="grid grid-cols-2 gap-2"><input type="date" id="adminHistoryDateFrom" class="w-full px-3 py-2 border rounded-lg text-sm" title="Fecha Desde"><input type="date" id="adminHistoryDateTo" class="w-full px-3 py-2 border rounded-lg text-sm" title="Fecha Hasta"></div>
+                </div>
+                <div class="max-h-[80vh] overflow-y-auto">
+                    <h3 class="text-lg font-medium text-green-600 mb-2">Completadas</h3>
+                    <div id="adminCompletedRequests" class="space-y-4 mb-6"></div>
+                    <h3 class="text-lg font-medium text-red-700 mb-2">Canceladas</h3>
+                    <div id="adminCancelledRequests" class="space-y-4"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div id="edit-modal-container"></div>
+
 <script>
     document.addEventListener('DOMContentLoaded', () => {
 
@@ -69,6 +193,7 @@
                 initializeApp();
             } else { window.location.href = 'index.html'; }
         });
+
         dom.logoutBtn.onclick = () => auth.signOut();
         dom.cancelEditBtn.onclick = () => resetTransferForm();
         
@@ -101,7 +226,30 @@
         function renderSection(div, data, role, emptyMessage) { if (!div) return; div.innerHTML = ''; if (data.length === 0) { div.innerHTML = `<p class="text-gray-500 italic text-center py-4">${emptyMessage}</p>`; } else { data.forEach(req => div.appendChild(createRequestCard(req, role))); } }
         function renderProducts(productsToRender) { dom.productList.innerHTML = ''; if (!productsToRender || productsToRender.length === 0) { dom.productList.innerHTML = '<p class="text-gray-500 col-span-full text-center">No se encontraron productos.</p>'; return; } productsToRender.forEach(product => { const card = document.createElement('div'); card.className = 'border p-3 rounded-lg shadow-sm hover:shadow-md transition bg-white'; const safeId = product.id.replace(/[^a-zA-Z0-9-_]/g, ''); card.innerHTML = `<h3 class="text-sm font-semibold text-gray-900" title="${product.description}">${product.name.length > 50 ? product.name.substring(0, 47) + '...' : product.name}</h3><p class="text-xs text-gray-400 mb-2">ID: ${product.id}</p><div class="flex items-center space-x-2 mt-auto"><input type="number" min="1" value="1" id="qty-${safeId}" class="w-16 border-gray-300 rounded-md text-center p-1"><button data-product-id="${product.id}" class="add-to-transfer-btn w-full bg-gray-800 hover:bg-black text-white text-xs font-bold py-2 px-2 rounded-md transition">Añadir</button></div>`; dom.productList.appendChild(card); }); dom.productList.querySelectorAll('.add-to-transfer-btn').forEach(b => b.onclick = handleAddToTransfer); }
         function renderCurrentTransfer() { dom.currentTransferRequest.innerHTML = ''; if (currentTransferItems.length === 0) { dom.currentTransferRequest.innerHTML = '<p class="text-gray-500 italic text-center py-4">Añade productos desde la lista de arriba.</p>'; return; } const ul = document.createElement('ul'); ul.className = 'space-y-2'; currentTransferItems.forEach((item, index) => { const li = document.createElement('li'); li.className = 'flex justify-between items-center p-3 bg-white rounded-lg shadow-sm'; li.innerHTML = `<div><span class="font-medium text-gray-800">${item.productName}</span><span class="text-xs text-gray-500 block">ID: ${item.productId}</span></div><div class="flex items-center space-x-2"><input type="number" min="1" value="${item.quantity}" data-item-index="${index}" class="w-16 p-1 border rounded item-quantity-input text-center"><button data-item-index="${index}" class="remove-item-btn text-red-500 hover:text-red-700 font-bold p-1">✕</button></div>`; ul.appendChild(li); }); dom.currentTransferRequest.appendChild(ul); dom.currentTransferRequest.querySelectorAll('.item-quantity-input').forEach(input => input.onchange = handleUpdateItemQuantity); dom.currentTransferRequest.querySelectorAll('.remove-item-btn').forEach(button => button.onclick = handleRemoveItem); }
-        function createRequestCard(req, role) { const card = document.createElement('div'); card.className = `p-4 rounded-lg shadow-sm mb-4 ${getRequestStatusColor(req.status)}`; const isShipped = req.status === 'shipped'; const isFinalized = req.status.startsWith('completed'); const itemsHtml = (req.items || []).map((item, index) => { let quantityDisplay = `Solicitado: <b>${item.quantity}</b>`; if (item.sentQuantity !== undefined && item.sentQuantity > 0) { quantityDisplay += ` | Enviado: <b>${item.sentQuantity}</b>`; } if (item.receivedQuantity !== undefined) { const color = item.receivedQuantity < item.sentQuantity ? 'text-red-600' : 'text-green-700'; quantityDisplay += ` | Recibido: <b class="${color}">${item.receivedQuantity}</b>`; } const receptionInput = (role === 'requester' && isShipped) ? `<div class="flex items-center"><label class="text-sm mr-2">Recibido:</label><input type="number" value="${item.sentQuantity}" data-request-id="${req.id}" data-item-index="${index}" class="reception-qty-input w-20 p-1 border rounded-md text-center"></div>` : ``; const adminInput = (role === 'admin' && req.status.startsWith('processing')) ? `<input type="number" value="${item.sentQuantity}" data-request-id="${req.id}" data-item-index="${index}" class="admin-qty-input w-20 p-1 border rounded-md text-center">` : ``; return `<li class="p-2 rounded-md bg-white flex justify-between items-center text-sm"><div><span class="font-medium text-gray-800">${item.productName}</span><div class="text-xs text-gray-600">${quantityDisplay}</div></div>${receptionInput}${adminInput}</li>`; }).join(''); let adminActionsHtml = '', requesterActionsHtml = ''; if (role === 'admin') { let buttons = ''; if (req.status === 'pending' || req.status.startsWith('processing')) { if (req.status === 'pending') buttons += `<button data-request-id="${req.id}" data-action="start_processing" class="action-btn bg-gray-800 hover:bg-black text-white text-xs font-semibold py-2 px-3 rounded-md mr-1">Iniciar Revisión</button>`; if (req.status.startsWith('processing')) { buttons += `<button data-request-id="${req.id}" data-action="shipped" class="action-btn bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold py-2 px-3 rounded-md">Marcar como Enviado</button>`; } } if (req.status === 'shipped') { buttons += `<button data-request-id="${req.id}" class="edit-shipment-btn bg-orange-500 hover:bg-orange-600 text-white text-xs font-semibold py-2 px-3 rounded-md">Editar Envío</button>`; } if (!isFinalized && req.status !== 'cancelled') { buttons += `<button data-request-id="${req.id}" data-action="cancel" class="action-btn bg-red-700 hover:bg-red-800 text-white text-xs font-semibold py-2 px-3 rounded-md ml-1">Cancelar</button>`; } if (buttons) { adminActionsHtml = `<div class="mt-4 border-t pt-4 text-right">${buttons}</div>`; } } if (role === 'requester' && req.status === 'pending') { requesterActionsHtml = `<div class="flex flex-col space-y-2"><button data-request-id="${req.id}" class="edit-my-request-btn bg-blue-500 hover:bg-blue-600 text-white text-xs font-semibold py-1 px-2 rounded-md">Editar</button><button data-request-id="${req.id}" class="delete-my-request-btn bg-red-600 hover:bg-red-700 text-white text-xs font-semibold py-1 px-2 rounded-md">Eliminar</button></div>`; } let receptionFormHtml = ''; if (role === 'requester' && isShipped) { receptionFormHtml = `<div class="mt-4 border-t-2 border-blue-200 pt-4 space-y-3"><h5 class="font-bold text-md text-blue-700">Confirmar Recepción</h5><div><label class="block text-sm font-medium text-gray-700">Observaciones:</label><textarea id="receptionNotes-${req.id}" rows="2" class="w-full mt-1 border rounded-md p-2" placeholder="Ej: La caja llegó golpeada..."></textarea></div><button data-request-id="${req.id}" class="finalize-reception-btn w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-3 rounded-md">Finalizar Recepción</button></div>`; } let receptionEvidenceHtml = ''; if (isFinalized && req.reception && req.reception.notes) { receptionEvidenceHtml = `<div class="mt-3 p-3 bg-green-50 rounded-lg border border-green-200"><p class="text-sm font-semibold text-green-800">Revisión del Solicitante:</p><p class="text-sm text-green-900 italic">"${req.reception.notes}"</p></div>`; } const reqDate = req.deliveryDate ? new Date(req.deliveryDate + 'T00:00:00').toLocaleDateString('es-CO', { year: 'numeric', month: 'long', day: 'numeric' }) : 'No especificada'; const creationDate = req.timestamp ? new Date(req.timestamp.seconds * 1000).toLocaleDateString('es-CO') : ''; card.innerHTML = `<div class="flex justify-between items-start"><div><h4 class="font-semibold text-lg text-gray-800">${req.requesterName}</h4><p class="text-sm text-gray-600">Para: <strong>${req.toWarehouse}</strong></p><p class="text-xs text-gray-400">ID: ${req.id} | Creada: ${creationDate}</p><p class="text-sm mt-1">Fecha Requerida: <b>${reqDate}</b></p><span class="inline-block mt-2 px-2 py-1 text-xs font-bold rounded-full ${getRequestStatusColor(req.status)}">${translateStatus(req.status)}</span>${req.requesterNotes ? `<div class="mt-3 p-3 bg-gray-50 rounded-lg border"><p class="text-sm font-semibold text-gray-600">Observaciones:</p><p class="text-sm text-gray-800 italic">"${req.requesterNotes}"</p></div>` : ''}${req.adminNotes ? `<div class="mt-3 p-3 bg-red-50 rounded-lg border border-red-200"><p class="text-sm font-semibold text-red-800">Nota del Admin:</p><p class="text-sm text-red-900 italic">"${req.adminNotes}"</p></div>` : ''}${(role === 'admin' && req.status.startsWith('processing')) ? `<div class="mt-4 border-t pt-4"><label for="adminNotes-${req.id}" class="text-sm font-medium text-gray-700">Añadir/Editar Nota:</label><textarea id="adminNotes-${req.id}" rows="2" class="w-full mt-1 border rounded-md p-2">${req.adminNotes || ''}</textarea><button data-request-id="${req.id}" class="save-admin-note-btn mt-1 text-xs bg-gray-800 text-white px-3 py-1.5 rounded-md hover:bg-black">Guardar Nota</button></div>` : ''}</div>${requesterActionsHtml}</div><div class="mt-4"><p class="text-sm font-semibold mb-2 text-gray-600">Items:</p><ul class="space-y-2">${itemsHtml}</ul></div>${receptionEvidenceHtml}${adminActionsHtml}${receptionFormHtml}`; card.querySelectorAll('.action-btn').forEach(b => b.onclick = handleAdminAction); card.querySelectorAll('.finalize-reception-btn').forEach(b => b.onclick = handleFinalizeReception); card.querySelectorAll('.admin-qty-input').forEach(i => i.onchange = handleAdminQuantityChange); card.querySelectorAll('.delete-my-request-btn').forEach(b => b.onclick = handleDeleteMyRequest); card.querySelectorAll('.edit-my-request-btn').forEach(b => b.onclick = handleEditRequest); card.querySelectorAll('.edit-shipment-btn').forEach(b => b.onclick = openEditShipmentModal); card.querySelectorAll('.save-admin-note-btn').forEach(b => b.onclick = handleSaveAdminNote); return card; }
+        
+        function createRequestCard(req, role) {
+            const card = document.createElement('div');
+            card.className = `p-4 rounded-lg shadow-sm mb-4 ${getRequestStatusColor(req.status)}`;
+            const isShipped = req.status === 'shipped';
+            const isFinalized = req.status.startsWith('completed');
+            const itemsHtml = (req.items || []).map((item, index) => { let quantityDisplay = `Solicitado: <b>${item.quantity}</b>`; if (item.sentQuantity !== undefined && item.sentQuantity > 0) { quantityDisplay += ` | Enviado: <b>${item.sentQuantity}</b>`; } if (item.receivedQuantity !== undefined) { const color = item.receivedQuantity < item.sentQuantity ? 'text-red-600' : 'text-green-700'; quantityDisplay += ` | Recibido: <b class="${color}">${item.receivedQuantity}</b>`; } const receptionInput = (role === 'requester' && isShipped) ? `<div class="flex items-center"><label class="text-sm mr-2">Recibido:</label><input type="number" value="${item.sentQuantity}" data-request-id="${req.id}" data-item-index="${index}" class="reception-qty-input w-20 p-1 border rounded-md text-center"></div>` : ``; const adminInput = (role === 'admin' && req.status.startsWith('processing')) ? `<input type="number" value="${item.sentQuantity}" data-request-id="${req.id}" data-item-index="${index}" class="admin-qty-input w-20 p-1 border rounded-md text-center">` : ``; return `<li class="p-2 rounded-md bg-white flex justify-between items-center text-sm"><div><span class="font-medium text-gray-800">${item.productName}</span><div class="text-xs text-gray-600">${quantityDisplay}</div></div>${receptionInput}${adminInput}</li>`; }).join('');
+            let adminActionsHtml = '', requesterActionsHtml = '';
+            if (role === 'admin') { let buttons = ''; if (req.status === 'pending' || req.status.startsWith('processing')) { if (req.status === 'pending') buttons += `<button data-request-id="${req.id}" data-action="start_processing" class="action-btn bg-gray-800 hover:bg-black text-white text-xs font-semibold py-2 px-3 rounded-md mr-1">Iniciar Revisión</button>`; if (req.status.startsWith('processing')) { buttons += `<button data-request-id="${req.id}" data-action="shipped" class="action-btn bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold py-2 px-3 rounded-md">Marcar como Enviado</button>`; } } if (req.status === 'shipped') { buttons += `<button data-request-id="${req.id}" class="edit-shipment-btn bg-orange-500 hover:bg-orange-600 text-white text-xs font-semibold py-2 px-3 rounded-md">Editar Envío</button>`; } if (!isFinalized && req.status !== 'cancelled') { buttons += `<button data-request-id="${req.id}" data-action="cancel" class="action-btn bg-red-700 hover:bg-red-800 text-white text-xs font-semibold py-2 px-3 rounded-md ml-1">Cancelar</button>`; } if (buttons) { adminActionsHtml = `<div class="mt-4 border-t pt-4 text-right">${buttons}</div>`; } }
+            if (role === 'requester' && req.status === 'pending') { requesterActionsHtml = `<div class="flex flex-col space-y-2"><button data-request-id="${req.id}" class="edit-my-request-btn bg-blue-500 hover:bg-blue-600 text-white text-xs font-semibold py-1 px-2 rounded-md">Editar</button><button data-request-id="${req.id}" class="delete-my-request-btn bg-red-600 hover:bg-red-700 text-white text-xs font-semibold py-1 px-2 rounded-md">Eliminar</button></div>`; }
+            let receptionFormHtml = ''; if (role === 'requester' && isShipped) { receptionFormHtml = `<div class="mt-4 border-t-2 border-blue-200 pt-4 space-y-3"><h5 class="font-bold text-md text-blue-700">Confirmar Recepción</h5><div><label class="block text-sm font-medium text-gray-700">Observaciones:</label><textarea id="receptionNotes-${req.id}" rows="2" class="w-full mt-1 border rounded-md p-2" placeholder="Ej: La caja llegó golpeada..."></textarea></div><button data-request-id="${req.id}" class="finalize-reception-btn w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-3 rounded-md">Finalizar Recepción</button></div>`; }
+            let receptionEvidenceHtml = ''; if (isFinalized && req.reception && req.reception.notes) { receptionEvidenceHtml = `<div class="mt-3 p-3 bg-green-50 rounded-lg border border-green-200"><p class="text-sm font-semibold text-green-800">Revisión del Solicitante:</p><p class="text-sm text-green-900 italic">"${req.reception.notes}"</p></div>`; }
+            const reqDate = req.deliveryDate ? new Date(req.deliveryDate + 'T00:00:00').toLocaleDateString('es-CO', { year: 'numeric', month: 'long', day: 'numeric' }) : 'No especificada'; const creationDate = req.timestamp ? new Date(req.timestamp.seconds * 1000).toLocaleDateString('es-CO') : '';
+            card.innerHTML = `<div class="flex justify-between items-start"><div><h4 class="font-semibold text-lg text-gray-800">${req.requesterName}</h4><p class="text-sm text-gray-600">Para: <strong>${req.toWarehouse}</strong></p><p class="text-xs text-gray-400">ID: ${req.id} | Creada: ${creationDate}</p><p class="text-sm mt-1">Fecha Requerida: <b>${reqDate}</b></p><span class="inline-block mt-2 px-2 py-1 text-xs font-bold rounded-full ${getRequestStatusColor(req.status)}">${translateStatus(req.status)}</span>${req.requesterNotes ? `<div class="mt-3 p-3 bg-gray-50 rounded-lg border"><p class="text-sm font-semibold text-gray-600">Observaciones:</p><p class="text-sm text-gray-800 italic">"${req.requesterNotes}"</p></div>` : ''}${req.adminNotes ? `<div class="mt-3 p-3 bg-red-50 rounded-lg border border-red-200"><p class="text-sm font-semibold text-red-800">Nota del Admin:</p><p class="text-sm text-red-900 italic">"${req.adminNotes}"</p></div>` : ''}${(role === 'admin' && req.status.startsWith('processing')) ? `<div class="mt-4 border-t pt-4"><label for="adminNotes-${req.id}" class="text-sm font-medium text-gray-700">Añadir/Editar Nota:</label><textarea id="adminNotes-${req.id}" rows="2" class="w-full mt-1 border rounded-md p-2">${req.adminNotes || ''}</textarea><button data-request-id="${req.id}" class="save-admin-note-btn mt-1 text-xs bg-gray-800 text-white px-3 py-1.5 rounded-md hover:bg-black">Guardar Nota</button></div>` : ''}</div>${requesterActionsHtml}</div><div class="mt-4"><p class="text-sm font-semibold mb-2 text-gray-600">Items:</p><ul class="space-y-2">${itemsHtml}</ul></div>${receptionEvidenceHtml}${adminActionsHtml}${receptionFormHtml}`;
+            card.querySelectorAll('.action-btn').forEach(b => b.onclick = handleAdminAction);
+            card.querySelectorAll('.finalize-reception-btn').forEach(b => b.onclick = handleFinalizeReception);
+            card.querySelectorAll('.admin-qty-input').forEach(i => i.onchange = handleAdminQuantityChange);
+            card.querySelectorAll('.delete-my-request-btn').forEach(b => b.onclick = handleDeleteMyRequest);
+            card.querySelectorAll('.edit-my-request-btn').forEach(b => b.onclick = handleEditRequest);
+            card.querySelectorAll('.edit-shipment-btn').forEach(b => b.onclick = openEditShipmentModal);
+            card.querySelectorAll('.save-admin-note-btn').forEach(b => b.onclick = handleSaveAdminNote);
+            return card;
+        }
+
         function resetTransferForm() { editingRequestId = null; currentTransferItems = []; renderCurrentTransfer(); dom.transferForm.reset(); dom.formTitle.textContent = 'Nueva solicitud de traslado'; dom.transferForm.querySelector('button[type="submit"]').textContent = 'ENVIAR SOLICITUD'; dom.cancelEditBtn.style.display = 'none'; localStorage.removeItem('currentTransferDraft'); }
         function transformRawJsonToProducts(rawData) { const uniqueProductStrings = new Set(); if (Array.isArray(rawData)) { rawData.forEach(item => { Object.keys(item).forEach(key => key && uniqueProductStrings.add(key.trim())); Object.values(item).forEach(val => val && uniqueProductStrings.add(val.trim())); }); } if (uniqueProductStrings.size === 0) return []; const productsMap = new Map(); let genericCounter = 1; uniqueProductStrings.forEach(fullProductName => { const parts = String(fullProductName).split(' - '); let idPart, namePart; if (parts.length > 1 && (/\d/.test(parts[0].trim()) || /^[a-zA-Z]{2,}/.test(parts[0].trim()))) { idPart = parts[0].trim().replace(/\s+/g, '-'); namePart = parts.slice(1).join(' - ').trim(); } else { idPart = `prod-gen-${genericCounter++}`; namePart = fullProductName; } let finalId = idPart, idCounter = 1; while (productsMap.has(finalId)) finalId = `${idPart}_${idCounter++}`; productsMap.set(finalId, { id: finalId, name: namePart, description: fullProductName }); }); return Array.from(productsMap.values()).sort((a, b) => a.name.localeCompare(b.name)); }
         async function handleProductUpload() { const fileInput = dom.productFile; const statusEl = dom.uploadStatus; if (fileInput.files.length === 0) { alert("Por favor, selecciona un archivo primero."); return; } const file = fileInput.files[0]; const reader = new FileReader(); reader.onload = async (event) => { let newProducts; try { const rawData = JSON.parse(event.target.result); newProducts = transformRawJsonToProducts(rawData); if (!newProducts || newProducts.length === 0) { throw new Error("No se pudieron procesar productos válidos."); } } catch (e) { statusEl.textContent = `Error: ${e.message}`; statusEl.className = 'mt-3 text-sm font-medium text-red-600'; return; } statusEl.textContent = 'Actualizando...'; statusEl.className = 'mt-3 text-sm font-medium text-blue-600'; try { const batch = db.batch(); const oldDocsSnapshot = await productsCollection.get(); oldDocsSnapshot.forEach(doc => batch.delete(doc.ref)); newProducts.forEach(product => { const docRef = productsCollection.doc(product.id); batch.set(docRef, { name: product.name, description: product.description || '' }); }); await batch.commit(); statusEl.textContent = `¡Éxito! Se actualizaron ${newProducts.length} productos.`; statusEl.className = 'mt-3 text-sm font-medium text-green-600'; allProducts = await loadAndTransformProducts(); renderProducts(allProducts); } catch (error) { console.error("Error al actualizar productos:", error); statusEl.textContent = 'Error al subir a la DB.'; statusEl.className = 'mt-3 text-sm font-medium text-red-600'; } }; reader.onerror = () => { statusEl.textContent = 'Error al leer archivo.'; statusEl.className = 'mt-3 text-sm font-medium text-red-600'; }; reader.readAsText(file); }
