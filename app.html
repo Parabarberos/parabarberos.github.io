@@ -1,3 +1,127 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TRASLADOS ENTRE BODEGAS PARABARBEROS S.A.S.</title>
+    <link rel="icon" type="image/jpeg" href="https://parabarberos.github.io/2.jpg">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-firestore-compat.js"></script>
+    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+</head>
+<body class="bg-gray-100 font-sans">
+    <div class="container mx-auto p-4 md:p-8">
+        <header class="mb-12 text-center">
+            <div class="inline-block p-2 bg-white rounded-full shadow-lg mx-auto mb-6 border-4 border-gray-200">
+                <img src="https://parabarberos.github.io/2.jpg" alt="Logo Parabarberos" class="h-24 w-24 md:h-32 md:w-32 rounded-full">
+            </div>
+            <h1 class="text-4xl md:text-5xl font-extrabold text-gray-800 tracking-tight">TRASLADOS ENTRE BODEGAS</h1>
+            <div class="mt-8 flex justify-center items-center gap-4">
+                <div>
+                    <span class="text-gray-600">Usuario:</span>
+                    <span id="userEmailDisplay" class="font-bold text-gray-800">Cargando...</span>
+                </div>
+                <button id="logoutBtn" class="bg-gray-200 hover:bg-red-200 text-red-700 font-semibold py-2 px-4 border border-red-300 rounded-lg shadow-sm">
+                    Cerrar Sesión
+                </button>
+            </div>
+        </header>
+
+        <!-- VISTA DE SOLICITANTE -->
+        <div id="requesterView" class="grid grid-cols-1 lg:grid-cols-3 gap-8" style="display: none;">
+            <div class="lg:col-span-2 space-y-8">
+                <div class="bg-white p-6 rounded-xl shadow-lg card">
+                    <h2 class="text-2xl font-semibold mb-4 text-gray-800 border-b pb-3">Nueva solicitud de traslado</h2>
+                    <div class="mb-4"><input type="search" id="searchInput" placeholder="Buscar producto..." class="w-full px-4 py-2 border border-gray-300 rounded-lg"></div>
+                    <div id="productList" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 mb-6 min-h-[200px] max-h-[50vh] overflow-y-auto p-4 bg-gray-50 rounded-lg"></div>
+                    <h3 class="text-xl font-semibold mb-3 text-gray-800"> Productos seleccionados</h3>
+                    <div id="currentTransferRequest" class="space-y-3 mb-6 min-h-[100px] max-h-[40vh] overflow-y-auto p-4 bg-gray-50 rounded-lg"></div>
+                    <form id="transferForm" class="space-y-4 border-t pt-6">
+                    <input type="hidden" id="editingRequestId">
+                        <h3 class="text-xl font-semibold mb-3 text-gray-800"> Detalles de traslado</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div><label for="toWarehouse" class="block text-sm font-medium text-gray-700">Bodega Destino:</label><select id="toWarehouse" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm"></select></div>
+                            <div><label for="requesterName" class="block text-sm font-medium text-gray-700">Solicitante:</label><select id="requesterName" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm bg-gray-100" disabled></select></div>
+                            <div><label for="deliveryDate" class="block text-sm font-medium text-gray-700">Fecha de solicitud</label><input type="date" id="deliveryDate" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm"></div>
+                        </div>
+                        <input type="hidden" id="fromWarehouse" value="Bodega Principal">
+                        <div><label for="requesterNotes" class="block text-sm font-medium text-gray-700">Observaciones</label><textarea id="requesterNotes" rows="2" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm" placeholder="Ej: Necesito este pedido con urgencia..."></textarea></div>
+                        <button type="submit" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-4 rounded-lg shadow-lg">ENVIAR SOLICITUD DE TRASLADO</button>
+                    </form>
+                </div>
+            </div>
+            <div class="lg:col-span-1 bg-white p-6 rounded-xl shadow-lg card">
+                <h3 class="text-2xl font-semibold mb-4 text-gray-800 border-b pb-3">Mis solicitudes</h3>
+                <h4 class="text-xl font-bold text-blue-600 mb-2">Por Recibir</h4>
+                <div id="myShippedRequests" class="space-y-4 mb-6 border-b pb-6"></div>
+                <div class="space-y-2 mb-4">
+                    <input type="text" id="requesterSearchId" placeholder="Buscar por ID..." class="w-full px-3 py-2 border rounded-lg">
+                    <div class="grid grid-cols-2 gap-2"><input type="date" id="requesterDateFrom" class="w-full px-3 py-2 border rounded-lg text-sm" title="Fecha Desde"><input type="date" id="requesterDateTo" class="w-full px-3 py-2 border rounded-lg text-sm" title="Fecha Hasta"></div>
+                </div>
+                <div class="max-h-[80vh] overflow-y-auto">
+                    <h4 class="text-lg font-medium text-gray-700 mb-2">Activas</h4>
+                    <div id="myPendingRequests" class="space-y-4 mb-6"></div>
+                    <h4 class="text-lg font-medium text-gray-700 mb-2">Historial</h4>
+                    <div id="myHistoryRequests" class="space-y-4"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- VISTA DE ADMINISTRADOR -->
+        <div id="adminView" class="grid grid-cols-1 lg:grid-cols-2 gap-8" style="display: none;">
+            <div id="productManagementCard" class="lg:col-span-2 bg-white p-6 rounded-xl shadow-lg card" style="display: none;">
+                <h2 class="text-2xl font-semibold mb-4 text-gray-800 border-b pb-3">Gestión de Productos</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+                    <div>
+                        <p class="text-sm text-gray-600 mb-2">Sube un archivo <strong>JSON</strong> para actualizar la lista de productos.</p>
+                        <pre class="bg-gray-100 p-3 rounded-lg text-xs text-gray-700 overflow-x-auto">[{"...":"..."}]</pre>
+                    </div>
+                    <div class="text-center">
+                        <label for="productFile" class="cursor-pointer w-full inline-block bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg shadow-lg">Seleccionar Archivo JSON</label>
+                        <input type="file" id="productFile" class="hidden" accept=".json">
+                        <span id="fileNameDisplay" class="block text-sm text-gray-500 mt-2 truncate">Ningún archivo seleccionado.</span>
+                        <button id="uploadProductsBtn" class="mt-4 w-full bg-gray-800 hover:bg-black text-white font-bold py-3 px-4 rounded-lg shadow-lg">Actualizar Base de Datos</button>
+                        <p id="uploadStatus" class="mt-3 text-sm font-medium"></p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="bg-white p-6 rounded-xl shadow-lg card">
+                <h2 class="text-2xl font-semibold mb-4 text-gray-800 border-b pb-3">Traslados Activos</h2>
+                <div class="space-y-2 mb-4">
+                    <input type="text" id="adminActiveSearchId" placeholder="Buscar por ID o Solicitante..." class="w-full px-3 py-2 border rounded-lg">
+                    <div class="grid grid-cols-2 gap-2"><input type="date" id="adminActiveDateFrom" class="w-full px-3 py-2 border rounded-lg text-sm" title="Fecha Desde"><input type="date" id="adminActiveDateTo" class="w-full px-3 py-2 border rounded-lg text-sm" title="Fecha Hasta"></div>
+                </div>
+                <div class="max-h-[80vh] overflow-y-auto">
+                    <h3 class="text-lg font-medium text-red-500 mb-2">Pendientes de Revisión</h3>
+                    <div id="adminPendingRequests" class="space-y-4 mb-6"></div>
+                    <h3 class="text-lg font-medium text-orange-500 mb-2">Pendientes por Nota de Traslado</h3>
+                    <div id="adminPendingNtRequests" class="space-y-4 mb-6"></div>
+                    <h3 class="text-lg font-medium text-yellow-500 mb-2">Pendientes por Recibir</h3>
+                    <div id="adminShippedRequests" class="space-y-4"></div>
+                </div>
+            </div>
+
+            <div class="bg-white p-6 rounded-xl shadow-lg card">
+                <div class="flex justify-between items-center border-b pb-3 mb-4">
+                    <h2 class="text-2xl font-semibold text-gray-800">Historial</h2>
+                    <button id="exportExcelBtn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg shadow-md flex items-center space-x-2"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg><span>Exportar</span></button>
+                </div>
+                <div class="space-y-2 mb-4">
+                    <input type="text" id="adminHistorySearchId" placeholder="Buscar por ID o Solicitante..." class="w-full px-3 py-2 border rounded-lg">
+                    <div class="grid grid-cols-2 gap-2"><input type="date" id="adminHistoryDateFrom" class="w-full px-3 py-2 border rounded-lg text-sm" title="Fecha Desde"><input type="date" id="adminHistoryDateTo" class="w-full px-3 py-2 border rounded-lg text-sm" title="Fecha Hasta"></div>
+                </div>
+                <div class="max-h-[80vh] overflow-y-auto">
+                    <h3 class="text-lg font-medium text-green-600 mb-2">Completadas</h3>
+                    <div id="adminCompletedRequests" class="space-y-4 mb-6"></div>
+                    <h3 class="text-lg font-medium text-red-700 mb-2">Canceladas</h3>
+                    <div id="adminCancelledRequests" class="space-y-4"></div>
+                </div>
+            </div>
+        </div>
+    </div>
 <script>
     document.addEventListener('DOMContentLoaded', () => {
 
