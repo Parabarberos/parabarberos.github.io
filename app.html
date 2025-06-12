@@ -39,6 +39,7 @@
                     <h3 class="text-xl font-semibold mb-3 text-gray-800"> Productos seleccionados</h3>
                     <div id="currentTransferRequest" class="space-y-3 mb-6 min-h-[100px] max-h-[40vh] overflow-y-auto p-4 bg-gray-50 rounded-lg"></div>
                     <form id="transferForm" class="space-y-4 border-t pt-6">
+                    <input type="hidden" id="editingRequestId">
                         <h3 class="text-xl font-semibold mb-3 text-gray-800"> Detalles de traslado</h3>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div><label for="toWarehouse" class="block text-sm font-medium text-gray-700">Bodega Destino:</label><select id="toWarehouse" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm"></select></div>
@@ -269,8 +270,13 @@
                 adminActionsHtml = `<div class="mt-4 border-t pt-4 text-right">${buttons}</div>`;
             }
             let requesterActionsHtml = '';
-            if (role === 'requester' && req.status === 'pending') { requesterActionsHtml = `<button data-request-id="${req.id}" class="delete-my-request-btn bg-red-600 hover:bg-red-700 text-white text-xs font-semibold py-1 px-2 rounded-md">Eliminar</button>`; }
-
+            if (role === 'requester' && req.status === 'pending') {
+                requesterActionsHtml = `
+                <div class="flex items-center space-x-2">
+                <button data-request-id="${req.id}" class="edit-my-request-btn bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold py-1 px-2 rounded-md">Editar</button>
+                <button data-request-id="${req.id}" class="delete-my-request-btn bg-red-600 hover:bg-red-700 text-white text-xs font-semibold py-1 px-2 rounded-md">Eliminar</button>
+                </div>`;
+    }
             let receptionFormHtml = '';
             if (role === 'requester' && isShipped) {
                 receptionFormHtml = `<div class="mt-4 border-t-2 border-blue-200 pt-4 space-y-3"><h5 class="font-bold text-md text-blue-700">Confirmar Recepción</h5><div><label class="block text-sm font-medium text-gray-700">Observaciones de Recepción:</label><textarea id="receptionNotes-${req.id}" rows="2" class="w-full mt-1 border rounded-md p-2" placeholder="Ej: La caja llegó golpeada..."></textarea></div><button data-request-id="${req.id}" class="finalize-reception-btn w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-3 rounded-md">Finalizar y Confirmar Recepción</button></div>`;
@@ -297,7 +303,112 @@
         function handleUpdateItemQuantity(event) { const input = event.currentTarget; currentTransferItems[input.dataset.itemIndex].quantity = parseInt(input.value, 10); localStorage.setItem('currentTransferDraft', JSON.stringify(currentTransferItems)); }
         function handleRemoveItem(event) { currentTransferItems.splice(parseInt(event.currentTarget.dataset.itemIndex, 10), 1); localStorage.setItem('currentTransferDraft', JSON.stringify(currentTransferItems)); renderCurrentTransfer(); }
         function handleSearchInput() { const searchTerm = dom.searchInput.value.toLowerCase().trim(); renderProducts(allProducts.filter(p => p.name.toLowerCase().includes(searchTerm) || (p.description && p.description.toLowerCase().includes(searchTerm)) || p.id.toLowerCase().includes(searchTerm))); }
-        async function handleSubmitTransferForm(event) { event.preventDefault(); const deliveryDateInput = document.getElementById('deliveryDate'); if (!dom.toWarehouse.value) { alert("Seleccione Bodega Destino."); return; } if (!dom.requesterName.value) { alert("Seleccione Solicitante."); return; } if (currentTransferItems.length === 0) { alert("Agregue productos."); return; } if (!deliveryDateInput.value) { alert("Seleccione fecha."); return; } const customId = generateCustomId(); const newReq = { id: customId, items: currentTransferItems.map(item => ({ ...item, sentQuantity: 0, receivedQuantity: 0 })), fromWarehouse: document.getElementById('fromWarehouse').value, toWarehouse: dom.toWarehouse.value, requesterName: dom.requesterName.value, deliveryDate: deliveryDateInput.value, requesterNotes: document.getElementById('requesterNotes').value, status: 'pending', timestamp: firebase.firestore.FieldValue.serverTimestamp() }; try { await transfersCollection.doc(customId).set(newReq); currentTransferItems = []; localStorage.removeItem('currentTransferDraft'); renderCurrentTransfer(); dom.transferForm.reset(); alert(`¡Solicitud enviada! ID: ${customId}`); } catch (error) { console.error("Error al guardar en Firebase:", error); } }
+        async function handleSubmitTransferForm(event) {
+    event.preventDefault();
+    const editingId = document.getElementById('editingRequestId').value;
+
+    // --- Validación (sin cambios) ---
+    const deliveryDateInput = document.getElementById('deliveryDate');
+    if (!dom.toWarehouse.value) { alert("Seleccione Bodega Destino."); return; }
+    if (!dom.requesterName.value) { alert("Seleccione Solicitante."); return; }
+    if (currentTransferItems.length === 0) { alert("Agregue productos."); return; }
+    if (!deliveryDateInput.value) { alert("Seleccione fecha."); return; }
+
+    // --- Objeto de datos común para crear y editar ---
+    const transferData = {
+        items: currentTransferItems.map(item => ({ 
+            productId: item.productId, 
+            productName: item.productName, 
+            quantity: item.quantity,
+            // Aseguramos que los campos de admin/recepción existan si no estaban antes
+            sentQuantity: item.sentQuantity || 0, 
+            receivedQuantity: item.receivedQuantity || 0 
+        })),
+        fromWarehouse: document.getElementById('fromWarehouse').value,
+        toWarehouse: dom.toWarehouse.value,
+        requesterName: dom.requesterName.value,
+        deliveryDate: deliveryDateInput.value,
+        requesterNotes: document.getElementById('requesterNotes').value,
+    };
+    
+    try {
+        if (editingId) {
+            // --- MODO EDICIÓN: Actualiza el documento existente ---
+            const reqRef = transfersCollection.doc(editingId);
+            await reqRef.update(transferData); // Usamos update() para no sobreescribir el timestamp
+            alert(`¡Solicitud ${editingId} actualizada con éxito!`);
+        } else {
+            // --- MODO CREACIÓN: Crea un nuevo documento (lógica original) ---
+            const customId = generateCustomId();
+            const newReq = {
+                ...transferData,
+                id: customId,
+                status: 'pending',
+                timestamp: firebase.firestore.FieldValue.serverTimestamp()
+            };
+            await transfersCollection.doc(customId).set(newReq);
+            alert(`¡Solicitud enviada! ID: ${customId}`);
+        }
+        
+        // Limpia y resetea el formulario en ambos casos
+        resetFormToCreateMode();
+
+    } catch (error) {
+        console.error("Error al guardar en Firebase:", error);
+        alert("Ocurrió un error al guardar la solicitud. Por favor, inténtalo de nuevo.");
+    }
+}
+        async function handleStartEdit(event) {
+    const requestId = event.currentTarget.dataset.requestId;
+    const requestToEdit = allTransferRequests.find(r => r.id === requestId);
+
+    if (!requestToEdit) {
+        alert("Error: No se encontró la solicitud para editar.");
+        return;
+    }
+
+    // 1. Rellenar el formulario con los datos de la solicitud
+    document.getElementById('editingRequestId').value = requestId;
+    dom.toWarehouse.value = requestToEdit.toWarehouse;
+    document.getElementById('deliveryDate').value = requestToEdit.deliveryDate;
+    document.getElementById('requesterNotes').value = requestToEdit.requesterNotes || '';
+
+    // 2. Cargar los productos de la solicitud en la lista de "productos seleccionados"
+    // Usamos JSON.parse(JSON.stringify(...)) para crear una copia profunda y evitar modificar el original por accidente
+    currentTransferItems = JSON.parse(JSON.stringify(requestToEdit.items));
+    renderCurrentTransfer();
+
+    // 3. Cambiar el texto del botón y el estilo para indicar el modo edición
+    const submitButton = dom.transferForm.querySelector('button[type="submit"]');
+    submitButton.textContent = 'GUARDAR CAMBIOS';
+    submitButton.classList.remove('bg-red-600', 'hover:bg-red-700');
+    submitButton.classList.add('bg-blue-600', 'hover:bg-blue-700');
+
+    // 4. (Opcional) Hacer scroll hasta el formulario para que el usuario vea que se ha cargado
+    dom.transferForm.scrollIntoView({ behavior: 'smooth' });
+}
+
+// NUEVA FUNCIÓN DE AYUDA: Resetea el formulario al modo "Crear"
+function resetFormToCreateMode() {
+    currentTransferItems = [];
+    localStorage.removeItem('currentTransferDraft');
+    renderCurrentTransfer();
+    
+    dom.transferForm.reset(); // Limpia todos los campos del formulario
+    document.getElementById('editingRequestId').value = ''; // Limpia el ID de edición
+
+    // Restaura el botón de envío a su estado original
+    const submitButton = dom.transferForm.querySelector('button[type="submit"]');
+    submitButton.textContent = 'ENVIAR SOLICITUD DE TRASLADO';
+    submitButton.classList.remove('bg-blue-600', 'hover:bg-blue-700');
+    submitButton.classList.add('bg-red-600', 'hover:bg-red-700');
+
+    // Vuelve a seleccionar el nombre del solicitante, ya que form.reset() lo borra
+    if (currentUserData && currentUserData.role === 'requester') {
+        dom.requesterName.innerHTML = `<option value="${currentUserData.name}">${currentUserData.name}</option>`;
+        dom.requesterName.value = currentUserData.name;
+    }
+}
         async function handleDeleteMyRequest(event) { const requestId = event.currentTarget.dataset.requestId; if (confirm("¿Eliminar esta solicitud?")) { try { await transfersCollection.doc(requestId).delete(); } catch (error) { console.error("Error al eliminar:", error); } } }
         async function handleAdminAction(event) { const { requestId, action } = event.currentTarget.dataset; const reqRef = transfersCollection.doc(requestId); let updateData = {}; try { if (action === 'start_processing') { const doc = await reqRef.get(); if (!doc.exists) return; const items = doc.data().items.map(item => ({ ...item, sentQuantity: item.quantity })); updateData = { status: 'processing_partial_items', items: items }; } else if (action === 'shipped') { if (!confirm("¿Marcar este traslado como ENVIADO?")) return; updateData = { status: 'shipped' }; } else if (action === 'cancel') { if (!confirm("¿Cancelar esta solicitud?")) return; updateData = { status: 'cancelled' }; } else { return; } await reqRef.update(updateData); } catch(e) { console.error("Error al actualizar la solicitud:", e); } }
         async function handleAdminQuantityChange(event) { const input = event.currentTarget; const { requestId, itemIndex } = input.dataset; const newSentQuantity = parseInt(input.value, 10); if (isNaN(newSentQuantity) || newSentQuantity < 0) return; const reqRef = transfersCollection.doc(requestId); try { const doc = await reqRef.get(); if (doc.exists) { let items = doc.data().items; if (items && items[itemIndex]) { items[itemIndex].sentQuantity = newSentQuantity; } await reqRef.update({ items }); } } catch(e) { console.error("Error al actualizar cantidad:", e); } }
