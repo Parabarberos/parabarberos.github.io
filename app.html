@@ -447,65 +447,87 @@
         
         // --- MANEJADORES DE EVENTOS Y ACCIONES ---
         
-        async function handleAdminAction(evento) {
-            const { requestId, action } = evento.currentTarget.dataset;
-            const reqRef = transfersCollection.doc(requestId);
-            let updateData = {};
-        
-            try {
-                switch (action) {
-                    case 'start_processing':
-                        const doc = await reqRef.get();
-                        if (!doc.exists) return;
-                        const items = doc.data().items.map(item => ({ ...item, sentQuantity: item.quantity, nt_checked: false }));
-                        updateData = { status: 'processing_partial_items', items: items };
-                        expandedRequestsState.add(requestId);
-                        break;
-                    
-                    case 'finalize_processing':
-                        if (!confirm("¿Estás seguro de que has finalizado la revisión de esta solicitud?")) return;
-                        updateData = { status: 'pending_nt_start' };
-                        expandedRequestsState.delete(requestId);
-                        break;
-        
-                    case 'start_nt_preparation':
-                        updateData = { status: 'pending_nt_active' };
-                        expandedRequestsState.add(requestId);
-                        break;
-        
-                    case 'return_to_pending':
-                        if (!confirm("¿Seguro que quieres devolver esta solicitud a la cola de revisión?")) return;
-                        updateData = { status: 'pending' };
-                        expandedRequestsState.delete(requestId);
-                        break;
-                    
-                    case 'shipped':
-                        if (!confirm("¿Marcar este traslado como ENVIADO?")) return;
-                        updateData = { status: 'shipped' };
-                        expandedRequestsState.delete(requestId);
-                        break;
-        
-                    case 'cancel':
-                        if (!confirm("¿Cancelar esta solicitud?")) return;
-                        updateData = { status: 'cancelled' };
-                        expandedRequestsState.delete(requestId);
-                        break;
-                    
-                    default:
-                        return;
+async function handleAdminAction(evento) {
+    const { requestId, action } = evento.currentTarget.dataset;
+    const reqRef = transfersCollection.doc(requestId);
+    let updateData = {};
+
+    try {
+        switch (action) {
+            case 'start_processing':
+                const doc = await reqRef.get();
+                if (!doc.exists) return;
+                const itemsToProcess = doc.data().items.map(item => ({ ...item, sentQuantity: item.quantity, nt_checked: false }));
+                updateData = { status: 'processing_partial_items', items: itemsToProcess };
+                expandedRequestsState.add(requestId);
+                break;
+            
+            case 'finalize_processing':
+                if (!confirm("¿Estás seguro de que has finalizado la revisión de esta solicitud?")) return;
+                updateData = { status: 'pending_nt_start' };
+                expandedRequestsState.delete(requestId);
+                break;
+
+            case 'start_nt_preparation':
+                updateData = { status: 'pending_nt_active' };
+                expandedRequestsState.add(requestId);
+                break;
+
+            // --- INICIO DE LA MODIFICACIÓN CLAVE ---
+            case 'return_to_pending':
+                if (!confirm("¿Seguro que quieres devolver esta solicitud a revisión? Se borrarán todas las notas y cantidades modificadas.")) {
+                    return;
                 }
-        
-                if (Object.keys(updateData).length > 0) {
-                    await reqRef.update(updateData);
-                } else {
-                    renderAllSections();
-                }
-        
-            } catch(e) {
-                console.error("Error al actualizar la solicitud:", e);
-                alert("Ocurrió un error al procesar la acción.");
-            }
+                
+                // Obtenemos los datos actuales para poder resetear los items
+                const docToReset = await reqRef.get();
+                if (!docToReset.exists) return;
+
+                // Mapeamos los items, reseteando 'sentQuantity' a 0 y borrando 'nt_checked'
+                const resetItems = docToReset.data().items.map(item => ({
+                    ...item,
+                    sentQuantity: 0, // Reseteamos la cantidad enviada
+                    nt_checked: firebase.firestore.FieldValue.delete() // Eliminamos el campo nt_checked si existe
+                }));
+                
+                // Preparamos la actualización
+                updateData = { 
+                    status: 'pending', // Vuelve al estado inicial
+                    adminNotes: firebase.firestore.FieldValue.delete(), // Elimina por completo la nota del admin
+                    items: resetItems // Usa la nueva lista de items reseteados
+                };
+                
+                expandedRequestsState.delete(requestId);
+                break;
+            // --- FIN DE LA MODIFICACIÓN CLAVE ---
+            
+            case 'shipped':
+                if (!confirm("¿Marcar este traslado como ENVIADO?")) return;
+                updateData = { status: 'shipped' };
+                expandedRequestsState.delete(requestId);
+                break;
+
+            case 'cancel':
+                if (!confirm("¿Cancelar esta solicitud?")) return;
+                updateData = { status: 'cancelled' };
+                expandedRequestsState.delete(requestId);
+                break;
+            
+            default:
+                return;
         }
+
+        if (Object.keys(updateData).length > 0) {
+            await reqRef.update(updateData);
+        } else {
+            renderAllSections();
+        }
+
+    } catch(e) {
+        console.error("Error al actualizar la solicitud:", e);
+        alert("Ocurrió un error al procesar la acción.");
+    }
+}
         
         function handleToggleDetails(evento) {
             const button = evento.currentTarget;
