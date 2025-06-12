@@ -465,6 +465,9 @@ function resetFormToCreateMode() {
             allProducts = await loadAndTransformProducts();
             renderProducts(allProducts);
             renderCurrentTransfer();
+            const deliveryDateInput = document.getElementById('deliveryDate');
+            const today = new Date().toISOString().slice(0, 10);
+            deliveryDateInput.value = today;
             const warehouseOptions = ['Bodega Cali Centro', 'Bodega Cali Sur', 'Bodega Pasto', 'Bodega Tulua', 'Bodega Medellín'];
             const warehousePlaceholder = '<option value="" selected disabled>-- Seleccione una bodega --</option>';
             dom.toWarehouse.innerHTML = warehousePlaceholder + warehouseOptions.map(w => `<option value="${w}">${w}</option>`).join('');
