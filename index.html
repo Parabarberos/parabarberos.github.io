@@ -1,3 +1,4 @@
+<!-- NOMBRE DEL ARCHIVO: index.html -->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -9,28 +10,29 @@
     <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-auth-compat.js"></script>
 </head>
-<body class="bg-gray-100 flex items-center justify-center min-h-screen">
-
-    <div class="w-full max-w-md bg-white p-8 rounded-xl shadow-lg">
-        <div class="text-center mb-8">
-            <img src="https://parabarberos.github.io/2.jpg" alt="Logo Parabarberos" class="h-24 w-24 mx-auto mb-4 rounded-full border-4 border-gray-200">
-            <h1 class="text-2xl font-bold text-gray-800">Traslados Entre Bodegas</h1>
-            <p class="text-gray-500">Por favor, inicia sesión para continuar</p>
+<body class="bg-gray-100 flex items-center justify-center h-screen font-sans">
+    <div class="w-full max-w-md bg-white p-8 rounded-2xl shadow-xl border-t-4 border-red-600">
+        <div class="text-center mb-10">
+            <img src="https://parabarberos.github.io/2.jpg" alt="Logo Parabarberos" class="h-24 w-24 mx-auto mb-4 rounded-full">
+            <h1 class="text-3xl font-extrabold text-gray-800">TRASLADOS ENTRE BODEGAS PARABARBEROS S.A.S.</h1>
+            <p class="text-gray-500 mt-2">Bienvenido, por favor inicia sesión</p>
         </div>
-
+        
         <form id="loginForm">
-            <div class="mb-4">
-                <label for="email" class="block text-sm font-medium text-gray-700 mb-1">Correo Electrónico</label>
-                <input type="email" id="email" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500">
+            <div class="mb-6">
+                <label for="email" class="block text-gray-700 text-sm font-bold mb-2">Correo Electrónico</label>
+                <input type="email" id="email" required class="shadow-sm appearance-none border rounded-lg w-full py-3 px-4 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-red-500">
             </div>
             <div class="mb-6">
-                <label for="password" class="block text-sm font-medium text-gray-700 mb-1">Contraseña</label>
-                <input type="password" id="password" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500">
+                <label for="password" class="block text-gray-700 text-sm font-bold mb-2">Contraseña</label>
+                <input type="password" id="password" required class="shadow-sm appearance-none border rounded-lg w-full py-3 px-4 text-gray-700 mb-3 leading-tight focus:outline-none focus:ring-2 focus:ring-red-500">
             </div>
-            <button type="submit" id="loginBtn" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-4 rounded-lg shadow-lg">
-                Ingresar
-            </button>
-            <p id="error-message" class="text-red-500 text-center text-sm mt-4"></p>
+            <div id="errorMessage" class="text-red-500 text-center mb-4 font-semibold h-5"></div>
+            <div class="flex items-center justify-between">
+                <button type="submit" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-4 rounded-lg focus:outline-none focus:shadow-outline transition-transform transform hover:scale-105">
+                    Ingresar
+                </button>
+            </div>
         </form>
     </div>
 
@@ -48,37 +50,33 @@
 
             firebase.initializeApp(firebaseConfig);
             const auth = firebase.auth();
+            const loginForm = document.getElementById('loginForm');
+            const errorMessage = document.getElementById('errorMessage');
 
-            // Si el usuario ya está logueado, lo mandamos directo a la app
             auth.onAuthStateChanged(user => {
                 if (user) {
                     window.location.href = 'app.html';
                 }
             });
-            
-            const loginForm = document.getElementById('loginForm');
-            const errorMessage = document.getElementById('error-message');
-            const loginBtn = document.getElementById('loginBtn');
 
             loginForm.addEventListener('submit', (e) => {
                 e.preventDefault();
                 const email = document.getElementById('email').value;
                 const password = document.getElementById('password').value;
-
-                errorMessage.textContent = '';
-                loginBtn.textContent = 'Ingresando...';
-                loginBtn.disabled = true;
+                errorMessage.textContent = 'Verificando...';
+                errorMessage.classList.remove('text-red-500');
+                errorMessage.classList.add('text-gray-500');
 
                 auth.signInWithEmailAndPassword(email, password)
-                    .then((userCredential) => {
-                        // El inicio de sesión fue exitoso. 
-                        // El onAuthStateChanged se encargará de redirigir a app.html
-                    })
                     .catch((error) => {
-                        console.error("Error de autenticación:", error);
-                        errorMessage.textContent = 'Correo o contraseña incorrectos.';
-                        loginBtn.textContent = 'Ingresar';
-                        loginBtn.disabled = false;
+                        console.error("Error de inicio de sesión:", error.code);
+                        errorMessage.classList.add('text-red-500');
+                        errorMessage.classList.remove('text-gray-500');
+                        if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
+                            errorMessage.textContent = 'Correo o contraseña incorrectos.';
+                        } else {
+                            errorMessage.textContent = 'CREDENCIALES INCORRECTAS. Inténtalo de nuevo.';
+                        }
                     });
             });
         });
