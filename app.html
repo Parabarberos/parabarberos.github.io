@@ -317,12 +317,10 @@ function createRequestCard(req, role) {
     // --- Lógica de datos ---
     const isShipped = req.status === 'shipped';
     const hasItems = req.items && req.items.length > 0;
-    // La comprobación de 'todos los items marcados' ahora solo aplica al estado 'active'
     const allNtItemsChecked = hasItems && req.status === 'pending_nt_active' && req.items.every(item => item.nt_checked);
     
     // --- Lógica de renderizado de items ---
     const itemsHtml = hasItems ? (req.items || []).map((item, index) => {
-        // La interfaz para checkboxes solo se muestra en el estado 'active'
         if (role === 'admin' && req.status === 'pending_nt_active') {
             const itemChecked = item.nt_checked === true;
             const itemBgColor = itemChecked ? 'bg-green-100' : 'bg-red-100';
@@ -330,7 +328,6 @@ function createRequestCard(req, role) {
             return `<li class="p-2 rounded-md border ${itemBorderColor} ${itemBgColor} flex justify-between items-center text-sm transition-colors"><div><span class="font-medium text-gray-800">${item.productName}</span><div class="text-xs text-gray-600">Enviado: <b>${item.sentQuantity}</b></div></div><input type="checkbox" ${itemChecked ? 'checked' : ''} data-request-id="${req.id}" data-item-index="${index}" class="nt-checkbox h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"></li>`;
         }
         
-        // Vista normal para otros estados
         let quantityDisplay = `Solicitado: <b>${item.quantity}</b>`;
         if (item.sentQuantity !== undefined) { quantityDisplay += ` | Enviado: <b>${item.sentQuantity}</b>`; }
         if (item.receivedQuantity !== undefined) {
@@ -341,10 +338,9 @@ function createRequestCard(req, role) {
         const adminInput = (role === 'admin' && req.status === 'processing_partial_items') ? `<input type="number" value="${item.sentQuantity ?? item.quantity}" data-request-id="${req.id}" data-item-index="${index}" class="admin-qty-input w-20 p-1 border rounded-md text-center">` : ``;
         
         return `<li class="p-2 rounded-md bg-white flex justify-between items-center text-sm"><div><span class="font-medium text-gray-800">${item.productName}</span><div class="text-xs text-gray-600">${quantityDisplay}</div></div>${receptionInput}${adminInput}</li>`;
-
     }).join('') : '<p class="text-sm text-gray-500 italic">No hay artículos en esta solicitud.</p>';
 
-    // --- LÓGICA DE BOTONES DEL ADMIN (MODIFICADA) ---
+    // --- LÓGICA DE BOTONES DEL ADMIN ---
     let adminActionsHtml = '';
     if (role === 'admin') {
         let buttons = '';
@@ -352,38 +348,91 @@ function createRequestCard(req, role) {
             buttons += `<button data-request-id="${req.id}" data-action="start_processing" class="action-btn bg-gray-800 hover:bg-black text-white text-xs font-semibold py-2 px-3 rounded-md">Iniciar revisión</button>`;
         }
         if (req.status.startsWith('processing')) {
-            // Se renombra el botón a solo "Finalizar Revisión"
             buttons += `<button data-request-id="${req.id}" data-action="finalize_processing" class="action-btn bg-teal-600 hover:bg-teal-700 text-white text-xs font-semibold py-2 px-3 rounded-md">Finalizar Revisión</button>`;
         }
-        
-        // Estado inicial de NT, solo muestra el botón para empezar
         if (req.status === 'pending_nt_start') {
             buttons += `<button data-request-id="${req.id}" data-action="start_nt_preparation" class="action-btn bg-orange-500 hover:bg-orange-600 text-white text-xs font-semibold py-2 px-3 rounded-md">Iniciar Preparación NT</button>`;
         }
-        
-        // Estado activo de NT, muestra los botones de acción
         if (req.status === 'pending_nt_active') {
             buttons += `<button data-request-id="${req.id}" data-action="return_to_pending" class="action-btn bg-yellow-600 hover:bg-yellow-700 text-white text-xs font-semibold py-2 px-3 rounded-md">Devolver a Revisión</button>`;
             buttons += `<button data-request-id="${req.id}" data-action="shipped" class="action-btn bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold py-2 px-3 rounded-md disabled:bg-gray-400 disabled:cursor-not-allowed" ${!allNtItemsChecked ? 'disabled' : ''}>Marcar como enviado</button>`;
         }
-
-        // El botón de cancelar aparece en todas las fases activas
         if (['pending', 'processing_partial_items', 'pending_nt_start', 'pending_nt_active'].includes(req.status)) {
             buttons += `<button data-request-id="${req.id}" data-action="cancel" class="action-btn bg-red-700 hover:bg-red-800 text-white text-xs font-semibold py-2 px-3 rounded-md">Cancelar</button>`;
         }
-        
         if (buttons) {
             adminActionsHtml = `<div class="mt-4 border-t pt-4 flex justify-end items-center flex-wrap gap-2">${buttons}</div>`;
         }
     }
     
-    // --- RENDERIZADO DEL HTML (Sin cambios significativos más allá de los textos) ---
-    // El resto de la función puede permanecer igual...
-    let requesterActionsHtml = ''; //...etc.
-    // ...
-    // Aquí iría el resto de tu código de createRequestCard que ya tienes
-    // ...
-    // Solo asegúrate de que al final los eventos se vinculen correctamente
+    // --- LÓGICA BOTONES SOLICITANTE ---
+    let requesterActionsHtml = '';
+    if (role === 'requester' && req.status === 'pending') {
+        requesterActionsHtml = `<div class="flex flex-col space-y-2"><button data-request-id="${req.id}" class="edit-my-request-btn bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold py-1 px-2 rounded-md">Editar</button><button data-request-id="${req.id}" class="delete-my-request-btn bg-red-600 hover:bg-red-700 text-white text-xs font-semibold py-1 px-2 rounded-md">Eliminar</button></div>`;
+    }
+
+    // --- LÓGICA FORMULARIO RECEPCIÓN ---
+    let receptionFormHtml = '';
+    if (role === 'requester' && isShipped) {
+        receptionFormHtml = `<div class="mt-4 border-t-2 border-blue-200 pt-4 space-y-3"><h5 class="font-bold text-md text-blue-700">Confirmar recepción</h5><div><label class="block text-sm font-medium text-gray-700">Observaciones de recepción:</label><textarea id="receptionNotes-${req.id}" rows="2" class="w-full mt-1 border rounded-md p-2" placeholder="Ej: La caja llegó dañada..."></textarea></div><button data-request-id="${req.id}" class="finalize-reception-btn w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-3 rounded-md">Finalizar y confirmar Recepción</button></div>`;
+    }
+    
+    // --- VARIABLES PARA EL HTML ---
+    const reqDate = req.deliveryDate ? new Date(req.deliveryDate + 'T00:00:00').toLocaleDateString('es-CO', { year: 'numeric', month: 'long', day: 'numeric' }) : 'No especificada';
+    const creationDate = req.timestamp ? new Date(req.timestamp.seconds * 1000).toLocaleDateString('es-CO') : '';
+    const hasDetailsToShow = hasItems || req.requesterNotes || req.adminNotes || adminActionsHtml || receptionFormHtml;
+
+    // --- ESTRUCTURA HTML DE LA TARJETA (LA PARTE QUE FALTABA) ---
+    card.innerHTML = `
+        <div class="flex justify-between items-start">
+            <div>
+                <h4 class="font-semibold text-lg text-gray-800">${req.requesterName}</h4>
+                <p class="text-sm text-gray-600">Para: <strong>${req.toWarehouse}</strong></p>
+                <p class="text-xs text-gray-400">ID: ${req.id} | Creada: ${creationDate}</p>
+                <p class="text-sm mt-1">Fecha Requerida: <b>${reqDate}</b></p>
+                <span class="inline-block mt-2 px-2 py-1 text-xs font-bold rounded-full ${getRequestStatusColor(req.status)} text-black">${translateStatus(req.status)}</span>
+            </div>
+            ${requesterActionsHtml}
+        </div>
+
+        <div id="details-${req.id}" class="${isExpanded ? '' : 'hidden'} mt-4 pt-4 border-t border-gray-200">
+            ${req.requesterNotes ? `<div class="mb-3 p-3 bg-gray-50 rounded-lg border"><p class="text-sm font-semibold text-gray-600">Observaciones:</p><p class="text-sm text-gray-800 italic">"${req.requesterNotes}"</p></div>` : ''}
+            ${req.adminNotes ? `<div class="mb-3 p-3 bg-red-50 rounded-lg border border-red-200"><p class="text-sm font-semibold text-red-800">Nota del Admin:</p><p class="text-sm text-red-900 italic">"${req.adminNotes}"</p></div>` : ''}
+            
+            ${(role === 'admin' && req.status.startsWith('processing')) ? `
+                <div class="mt-4">
+                    <label for="adminNotes-${req.id}" class="text-sm font-medium text-gray-700">Añadir/Editar Nota:</label>
+                    <textarea id="adminNotes-${req.id}" rows="2" class="w-full mt-1 border rounded-md p-2">${req.adminNotes || ''}</textarea>
+                    <button data-request-id="${req.id}" class="save-admin-note-btn mt-1 text-xs bg-gray-800 text-white px-3 py-1.5 rounded-md hover:bg-black">Guardar Nota</button>
+                </div>
+            ` : ''}
+            
+            <h5 class="font-bold text-gray-700 mt-3 mb-2">Items:</h5>
+            <ul class="space-y-2">${itemsHtml}</ul>
+            
+            ${adminActionsHtml}
+            ${receptionFormHtml}
+        </div>
+
+        ${hasDetailsToShow ? `
+            <div class="text-center mt-2">
+                <button data-request-id="${req.id}" class="toggle-details-btn text-sm font-semibold text-blue-600 hover:text-blue-800 py-1 px-3 rounded-full hover:bg-blue-50 transition-colors">
+                    ${isExpanded ? 'Ver menos' : 'Ver más'}
+                </button>
+            </div>
+        ` : ''}
+    `;
+
+    // --- VINCULACIÓN DE EVENTOS ---
+    card.querySelectorAll('.action-btn').forEach(b => b.onclick = handleAdminAction);
+    card.querySelectorAll('.finalize-reception-btn').forEach(b => b.onclick = handleFinalizeReception);
+    card.querySelectorAll('.admin-qty-input').forEach(i => i.onchange = handleAdminQuantityChange);
+    card.querySelectorAll('.delete-my-request-btn').forEach(b => b.onclick = handleDeleteMyRequest);
+    card.querySelectorAll('.save-admin-note-btn').forEach(b => b.onclick = handleSaveAdminNote);
+    card.querySelectorAll('.edit-my-request-btn').forEach(b => b.onclick = handleStartEdit);
+    card.querySelectorAll('.toggle-details-btn').forEach(b => b.onclick = handleToggleDetails);
+    card.querySelectorAll('.nt-checkbox').forEach(c => c.onchange = handleNtCheckboxChange);
+
     return card;
 }
         function transformRawJsonToProducts(rawData) { const uniqueProductStrings = new Set(); if (Array.isArray(rawData)) { rawData.forEach(item => { Object.keys(item).forEach(key => key && uniqueProductStrings.add(key.trim())); Object.values(item).forEach(val => val && uniqueProductStrings.add(val.trim())); }); } if (uniqueProductStrings.size === 0) return []; const productsMap = new Map(); let genericCounter = 1; uniqueProductStrings.forEach(fullProductName => { const parts = String(fullProductName).split(' - '); let idPart, namePart; if (parts.length > 1 && (/\d/.test(parts[0].trim()) || /^[a-zA-Z]{2,}/.test(parts[0].trim()))) { idPart = parts[0].trim().replace(/\s+/g, '-'); namePart = parts.slice(1).join(' - ').trim(); } else { idPart = `prod-gen-${genericCounter++}`; namePart = fullProductName; } let finalId = idPart, idCounter = 1; while (productsMap.has(finalId)) finalId = `${idPart}_${idCounter++}`; productsMap.set(finalId, { id: finalId, name: namePart, description: fullProductName }); }); return Array.from(productsMap.values()).sort((a, b) => a.name.localeCompare(b.name)); }
