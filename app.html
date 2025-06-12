@@ -244,31 +244,33 @@
         function renderProducts(productsToRender) { dom.productList.innerHTML = ''; if (!productsToRender || productsToRender.length === 0) { dom.productList.innerHTML = '<p class="text-gray-500 col-span-full text-center">No se encontraron productos.</p>'; return; } productsToRender.forEach(product => { const card = document.createElement('div'); card.className = 'border p-3 rounded-lg shadow-sm hover:shadow-md transition bg-white'; const safeId = product.id.replace(/[^a-zA-Z0-9-_]/g, ''); card.innerHTML = `<h3 class="text-sm font-semibold text-gray-900" title="${product.description}">${product.name.length > 50 ? product.name.substring(0, 47) + '...' : product.name}</h3><p class="text-xs text-gray-400 mb-2">ID: ${product.id}</p><div class="flex items-center space-x-2 mt-auto"><input type="number" min="1" value="1" id="qty-${safeId}" class="w-16 border-gray-300 rounded-md text-center p-1"><button data-product-id="${product.id}" class="add-to-transfer-btn w-full bg-gray-800 hover:bg-black text-white text-xs font-bold py-2 px-2 rounded-md transition">Añadir</button></div>`; dom.productList.appendChild(card); }); dom.productList.querySelectorAll('.add-to-transfer-btn').forEach(b => b.onclick = handleAddToTransfer); }
         function renderCurrentTransfer() { dom.currentTransferRequest.innerHTML = ''; if (currentTransferItems.length === 0) { dom.currentTransferRequest.innerHTML = '<p class="text-gray-500 italic text-center py-4">Añade productos desde la lista de arriba.</p>'; return; } const ul = document.createElement('ul'); ul.className = 'space-y-2'; currentTransferItems.forEach((item, index) => { const li = document.createElement('li'); li.className = 'flex justify-between items-center p-3 bg-white rounded-lg shadow-sm'; li.innerHTML = `<div><span class="font-medium text-gray-800">${item.productName}</span><span class="text-xs text-gray-500 block">ID: ${item.productId}</span></div><div class="flex items-center space-x-2"><input type="number" min="1" value="${item.quantity}" data-item-index="${index}" class="w-16 p-1 border rounded item-quantity-input text-center"><button data-item-index="${index}" class="remove-item-btn text-red-500 hover:text-red-700 font-bold p-1">✕</button></div>`; ul.appendChild(li); }); dom.currentTransferRequest.appendChild(ul); dom.currentTransferRequest.querySelectorAll('.item-quantity-input').forEach(input => input.onchange = handleUpdateItemQuantity); dom.currentTransferRequest.querySelectorAll('.remove-item-btn').forEach(button => button.onclick = handleRemoveItem); }
         
-        function createRequestCard(req, role) {
-            const card = document.createElement('div');
-            card.className = `p-4 rounded-lg shadow-sm mb-4 ${getRequestStatusColor(req.status)}`;
-            const isShipped = req.status === 'shipped';
-            const isFinalized = req.status.startsWith('completed');
-            const itemsHtml = (req.items || []).map((item, index) => {
-                let quantityDisplay = `Solicitado: <b>${item.quantity}</b>`;
-                if (item.sentQuantity !== undefined) { quantityDisplay += ` | Enviado: <b>${item.sentQuantity}</b>`; }
-                if (item.receivedQuantity !== undefined) {
-                    const color = item.receivedQuantity < item.sentQuantity ? 'text-red-600' : 'text-green-700';
-                    quantityDisplay += ` | Recibido: <b class="${color}">${item.receivedQuantity}</b>`;
-                }
-                const receptionInput = (role === 'requester' && isShipped) ? `<div class="flex items-center"><label class="text-sm mr-2">Recibido:</label><input type="number" value="${item.sentQuantity}" data-request-id="${req.id}" data-item-index="${index}" class="reception-qty-input w-20 p-1 border rounded-md text-center"></div>` : ``;
-                const adminInput = (role === 'admin' && req.status.startsWith('processing')) ? `<input type="number" value="${item.sentQuantity}" data-request-id="${req.id}" data-item-index="${index}" class="admin-qty-input w-20 p-1 border rounded-md text-center">` : ``;
-                return `<li class="p-2 rounded-md bg-white flex justify-between items-center text-sm"><div><span class="font-medium text-gray-800">${item.productName}</span><div class="text-xs text-gray-600">${quantityDisplay}</div></div>${receptionInput}${adminInput}</li>`;
-            }).join('');
-            
-            let adminActionsHtml = '';
-            if (role === 'admin' && (req.status === 'pending' || req.status.startsWith('processing'))) {
-                let buttons = '';
-                if (req.status === 'pending') buttons += `<button data-request-id="${req.id}" data-action="start_processing" class="action-btn bg-gray-800 hover:bg-black text-white text-xs font-semibold py-2 px-3 rounded-md mr-1">Iniciar Revisión</button>`;
-                if (req.status.startsWith('processing')) { buttons += `<button data-request-id="${req.id}" data-action="shipped" class="action-btn bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold py-2 px-3 rounded-md">Marcar como Enviado</button>`; }
-                buttons += `<button data-request-id="${req.id}" data-action="cancel" class="action-btn bg-red-700 hover:bg-red-800 text-white text-xs font-semibold py-2 px-3 rounded-md ml-1">Cancelar</button>`;
-                adminActionsHtml = `<div class="mt-4 border-t pt-4 text-right">${buttons}</div>`;
-            }
+function createRequestCard(req, role) {
+    const card = document.createElement('div');
+    card.className = `p-4 rounded-lg shadow-sm mb-4 ${getRequestStatusColor(req.status)}`;
+
+    // --- Lógica de la tarjeta (sin cambios) ---
+    const isShipped = req.status === 'shipped';
+    const hasItems = req.items && req.items.length > 0;
+    const itemsHtml = hasItems ? (req.items || []).map((item, index) => {
+        let quantityDisplay = `Solicitado: <b>${item.quantity}</b>`;
+        if (item.sentQuantity !== undefined) { quantityDisplay += ` | Enviado: <b>${item.sentQuantity}</b>`; }
+        if (item.receivedQuantity !== undefined) {
+            const color = item.receivedQuantity < item.sentQuantity ? 'text-red-600' : 'text-green-700';
+            quantityDisplay += ` | Recibido: <b class="${color}">${item.receivedQuantity}</b>`;
+        }
+        const receptionInput = (role === 'requester' && isShipped) ? `<div class="flex items-center"><label class="text-sm mr-2">Recibido:</label><input type="number" value="${item.sentQuantity}" data-request-id="${req.id}" data-item-index="${index}" class="reception-qty-input w-20 p-1 border rounded-md text-center"></div>` : ``;
+        const adminInput = (role === 'admin' && req.status.startsWith('processing')) ? `<input type="number" value="${item.sentQuantity}" data-request-id="${req.id}" data-item-index="${index}" class="admin-qty-input w-20 p-1 border rounded-md text-center">` : ``;
+        return `<li class="p-2 rounded-md bg-white flex justify-between items-center text-sm"><div><span class="font-medium text-gray-800">${item.productName}</span><div class="text-xs text-gray-600">${quantityDisplay}</div></div>${receptionInput}${adminInput}</li>`;
+    }).join('') : '<p class="text-sm text-gray-500 italic">No hay items en esta solicitud.</p>';
+
+    let adminActionsHtml = '';
+    if (role === 'admin' && (req.status === 'pending' || req.status.startsWith('processing'))) {
+        let buttons = '';
+        if (req.status === 'pending') buttons += `<button data-request-id="${req.id}" data-action="start_processing" class="action-btn bg-gray-800 hover:bg-black text-white text-xs font-semibold py-2 px-3 rounded-md mr-1">Iniciar Revisión</button>`;
+        if (req.status.startsWith('processing')) { buttons += `<button data-request-id="${req.id}" data-action="shipped" class="action-btn bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold py-2 px-3 rounded-md">Marcar como Enviado</button>`; }
+        buttons += `<button data-request-id="${req.id}" data-action="cancel" class="action-btn bg-red-700 hover:bg-red-800 text-white text-xs font-semibold py-2 px-3 rounded-md ml-1">Cancelar</button>`;
+        adminActionsHtml = `<div class="mt-4 border-t pt-4 text-right">${buttons}</div>`;
+    }
     
     let requesterActionsHtml = '';
     if (role === 'requester' && req.status === 'pending') {
@@ -286,9 +288,11 @@
     const reqDate = req.deliveryDate ? new Date(req.deliveryDate + 'T00:00:00').toLocaleDateString('es-CO', { year: 'numeric', month: 'long', day: 'numeric' }) : 'No especificada';
     const creationDate = req.timestamp ? new Date(req.timestamp.seconds * 1000).toLocaleDateString('es-CO') : '';
     
-    // --- NUEVA ESTRUCTURA HTML ---
+    // --- LÓGICA PARA DECIDIR SI HAY DETALLES QUE MOSTRAR ---
+    const hasDetailsToShow = hasItems || req.requesterNotes || req.adminNotes || adminActionsHtml || receptionFormHtml;
+
+    // --- Estructura HTML (sin cambios) ---
     card.innerHTML = `
-        <!-- PARTE SIEMPRE VISIBLE (CABECERA) -->
         <div class="flex justify-between items-start">
             <div>
                 <h4 class="font-semibold text-lg text-gray-800">${req.requesterName}</h4>
@@ -300,7 +304,6 @@
             ${requesterActionsHtml}
         </div>
 
-        <!-- CONTENEDOR OCULTO CON LOS DETALLES -->
         <div id="details-${req.id}" class="hidden mt-4 pt-4 border-t border-gray-200">
             ${req.requesterNotes ? `<div class="mb-3 p-3 bg-gray-50 rounded-lg border"><p class="text-sm font-semibold text-gray-600">Observaciones:</p><p class="text-sm text-gray-800 italic">"${req.requesterNotes}"</p></div>` : ''}
             ${req.adminNotes ? `<div class="mb-3 p-3 bg-red-50 rounded-lg border border-red-200"><p class="text-sm font-semibold text-red-800">Nota del Admin:</p><p class="text-sm text-red-900 italic">"${req.adminNotes}"</p></div>` : ''}
@@ -313,22 +316,23 @@
             ${receptionFormHtml}
         </div>
 
-        <!-- BOTÓN PARA MOSTRAR/OCULTAR -->
-        <div class="text-center mt-2">
-            <button data-request-id="${req.id}" class="toggle-details-btn text-sm font-semibold text-blue-600 hover:text-blue-800 py-1 px-3 rounded-full hover:bg-blue-50 transition-colors">
-                Ver más
-            </button>
-        </div>
+        <!-- El botón "Ver más" ahora solo se muestra si hay detalles -->
+        ${hasDetailsToShow ? `
+            <div class="text-center mt-2">
+                <button data-request-id="${req.id}" class="toggle-details-btn text-sm font-semibold text-blue-600 hover:text-blue-800 py-1 px-3 rounded-full hover:bg-blue-50 transition-colors">
+                    Ver más
+                </button>
+            </div>
+        ` : ''}
     `;
 
-    // --- Vinculación de eventos (AÑADIMOS EL NUEVO BOTÓN) ---
+    // --- Vinculación de eventos (sin cambios) ---
     card.querySelectorAll('.action-btn').forEach(b => b.onclick = handleAdminAction);
     card.querySelectorAll('.finalize-reception-btn').forEach(b => b.onclick = handleFinalizeReception);
     card.querySelectorAll('.admin-qty-input').forEach(i => i.onchange = handleAdminQuantityChange);
     card.querySelectorAll('.delete-my-request-btn').forEach(b => b.onclick = handleDeleteMyRequest);
     card.querySelectorAll('.save-admin-note-btn').forEach(b => b.onclick = handleSaveAdminNote);
     card.querySelectorAll('.edit-my-request-btn').forEach(b => b.onclick = handleStartEdit);
-    // ¡AÑADIMOS EL EVENTO AL NUEVO BOTÓN!
     card.querySelectorAll('.toggle-details-btn').forEach(b => b.onclick = handleToggleDetails);
 
     return card;
