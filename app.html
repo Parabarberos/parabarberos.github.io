@@ -308,14 +308,11 @@
         function renderCurrentTransfer() { dom.currentTransferRequest.innerHTML = ''; if (currentTransferItems.length === 0) { dom.currentTransferRequest.innerHTML = '<p class="text-gray-500 italic text-center py-4">Añade productos desde la lista de arriba.</p>'; return; } const ul = document.createElement('ul'); ul.className = 'space-y-2'; currentTransferItems.forEach((item, index) => { const li = document.createElement('li'); li.className = 'flex justify-between items-center p-3 bg-white rounded-lg shadow-sm'; li.innerHTML = `<div><span class="font-medium text-gray-800">${item.productName}</span><span class="text-xs text-gray-500 block">ID: ${item.productId}</span></div><div class="flex items-center space-x-2"><input type="number" min="1" value="${item.quantity}" data-item-index="${index}" class="w-16 p-1 border rounded item-quantity-input text-center"><button data-item-index="${index}" class="remove-item-btn text-red-500 hover:text-red-700 font-bold p-1">✕</button></div>`; ul.appendChild(li); }); dom.currentTransferRequest.appendChild(ul); dom.currentTransferRequest.querySelectorAll('.item-quantity-input').forEach(input => input.onchange = handleUpdateItemQuantity); dom.currentTransferRequest.querySelectorAll('.remove-item-btn').forEach(button => button.onclick = handleRemoveItem); }
         
 function createRequestCard(req, role) {
-    // <-- INICIO DE CAMBIOS CLAVE
-    const isExpanded = expandedRequestsState.has(req.id); // Revisa la "memoria" para saber si debe estar expandida
-    // <-- FIN DE CAMBIOS CLAVE
-
+    const isExpanded = expandedRequestsState.has(req.id);
     const card = document.createElement('div');
     card.className = `p-4 rounded-lg shadow-sm mb-4 ${getRequestStatusColor(req.status)}`;
 
-    // --- LOGICA DE DATOS PARA LA TARJETA ---
+    // --- Lógica de datos (sin cambios) ---
     const isShipped = req.status === 'shipped';
     const hasItems = req.items && req.items.length > 0;
     const allNtItemsChecked = hasItems && req.status === 'pending_nt' && req.items.every(item => item.nt_checked);
@@ -338,26 +335,38 @@ function createRequestCard(req, role) {
         return `<li class="p-2 rounded-md bg-white flex justify-between items-center text-sm"><div><span class="font-medium text-gray-800">${item.productName}</span><div class="text-xs text-gray-600">${quantityDisplay}</div></div>${receptionInput}${adminInput}</li>`;
     }).join('') : '<p class="text-sm text-gray-500 italic">No hay artículos en esta solicitud.</p>';
 
+    // --- LÓGICA DE BOTONES DEL ADMIN (MODIFICADA) ---
     let adminActionsHtml = '';
     if (role === 'admin') {
         let buttons = '';
         if (req.status === 'pending') {
             buttons += `<button data-request-id="${req.id}" data-action="start_processing" class="action-btn bg-gray-800 hover:bg-black text-white text-xs font-semibold py-2 px-3 rounded-md mr-1">Iniciar revisión</button>`;
         }
+        
+        // --- CAMBIO CLAVE AQUÍ ---
         if (req.status.startsWith('processing')) {
-            buttons += `<button data-request-id="${req.id}" data-action="start_nt" class="action-btn bg-teal-600 hover:bg-teal-700 text-white text-xs font-semibold py-2 px-3 rounded-md">Iniciar NT</button>`;
+            // Ya no hay un botón "Iniciar NT". En su lugar, hay "Guardar" y "Mover a NT".
+            // El botón "Guardar" se gestiona con los onchange de los inputs, no necesita un botón propio aquí.
+            // La acción de guardar notas ya tiene su propio botón.
+            // Añadimos el botón para pasar a la siguiente fase.
+            buttons += `<button data-request-id="${req.id}" data-action="move_to_nt" class="action-btn bg-teal-600 hover:bg-teal-700 text-white text-xs font-semibold py-2 px-3 rounded-md">Finalizar Revisión y Mover a NT</button>`;
         }
+        // --- FIN DEL CAMBIO CLAVE ---
+        
         if (req.status === 'pending_nt') {
             buttons += `<button data-request-id="${req.id}" data-action="shipped" class="action-btn bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold py-2 px-3 rounded-md disabled:bg-gray-400 disabled:cursor-not-allowed" ${!allNtItemsChecked ? 'disabled' : ''}>Marcar como enviado</button>`;
         }
+
         if (['pending', 'processing_partial_items', 'pending_nt'].includes(req.status)) {
             buttons += `<button data-request-id="${req.id}" data-action="cancel" class="action-btn bg-red-700 hover:bg-red-800 text-white text-xs font-semibold py-2 px-3 rounded-md ml-1">Cancelar</button>`;
         }
+        
         if (buttons) {
             adminActionsHtml = `<div class="mt-4 border-t pt-4 text-right">${buttons}</div>`;
         }
     }
 
+    // --- RESTO DE LA FUNCIÓN (sin cambios) ---
     let requesterActionsHtml = '';
     if (role === 'requester' && req.status === 'pending') {
         requesterActionsHtml = `<div class="flex flex-col space-y-2"><button data-request-id="${req.id}" class="edit-my-request-btn bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold py-1 px-2 rounded-md">Editar</button><button data-request-id="${req.id}" class="delete-my-request-btn bg-red-600 hover:bg-red-700 text-white text-xs font-semibold py-1 px-2 rounded-md">Eliminar</button></div>`;
@@ -387,7 +396,14 @@ function createRequestCard(req, role) {
         <div id="details-${req.id}" class="${isExpanded ? '' : 'hidden'} mt-4 pt-4 border-t border-gray-200">
             ${req.requesterNotes ? `<div class="mb-3 p-3 bg-gray-50 rounded-lg border"><p class="text-sm font-semibold text-gray-600">Observaciones:</p><p class="text-sm text-gray-800 italic">"${req.requesterNotes}"</p></div>` : ''}
             ${req.adminNotes ? `<div class="mb-3 p-3 bg-red-50 rounded-lg border border-red-200"><p class="text-sm font-semibold text-red-800">Nota del Admin:</p><p class="text-sm text-red-900 italic">"${req.adminNotes}"</p></div>` : ''}
-            ${(role === 'admin' && req.status.startsWith('processing')) ? `<div class="mt-4"><label for="adminNotes-${req.id}" class="text-sm font-medium text-gray-700">Añadir/Editar Nota:</label><textarea id="adminNotes-${req.id}" rows="2" class="w-full mt-1 border rounded-md p-2">${req.adminNotes || ''}</textarea><button data-request-id="${req.id}" class="save-admin-note-btn mt-1 text-xs bg-gray-800 text-white px-3 py-1.5 rounded-md hover:bg-black">Guardar Nota</button></div>` : ''}
+            
+            ${(role === 'admin' && req.status.startsWith('processing')) ? `
+                <div class="mt-4">
+                    <label for="adminNotes-${req.id}" class="text-sm font-medium text-gray-700">Añadir/Editar Nota:</label>
+                    <textarea id="adminNotes-${req.id}" rows="2" class="w-full mt-1 border rounded-md p-2">${req.adminNotes || ''}</textarea>
+                    <button data-request-id="${req.id}" class="save-admin-note-btn mt-1 text-xs bg-gray-800 text-white px-3 py-1.5 rounded-md hover:bg-black">Guardar Nota</button>
+                </div>
+            ` : ''}
             
             <p class="text-sm font-semibold mb-2 text-gray-600">Items:</p>
             <ul class="space-y-2">${itemsHtml}</ul>
@@ -405,6 +421,7 @@ function createRequestCard(req, role) {
         ` : ''}
     `;
 
+    // Vinculación de eventos (sin cambios)
     card.querySelectorAll('.action-btn').forEach(b => b.onclick = handleAdminAction);
     card.querySelectorAll('.finalize-reception-btn').forEach(b => b.onclick = handleFinalizeReception);
     card.querySelectorAll('.admin-qty-input').forEach(i => i.onchange = handleAdminQuantityChange);
@@ -581,9 +598,8 @@ async function handleNtCheckboxChange(event) {
     }
 }
         async function handleDeleteMyRequest(event) { const requestId = event.currentTarget.dataset.requestId; if (confirm("¿Eliminar esta solicitud?")) { try { await transfersCollection.doc(requestId).delete(); } catch (error) { console.error("Error al eliminar:", error); } } }
-        // REEMPLAZA TU FUNCIÓN handleAdminAction CON ESTA
-async function handleAdminAction(event) {
-    const { requestId, action } = event.currentTarget.dataset;
+async function handleAdminAction(evento) {
+    const { requestId, action } = evento.currentTarget.dataset;
     const reqRef = transfersCollection.doc(requestId);
     let updateData = {};
 
@@ -596,8 +612,12 @@ async function handleAdminAction(event) {
             const items = currentItems.map(item => ({ ...item, sentQuantity: item.quantity, nt_checked: false }));
             updateData = { status: 'processing_partial_items', items: items };
         
-        } else if (action === 'start_nt') { // <-- NUEVA ACCIÓN
-            // Prepara los items para la fase de NT, asegurando que todos tengan el campo 'nt_checked'
+        } else if (action === 'move_to_nt') { // <-- NUEVA ACCIÓN
+            // Esta acción ahora es la que mueve la solicitud a la fase de NT
+            if (!confirm("¿Estás seguro de que quieres finalizar la revisión y mover esta solicitud a 'Pendiente por NT'? Ya no podrás editar las cantidades.")) {
+                return;
+            }
+            // Prepara los items para la fase de NT
             const itemsWithNt = currentItems.map(item => ({ ...item, nt_checked: item.nt_checked || false }));
             updateData = { status: 'pending_nt', items: itemsWithNt };
 
@@ -612,9 +632,12 @@ async function handleAdminAction(event) {
         } else {
             return;
         }
+
         await reqRef.update(updateData);
+
     } catch(e) {
         console.error("Error al actualizar la solicitud:", e);
+        alert("Ocurrió un error al procesar la acción.");
     }
 }
         async function handleAdminQuantityChange(event) { const input = event.currentTarget; const { requestId, itemIndex } = input.dataset; const newSentQuantity = parseInt(input.value, 10); if (isNaN(newSentQuantity) || newSentQuantity < 0) return; const reqRef = transfersCollection.doc(requestId); try { const doc = await reqRef.get(); if (doc.exists) { let items = doc.data().items; if (items && items[itemIndex]) { items[itemIndex].sentQuantity = newSentQuantity; } await reqRef.update({ items }); } } catch(e) { console.error("Error al actualizar cantidad:", e); } }
