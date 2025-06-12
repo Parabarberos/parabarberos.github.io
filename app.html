@@ -10,6 +10,10 @@
     <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-firestore-compat.js"></script>
     <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+    <style>
+        .modal-backdrop { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.6); display: flex; justify-content: center; align-items: center; z-index: 1000; }
+        .modal-content { background-color: white; padding: 2rem; border-radius: 0.75rem; box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1); width: 90%; max-width: 600px; max-height: 90vh; overflow-y: auto; }
+    </style>
 </head>
 <body class="bg-gray-100 font-sans">
     <div class="container mx-auto p-4 md:p-8">
@@ -18,15 +22,9 @@
                 <img src="https://parabarberos.github.io/2.jpg" alt="Logo Parabarberos" class="h-24 w-24 md:h-32 md:w-32 rounded-full">
             </div>
             <h1 class="text-4xl md:text-5xl font-extrabold text-gray-800 tracking-tight">TRASLADOS ENTRE BODEGAS</h1>
-            <!-- SECCIÓN DE USUARIO MODIFICADA -->
             <div class="mt-8 flex justify-center items-center gap-4">
-                <div>
-                    <span class="text-gray-600">Usuario:</span>
-                    <span id="userEmailDisplay" class="font-bold text-gray-800">Cargando...</span>
-                </div>
-                <button id="logoutBtn" class="bg-gray-200 hover:bg-red-200 text-red-700 font-semibold py-2 px-4 border border-red-300 rounded-lg shadow-sm">
-                    Cerrar Sesión
-                </button>
+                <div><span class="text-gray-600">Usuario:</span><span id="userEmailDisplay" class="font-bold text-gray-800">Cargando...</span></div>
+                <button id="logoutBtn" class="bg-gray-200 hover:bg-red-200 text-red-700 font-semibold py-2 px-4 border border-red-300 rounded-lg shadow-sm">Cerrar Sesión</button>
             </div>
         </header>
 
@@ -34,48 +32,30 @@
         <div id="requesterView" class="grid grid-cols-1 lg:grid-cols-3 gap-8" style="display: none;">
             <div class="lg:col-span-2 space-y-8">
                 <div class="bg-white p-6 rounded-xl shadow-lg card">
-                    <h2 class="text-2xl font-semibold mb-4 text-gray-800 border-b pb-3">Nueva solicitud de traslado</h2>
-                    <div class="mb-4">
-                        <input type="search" id="searchInput" placeholder="Buscar producto..." class="w-full px-4 py-2 border border-gray-300 rounded-lg">
-                    </div>
+                    <h2 id="formTitle" class="text-2xl font-semibold mb-4 text-gray-800 border-b pb-3">Nueva solicitud de traslado</h2>
+                    <div class="mb-4"><input type="search" id="searchInput" placeholder="Buscar producto..." class="w-full px-4 py-2 border border-gray-300 rounded-lg"></div>
                     <div id="productList" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 mb-6 min-h-[200px] max-h-[50vh] overflow-y-auto p-4 bg-gray-50 rounded-lg"></div>
                     <h3 class="text-xl font-semibold mb-3 text-gray-800"> Productos seleccionados</h3>
                     <div id="currentTransferRequest" class="space-y-3 mb-6 min-h-[100px] max-h-[40vh] overflow-y-auto p-4 bg-gray-50 rounded-lg"></div>
                     <form id="transferForm" class="space-y-4 border-t pt-6">
-                        <h3 class="text-xl font-semibold mb-3 text-gray-800"> Detalles de traslado</h3>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <label for="toWarehouse" class="block text-sm font-medium text-gray-700">Bodega Destino:</label>
-                                <select id="toWarehouse" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm"></select>
-                            </div>
-                            <div>
-                                <label for="requesterName" class="block text-sm font-medium text-gray-700">Solicitante:</label>
-                                <select id="requesterName" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm bg-gray-100" disabled></select>
-                            </div>
-                            <div>
-                                <label for="deliveryDate" class="block text-sm font-medium text-gray-700">Fecha de solicitud</label>
-                                <input type="date" id="deliveryDate" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm">
-                            </div>
+                            <div><label for="toWarehouse" class="block text-sm font-medium text-gray-700">Bodega Destino:</label><select id="toWarehouse" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm"></select></div>
+                            <div><label for="requesterName" class="block text-sm font-medium text-gray-700">Solicitante:</label><select id="requesterName" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm bg-gray-100" disabled></select></div>
+                            <div><label for="deliveryDate" class="block text-sm font-medium text-gray-700">Fecha de solicitud</label><input type="date" id="deliveryDate" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm"></div>
                         </div>
                         <input type="hidden" id="fromWarehouse" value="Bodega Principal">
-                        <div>
-                            <label for="requesterNotes" class="block text-sm font-medium text-gray-700">Observaciones</label>
-                            <textarea id="requesterNotes" rows="2" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm" placeholder="Ej: Necesito este pedido con urgencia para un cliente..."></textarea>
-                        </div>
-                        <button type="submit" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-4 rounded-lg shadow-lg">
-                            ENVIAR SOLICITUD DE TRASLADO
-                        </button>
+                        <div><label for="requesterNotes" class="block text-sm font-medium text-gray-700">Observaciones</label><textarea id="requesterNotes" rows="2" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm" placeholder="Ej: Necesito este pedido con urgencia..."></textarea></div>
+                        <div class="flex space-x-2"><button type="submit" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-4 rounded-lg shadow-lg">ENVIAR SOLICITUD</button><button type="button" id="cancelEditBtn" class="w-1/3 bg-gray-500 hover:bg-gray-600 text-white font-bold py-3 px-4 rounded-lg shadow-lg" style="display: none;">Cancelar Edición</button></div>
                     </form>
                 </div>
             </div>
             <div class="lg:col-span-1 bg-white p-6 rounded-xl shadow-lg card">
                 <h3 class="text-2xl font-semibold mb-4 text-gray-800 border-b pb-3">Mis solicitudes</h3>
+                <h4 class="text-xl font-bold text-blue-600 mb-2">Por Recibir</h4>
+                <div id="myShippedRequests" class="space-y-4 mb-6 border-b pb-6"></div>
                 <div class="space-y-2 mb-4">
                     <input type="text" id="requesterSearchId" placeholder="Buscar por ID..." class="w-full px-3 py-2 border rounded-lg">
-                    <div class="grid grid-cols-2 gap-2">
-                        <input type="date" id="requesterDateFrom" class="w-full px-3 py-2 border rounded-lg text-sm" title="Fecha Desde">
-                        <input type="date" id="requesterDateTo" class="w-full px-3 py-2 border rounded-lg text-sm" title="Fecha Hasta">
-                    </div>
+                    <div class="grid grid-cols-2 gap-2"><input type="date" id="requesterDateFrom" class="w-full px-3 py-2 border rounded-lg text-sm" title="Fecha Desde"><input type="date" id="requesterDateTo" class="w-full px-3 py-2 border rounded-lg text-sm" title="Fecha Hasta"></div>
                 </div>
                 <div class="max-h-[80vh] overflow-y-auto">
                     <h4 class="text-lg font-medium text-gray-700 mb-2">Activas</h4>
@@ -91,70 +71,52 @@
             <div id="productManagementCard" class="lg:col-span-2 bg-white p-6 rounded-xl shadow-lg card" style="display: none;">
                 <h2 class="text-2xl font-semibold mb-4 text-gray-800 border-b pb-3">Gestión de Productos</h2>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
-                    <div>
-                        <p class="text-sm text-gray-600 mb-2">Para actualizar la lista, sube un archivo <strong>JSON</strong>. El código lo procesará automáticamente.</p>
-                        <pre class="bg-gray-100 p-3 rounded-lg text-xs text-gray-700 overflow-x-auto">
-[
-  {
-    "738678000984 - DAILY CLEANS...": "669316222034 - BALSAMO..."
-  },
-  ...
-]
-                        </pre>
-                    </div>
+                    <div><p class="text-sm text-gray-600 mb-2">Sube un archivo <strong>JSON</strong> para actualizar la lista de productos.</p><pre class="bg-gray-100 p-3 rounded-lg text-xs text-gray-700 overflow-x-auto">[{"...":"..."}]</pre></div>
                     <div class="text-center">
-                        <label for="productFile" class="cursor-pointer w-full inline-block bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg shadow-lg">
-                            Seleccionar Archivo JSON
-                        </label>
+                        <label for="productFile" class="cursor-pointer w-full inline-block bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg shadow-lg">Seleccionar Archivo JSON</label>
                         <input type="file" id="productFile" class="hidden" accept=".json">
                         <span id="fileNameDisplay" class="block text-sm text-gray-500 mt-2 truncate">Ningún archivo seleccionado.</span>
-                        <button id="uploadProductsBtn" class="mt-4 w-full bg-gray-800 hover:bg-black text-white font-bold py-3 px-4 rounded-lg shadow-lg">
-                            Actualizar Base de Datos de Productos
-                        </button>
+                        <button id="uploadProductsBtn" class="mt-4 w-full bg-gray-800 hover:bg-black text-white font-bold py-3 px-4 rounded-lg shadow-lg">Actualizar Base de Datos</button>
                         <p id="uploadStatus" class="mt-3 text-sm font-medium"></p>
                     </div>
                 </div>
             </div>
             <div class="bg-white p-6 rounded-xl shadow-lg card">
-                <h2 class="text-2xl font-semibold mb-4 text-gray-800 border-b pb-3">Traslados pendientes</h2>
+                <h2 class="text-2xl font-semibold mb-4 text-gray-800 border-b pb-3">Traslados Activos</h2>
                 <div class="space-y-2 mb-4">
                     <input type="text" id="adminActiveSearchId" placeholder="Buscar por ID o Solicitante..." class="w-full px-3 py-2 border rounded-lg">
-                    <div class="grid grid-cols-2 gap-2">
-                        <input type="date" id="adminActiveDateFrom" class="w-full px-3 py-2 border rounded-lg text-sm" title="Fecha Desde">
-                        <input type="date" id="adminActiveDateTo" class="w-full px-3 py-2 border rounded-lg text-sm" title="Fecha Hasta">
-                    </div>
+                    <div class="grid grid-cols-2 gap-2"><input type="date" id="adminActiveDateFrom" class="w-full px-3 py-2 border rounded-lg text-sm" title="Fecha Desde"><input type="date" id="adminActiveDateTo" class="w-full px-3 py-2 border rounded-lg text-sm" title="Fecha Hasta"></div>
                 </div>
-                <div id="adminTransferRequests" class="space-y-4 max-h-[80vh] overflow-y-auto"></div>
+                <div class="max-h-[80vh] overflow-y-auto">
+                    <h3 class="text-lg font-medium text-red-500 mb-2">Pendientes de Revisión</h3>
+                    <div id="adminPendingRequests" class="space-y-4 mb-6"></div>
+                    <h3 class="text-lg font-medium text-yellow-500 mb-2">Pendientes por Recibir</h3>
+                    <div id="adminShippedRequests" class="space-y-4"></div>
+                </div>
             </div>
             <div class="bg-white p-6 rounded-xl shadow-lg card">
                 <div class="flex justify-between items-center border-b pb-3 mb-4">
                     <h2 class="text-2xl font-semibold text-gray-800">Historial</h2>
-                    <button id="exportExcelBtn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg shadow-md flex items-center space-x-2">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                        <span>Exportar a Excel</span>
-                    </button>
+                    <button id="exportExcelBtn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg shadow-md flex items-center space-x-2"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg><span>Exportar</span></button>
                 </div>
                 <div class="space-y-2 mb-4">
                     <input type="text" id="adminHistorySearchId" placeholder="Buscar por ID o Solicitante..." class="w-full px-3 py-2 border rounded-lg">
-                    <div class="grid grid-cols-2 gap-2">
-                        <input type="date" id="adminHistoryDateFrom" class="w-full px-3 py-2 border rounded-lg text-sm" title="Fecha Desde">
-                        <input type="date" id="adminHistoryDateTo" class="w-full px-3 py-2 border rounded-lg text-sm" title="Fecha Hasta">
-                    </div>
+                    <div class="grid grid-cols-2 gap-2"><input type="date" id="adminHistoryDateFrom" class="w-full px-3 py-2 border rounded-lg text-sm" title="Fecha Desde"><input type="date" id="adminHistoryDateTo" class="w-full px-3 py-2 border rounded-lg text-sm" title="Fecha Hasta"></div>
                 </div>
                 <div class="max-h-[80vh] overflow-y-auto">
-                    <h3 class="text-lg font-medium text-gray-700 mb-2">Completadas</h3>
+                    <h3 class="text-lg font-medium text-green-600 mb-2">Completadas</h3>
                     <div id="adminCompletedRequests" class="space-y-4 mb-6"></div>
-                    <h3 class="text-lg font-medium text-gray-700 mb-2">Canceladas</h3>
+                    <h3 class="text-lg font-medium text-red-700 mb-2">Canceladas</h3>
                     <div id="adminCancelledRequests" class="space-y-4"></div>
                 </div>
             </div>
         </div>
     </div>
+    <div id="edit-modal-container"></div>
 
 <script>
     document.addEventListener('DOMContentLoaded', () => {
 
-        // --- 1. CONFIGURACIÓN E INICIALIZACIÓN ---
         const firebaseConfig = {
             apiKey: "AIzaSyBmmNg525KrnOTsebzAV9dzfsKiq3o-0iQ",
             authDomain: "base-de-datos-traslados.firebaseapp.com",
@@ -170,7 +132,6 @@
         const transfersCollection = db.collection("transferencias");
         const productsCollection = db.collection("products");
 
-        // --- MAPEO DE USUARIOS Y ROLES ---
         const USER_ROLES = {
             'inventarios.parabarberos@gmail.com': ['Administrador', 'admin'],
             'parabarberossedecentro@gmail.com': ['Punto de venta Cali centro', 'requester'],
@@ -180,20 +141,17 @@
             'parabarberossedemedellin@gmail.com': ['Punto de venta Medellin', 'requester']
         };
 
-        // --- 2. VARIABLES GLOBALES Y DE ESTADO ---
-        let allProducts = [];
-        let currentTransferItems = JSON.parse(localStorage.getItem('currentTransferDraft')) || [];
-        let allTransferRequests = [];
-        let currentUserData = null; // Guardará el objeto completo { user, name, role }
+        let allProducts = [], currentTransferItems = [], allTransferRequests = [], currentUserData = null, editingRequestId = null;
+        currentTransferItems = JSON.parse(localStorage.getItem('currentTransferDraft')) || [];
 
-        // --- 3. REFERENCIAS AL DOM ---
         const dom = {
             productList: document.getElementById('productList'), currentTransferRequest: document.getElementById('currentTransferRequest'),
             transferForm: document.getElementById('transferForm'), toWarehouse: document.getElementById('toWarehouse'),
             requesterName: document.getElementById('requesterName'), searchInput: document.getElementById('searchInput'),
             requesterView: document.getElementById('requesterView'), adminView: document.getElementById('adminView'),
-            myPendingRequests: document.getElementById('myPendingRequests'), myHistoryRequests: document.getElementById('myHistoryRequests'),
-            adminTransferRequests: document.getElementById('adminTransferRequests'), adminCompletedRequests: document.getElementById('adminCompletedRequests'),
+            myShippedRequests: document.getElementById('myShippedRequests'), myPendingRequests: document.getElementById('myPendingRequests'), 
+            myHistoryRequests: document.getElementById('myHistoryRequests'), adminPendingRequests: document.getElementById('adminPendingRequests'),
+            adminShippedRequests: document.getElementById('adminShippedRequests'), adminCompletedRequests: document.getElementById('adminCompletedRequests'),
             adminCancelledRequests: document.getElementById('adminCancelledRequests'), requesterSearchId: document.getElementById('requesterSearchId'),
             requesterDateFrom: document.getElementById('requesterDateFrom'), requesterDateTo: document.getElementById('requesterDateTo'),
             adminActiveSearchId: document.getElementById('adminActiveSearchId'), adminActiveDateFrom: document.getElementById('adminActiveDateFrom'),
@@ -202,77 +160,46 @@
             exportExcelBtn: document.getElementById('exportExcelBtn'), productManagementCard: document.getElementById('productManagementCard'),
             productFile: document.getElementById('productFile'), uploadProductsBtn: document.getElementById('uploadProductsBtn'),
             uploadStatus: document.getElementById('uploadStatus'), fileNameDisplay: document.getElementById('fileNameDisplay'),
-            userEmailDisplay: document.getElementById('userEmailDisplay'), logoutBtn: document.getElementById('logoutBtn')
+            userEmailDisplay: document.getElementById('userEmailDisplay'), logoutBtn: document.getElementById('logoutBtn'),
+            editModalContainer: document.getElementById('edit-modal-container'), formTitle: document.getElementById('formTitle'),
+            cancelEditBtn: document.getElementById('cancelEditBtn')
         };
         
-        // --- 4. LÓGICA DE AUTENTICACIÓN ---
+        const getRequestStatusColor = (s) => ({
+            'pending': 'border-l-4 border-red-400 bg-red-50', 'processing_partial_items': 'border-l-4 border-red-400 bg-red-50',
+            'shipped': 'border-l-4 border-yellow-400 bg-yellow-50', 'completed': 'border-l-4 border-green-500 bg-green-50',
+            'completed_incomplete': 'border-l-4 border-green-500 bg-green-50', 'cancelled': 'border-l-4 border-red-700 bg-red-100'
+        }[s] || 'border-l-4 border-gray-300');
+        const translateStatus = (s) => ({
+            'pending':'Pendiente de Revisión', 'processing_partial_items':'En Revisión', 'shipped': 'Enviado (Por Recibir)',
+            'completed':'Recibido Completo', 'completed_incomplete':'Recibido Incompleto', 'cancelled':'Cancelado'
+        }[s] || s);
+        
         auth.onAuthStateChanged(user => {
             if (user) {
                 const userDataFromMap = USER_ROLES[user.email];
-                if (!userDataFromMap) {
-                    alert("Tu usuario no está autorizado para usar esta aplicación. Contacta al administrador.");
+                if (!userDataFromMap) { 
+                    alert("Tu usuario no está autorizado para acceder a esta aplicación."); 
                     auth.signOut();
-                    return;
+                    window.location.href = 'index.html';
+                    return; 
                 }
                 const [name, role] = userDataFromMap;
                 currentUserData = { user, name, role };
                 dom.userEmailDisplay.textContent = user.email;
                 initializeApp();
-            } else {
-                window.location.href = 'index.html';
+            } else { 
+                window.location.href = 'index.html'; 
             }
         });
 
-        dom.logoutBtn.onclick = () => auth.signOut();
+        dom.logoutBtn.onclick = () => {
+            auth.signOut().then(() => {
+                window.location.href = 'index.html';
+            });
+        };
+        dom.cancelEditBtn.onclick = () => resetTransferForm();
         
-        // --- 5. FUNCIONES ---
-        
-        const getRequestStatusColor = (s) => ({'pending':'border-l-4 border-gray-400 bg-gray-50','processing_partial_items':'border-l-4 border-red-500 bg-red-50','completed':'border-l-4 border-black bg-gray-100','cancelled':'border-l-4 border-red-700 bg-red-100'}[s]||'border-l-4 border-gray-300');
-        const translateStatus = (s) => ({'pending':'Pendiente','processing_partial_items':'En Revisión','completed':'Realizado','cancelled':'Cancelado'}[s]||s);
-        async function handleFinalizeReception(event) {
-            const button = event.currentTarget;
-            const requestId = button.dataset.requestId;
-            button.disabled = true;
-            button.textContent = 'Procesando...';
-            const receptionNotes = document.getElementById(`receptionNotes-${requestId}`).value;
-            const qtyInputs = document.querySelectorAll(`.reception-qty-input[data-request-id="${requestId}"]`);
-            const reqRef = transfersCollection.doc(requestId);
-            try {
-                const doc = await reqRef.get();
-                if (!doc.exists) {
-                    throw new Error("El documento del traslado no fue encontrado. Puede que haya sido eliminado.");
-                }
-                let items = doc.data().items;
-                let isComplete = true;
-                
-                qtyInputs.forEach(input => {
-                    const index = parseInt(input.dataset.itemIndex, 10);
-                    const receivedQty = parseInt(input.value, 10);
-                    if (items[index]) {
-                        items[index].receivedQuantity = receivedQty;
-                        if (receivedQty < items[index].sentQuantity) {
-                            isComplete = false;
-                        }
-                    }
-                });
-                const newStatus = isComplete ? 'completed' : 'completed_incomplete';
-                const updatePayload = {
-                    status: newStatus,
-                    items: items,
-                    reception: {
-                        notes: receptionNotes,
-                        timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-                        finalizedBy: currentUserData.user.email // Guardamos quién confirmó
-                        }
-                };
-                await reqRef.update(updatePayload);
-            } catch (error) {
-                console.error("Error al finalizar la recepción:", error);
-                alert("Ocurrió un error al procesar la recepción. Por favor, intenta de nuevo.");
-                button.disabled = false;
-                button.textContent = 'Finalizar y Confirmar Recepción';
-            }
-        }
         function setupUIForUser() {
             if (!currentUserData) return;
             const { name, role } = currentUserData;
@@ -288,159 +215,158 @@
             }
         }
         
-        function applyFilters(requests, searchInput, dateFromInput, dateToInput) { const searchTerm = searchInput.value.toLowerCase().trim(); const dateFrom = dateFromInput.value; const dateTo = dateToInput.value; let filtered = requests; if (searchTerm) { filtered = filtered.filter(req => req.id.toLowerCase().includes(searchTerm) || (req.requesterName && req.requesterName.toLowerCase().includes(searchTerm))); } if (dateFrom) { const from = new Date(dateFrom).setHours(0,0,0,0); filtered = filtered.filter(req => req.timestamp && (req.timestamp.seconds * 1000) >= from); } if (dateTo) { const to = new Date(dateTo).setHours(23,59,59,999); filtered = filtered.filter(req => req.timestamp && (req.timestamp.seconds * 1000) <= to); } return filtered; }
+        function applyFilters(requests, searchInput, dateFromInput, dateToInput) {
+            const searchTerm = searchInput.value.toLowerCase().trim();
+            const dateFrom = dateFromInput.value;
+            const dateTo = dateToInput.value;
+            let filtered = requests;
+            if (searchTerm) {
+                filtered = filtered.filter(req => (req.id && req.id.toLowerCase().includes(searchTerm)) || (req.requesterName && req.requesterName.toLowerCase().includes(searchTerm)));
+            }
+            if (dateFrom) {
+                const from = new Date(dateFrom).setHours(0, 0, 0, 0);
+                filtered = filtered.filter(req => req.timestamp && (req.timestamp.seconds * 1000) >= from);
+            }
+            if (dateTo) {
+                const to = new Date(dateTo).setHours(23, 59, 59, 999);
+                filtered = filtered.filter(req => req.timestamp && (req.timestamp.seconds * 1000) <= to);
+            }
+            return filtered;
+        }
         
         function renderAllSections() {
             if (!currentUserData) return;
             const { name, role } = currentUserData;
             const sortedRequests = allTransferRequests.sort((a,b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0));
+            
             if (role === 'requester') {
-                const myRequests = sortedRequests.filter(r => r.requesterName === name);
-                const filteredRequesterReqs = applyFilters(myRequests, dom.requesterSearchId, dom.requesterDateFrom, dom.requesterDateTo);
-                renderSection(dom.myPendingRequests, filteredRequesterReqs.filter(r => r.status === 'pending' || r.status.startsWith('processing')), 'requester', "No tienes solicitudes activas.");
-                renderSection(dom.myHistoryRequests, filteredRequesterReqs.filter(r => r.status === 'completed' || r.status === 'cancelled'), 'requester', "No tienes historial de solicitudes.");
+                const allMyRequests = sortedRequests.filter(r => r.requesterName === name);
+                renderSection(dom.myShippedRequests, allMyRequests.filter(r => r.status === 'shipped'), 'requester', "No tienes traslados por recibir.");
+                const activeRequests = allMyRequests.filter(r => r.status === 'pending' || r.status.startsWith('processing'));
+                const historyRequests = allMyRequests.filter(r => r.status.startsWith('completed') || r.status === 'cancelled');
+                renderSection(dom.myPendingRequests, activeRequests, 'requester', "No tienes solicitudes activas.");
+                renderSection(dom.myHistoryRequests, historyRequests, 'requester', "No tienes historial de solicitudes.");
             } else {
-                const activeReqs = applyFilters(sortedRequests.filter(r => r.status === 'pending' || r.status.startsWith('processing')), dom.adminActiveSearchId, dom.adminActiveDateFrom, dom.adminActiveDateTo);
-                const completedReqs = applyFilters(sortedRequests.filter(r => r.status === 'completed'), dom.adminHistorySearchId, dom.adminHistoryDateFrom, dom.adminHistoryDateTo);
+                const pendingForReview = applyFilters(sortedRequests.filter(r => r.status === 'pending' || r.status.startsWith('processing')), dom.adminActiveSearchId, dom.adminActiveDateFrom, dom.adminActiveDateTo);
+                const pendingForReception = applyFilters(sortedRequests.filter(r => r.status === 'shipped'), dom.adminActiveSearchId, dom.adminActiveDateFrom, dom.adminActiveDateTo);
+                renderSection(dom.adminPendingRequests, pendingForReview, 'admin', "No hay solicitudes pendientes de revisión.");
+                renderSection(dom.adminShippedRequests, pendingForReception, 'admin', "No hay solicitudes pendientes por recibir.");
+                
+                const completedReqs = applyFilters(sortedRequests.filter(r => r.status.startsWith('completed')), dom.adminHistorySearchId, dom.adminHistoryDateFrom, dom.adminHistoryDateTo);
                 const cancelledReqs = applyFilters(sortedRequests.filter(r => r.status === 'cancelled'), dom.adminHistorySearchId, dom.adminHistoryDateFrom, dom.adminHistoryDateTo);
-                renderSection(dom.adminTransferRequests, activeReqs, 'admin', "No hay solicitudes activas.");
                 renderSection(dom.adminCompletedRequests, completedReqs, 'admin', "No hay solicitudes completadas.");
                 renderSection(dom.adminCancelledRequests, cancelledReqs, 'admin', "No hay solicitudes canceladas.");
             }
         }
         
-        function renderSection(div, data, role, emptyMessage) { div.innerHTML = ''; if (data.length === 0) { div.innerHTML = `<p class="text-gray-500 italic text-center py-4">${emptyMessage}</p>`; } else { data.forEach(req => div.appendChild(createRequestCard(req, role))); } }
-        function renderProducts(productsToRender) { dom.productList.innerHTML = ''; if (!productsToRender || productsToRender.length === 0) { dom.productList.innerHTML = '<p class="text-gray-500 col-span-full text-center">No se encontraron productos.</p>'; return; } productsToRender.forEach(product => { const card = document.createElement('div'); card.className = 'border p-3 rounded-lg shadow-sm hover:shadow-md transition bg-white'; const safeId = product.id.replace(/[^a-zA-Z0-9-_]/g, ''); card.innerHTML = `<h3 class="text-sm font-semibold text-gray-900" title="${product.description}">${product.name.length > 50 ? product.name.substring(0, 47) + '...' : product.name}</h3><p class="text-xs text-gray-400 mb-2">ID: ${product.id}</p><div class="flex items-center space-x-2 mt-auto"><input type="number" min="1" value="1" id="qty-${safeId}" class="w-16 border-gray-300 rounded-md text-center p-1"><button data-product-id="${product.id}" class="add-to-transfer-btn w-full bg-gray-800 hover:bg-black text-white text-xs font-bold py-2 px-2 rounded-md transition">Añadir</button></div>`; dom.productList.appendChild(card); }); dom.productList.querySelectorAll('.add-to-transfer-btn').forEach(b => b.onclick = handleAddToTransfer); }
-        function renderCurrentTransfer() { dom.currentTransferRequest.innerHTML = ''; if (currentTransferItems.length === 0) { dom.currentTransferRequest.innerHTML = '<p class="text-gray-500 italic text-center py-4">Añade productos desde la lista de arriba.</p>'; return; } const ul = document.createElement('ul'); ul.className = 'space-y-2'; currentTransferItems.forEach((item, index) => { const li = document.createElement('li'); li.className = 'flex justify-between items-center p-3 bg-white rounded-lg shadow-sm'; li.innerHTML = `<div><span class="font-medium text-gray-800">${item.productName}</span><span class="text-xs text-gray-500 block">ID: ${item.productId}</span></div><div class="flex items-center space-x-2"><input type="number" min="1" value="${item.quantity}" data-item-index="${index}" class="w-16 p-1 border rounded item-quantity-input text-center"><button data-item-index="${index}" class="remove-item-btn text-red-500 hover:text-red-700 font-bold p-1">✕</button></div>`; ul.appendChild(li); }); dom.currentTransferRequest.appendChild(ul); dom.currentTransferRequest.querySelectorAll('.item-quantity-input').forEach(input => input.onchange = handleUpdateItemQuantity); dom.currentTransferRequest.querySelectorAll('.remove-item-btn').forEach(button => button.onclick = handleRemoveItem); }
+        function renderSection(div, data, role, emptyMessage) {
+            if (!div) return;
+            div.innerHTML = '';
+            if (data.length === 0) {
+                div.innerHTML = `<p class="text-gray-500 italic text-center py-4">${emptyMessage}</p>`;
+            } else {
+                data.forEach(req => div.appendChild(createRequestCard(req, role)));
+            }
+        }
+
+        function renderProducts(productsToRender) {
+            if (!dom.productList) return;
+            dom.productList.innerHTML = '';
+            if (!productsToRender || productsToRender.length === 0) {
+                dom.productList.innerHTML = '<p class="text-gray-500 col-span-full text-center">No se encontraron productos.</p>';
+                return;
+            }
+            productsToRender.forEach(product => {
+                const card = document.createElement('div');
+                card.className = 'border p-3 rounded-lg shadow-sm hover:shadow-md transition bg-white';
+                const safeId = product.id.replace(/[^a-zA-Z0-9-_]/g, '');
+                card.innerHTML = `<h3 class="text-sm font-semibold text-gray-900" title="${product.description}">${product.name.length > 50 ? product.name.substring(0, 47) + '...' : product.name}</h3><p class="text-xs text-gray-400 mb-2">ID: ${product.id}</p><div class="flex items-center space-x-2 mt-auto"><input type="number" min="1" value="1" id="qty-${safeId}" class="w-16 border-gray-300 rounded-md text-center p-1"><button data-product-id="${product.id}" class="add-to-transfer-btn w-full bg-gray-800 hover:bg-black text-white text-xs font-bold py-2 px-2 rounded-md transition">Añadir</button></div>`;
+                dom.productList.appendChild(card);
+            });
+            dom.productList.querySelectorAll('.add-to-transfer-btn').forEach(b => b.onclick = handleAddToTransfer);
+        }
+
+        function renderCurrentTransfer() {
+            if (!dom.currentTransferRequest) return;
+            dom.currentTransferRequest.innerHTML = '';
+            if (currentTransferItems.length === 0) {
+                dom.currentTransferRequest.innerHTML = '<p class="text-gray-500 italic text-center py-4">Añade productos desde la lista de arriba.</p>';
+                return;
+            }
+            const ul = document.createElement('ul');
+            ul.className = 'space-y-2';
+            currentTransferItems.forEach((item, index) => {
+                const li = document.createElement('li');
+                li.className = 'flex justify-between items-center p-3 bg-white rounded-lg shadow-sm';
+                li.innerHTML = `<div><span class="font-medium text-gray-800">${item.productName}</span><span class="text-xs text-gray-500 block">ID: ${item.productId}</span></div><div class="flex items-center space-x-2"><input type="number" min="1" value="${item.quantity}" data-item-index="${index}" class="w-16 p-1 border rounded item-quantity-input text-center"><button data-item-index="${index}" class="remove-item-btn text-red-500 hover:text-red-700 font-bold p-1">✕</button></div>`;
+                ul.appendChild(li);
+            });
+            dom.currentTransferRequest.appendChild(ul);
+            dom.currentTransferRequest.querySelectorAll('.item-quantity-input').forEach(input => input.onchange = handleUpdateItemQuantity);
+            dom.currentTransferRequest.querySelectorAll('.remove-item-btn').forEach(button => button.onclick = handleRemoveItem);
+        }
+
         function createRequestCard(req, role) {
             const card = document.createElement('div');
             card.className = `p-4 rounded-lg shadow-sm mb-4 ${getRequestStatusColor(req.status)}`;
             const isShipped = req.status === 'shipped';
             const isFinalized = req.status.startsWith('completed');
-            const itemsHtml = (req.items || []).map((item, index) => {
-                let quantityDisplay = `Solicitado: <b>${item.quantity}</b>`;
-                if (item.sentQuantity !== undefined) {
-                    quantityDisplay += ` | Enviado: <b>${item.sentQuantity}</b>`;
-                }
-                if (item.receivedQuantity !== undefined) {
-                    const color = item.receivedQuantity < item.sentQuantity ? 'text-red-600' : 'text-green-700';
-                    quantityDisplay += ` | Recibido: <b class="${color}">${item.receivedQuantity}</b>`;
-                }
-                const receptionInput = (role === 'requester' && isShipped)
-                    ? `<div class="flex items-center"><label class="text-sm mr-2">Recibido:</label><input type="number" value="${item.sentQuantity}" data-request-id="${req.id}" data-item-index="${index}" class="reception-qty-input w-20 p-1 border rounded-md text-center"></div>`
-                    : '';
-                return `<li class="p-2 rounded-md bg-white flex justify-between items-center text-sm">
-                <div>
-                <span class="font-medium text-gray-800">${item.productName}</span>
-                <div class="text-xs text-gray-600">${quantityDisplay}</div>
-                    </div>
-                    ${receptionInput}
-                </li>`;
-    }).join('');
-    
-    // --- ACCIONES DEL ADMINISTRADOR (Sin cambios en su lógica) ---
-    let adminActionsHtml = '';
-    if (role === 'admin' && (req.status === 'pending' || req.status.startsWith('processing'))) {
-        let buttons = '';
-        if (req.status === 'pending') buttons += `<button data-request-id="${req.id}" data-action="start_processing" class="action-btn bg-gray-800 hover:bg-black text-white text-xs font-semibold py-2 px-3 rounded-md mr-1">Iniciar Revisión</button>`;
-        if (req.status.startsWith('processing')) {
-            buttons += `<button data-request-id="${req.id}" data-action="shipped" class="action-btn bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold py-2 px-3 rounded-md">Marcar como Enviado</button>`;
+            const itemsHtml = (req.items || []).map((item, index) => { let quantityDisplay = `Solicitado: <b>${item.quantity}</b>`; if (item.sentQuantity !== undefined && item.sentQuantity > 0) { quantityDisplay += ` | Enviado: <b>${item.sentQuantity}</b>`; } if (item.receivedQuantity !== undefined) { const color = item.receivedQuantity < item.sentQuantity ? 'text-red-600' : 'text-green-700'; quantityDisplay += ` | Recibido: <b class="${color}">${item.receivedQuantity}</b>`; } const receptionInput = (role === 'requester' && isShipped) ? `<div class="flex items-center"><label class="text-sm mr-2">Recibido:</label><input type="number" value="${item.sentQuantity}" data-request-id="${req.id}" data-item-index="${index}" class="reception-qty-input w-20 p-1 border rounded-md text-center"></div>` : ``; const adminInput = (role === 'admin' && req.status.startsWith('processing')) ? `<input type="number" value="${item.sentQuantity}" data-request-id="${req.id}" data-item-index="${index}" class="admin-qty-input w-20 p-1 border rounded-md text-center">` : ``; return `<li class="p-2 rounded-md bg-white flex justify-between items-center text-sm"><div><span class="font-medium text-gray-800">${item.productName}</span><div class="text-xs text-gray-600">${quantityDisplay}</div></div>${receptionInput}${adminInput}</li>`; }).join('');
+            let adminActionsHtml = '', requesterActionsHtml = '';
+            if (role === 'admin') { let buttons = ''; if (req.status === 'pending' || req.status.startsWith('processing')) { if (req.status === 'pending') buttons += `<button data-request-id="${req.id}" data-action="start_processing" class="action-btn bg-gray-800 hover:bg-black text-white text-xs font-semibold py-2 px-3 rounded-md mr-1">Iniciar Revisión</button>`; if (req.status.startsWith('processing')) { buttons += `<button data-request-id="${req.id}" data-action="shipped" class="action-btn bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold py-2 px-3 rounded-md">Marcar como Enviado</button>`; } } if (req.status === 'shipped') { buttons += `<button data-request-id="${req.id}" class="edit-shipment-btn bg-orange-500 hover:bg-orange-600 text-white text-xs font-semibold py-2 px-3 rounded-md">Editar Envío</button>`; } if (!isFinalized && req.status !== 'cancelled') { buttons += `<button data-request-id="${req.id}" data-action="cancel" class="action-btn bg-red-700 hover:bg-red-800 text-white text-xs font-semibold py-2 px-3 rounded-md ml-1">Cancelar</button>`; } if (buttons) { adminActionsHtml = `<div class="mt-4 border-t pt-4 text-right">${buttons}</div>`; } }
+            if (role === 'requester' && req.status === 'pending') { requesterActionsHtml = `<div class="flex flex-col space-y-2"><button data-request-id="${req.id}" class="edit-my-request-btn bg-blue-500 hover:bg-blue-600 text-white text-xs font-semibold py-1 px-2 rounded-md">Editar</button><button data-request-id="${req.id}" class="delete-my-request-btn bg-red-600 hover:bg-red-700 text-white text-xs font-semibold py-1 px-2 rounded-md">Eliminar</button></div>`; }
+            let receptionFormHtml = ''; if (role === 'requester' && isShipped) { receptionFormHtml = `<div class="mt-4 border-t-2 border-blue-200 pt-4 space-y-3"><h5 class="font-bold text-md text-blue-700">Confirmar Recepción</h5><div><label class="block text-sm font-medium text-gray-700">Observaciones:</label><textarea id="receptionNotes-${req.id}" rows="2" class="w-full mt-1 border rounded-md p-2" placeholder="Ej: La caja llegó golpeada..."></textarea></div><button data-request-id="${req.id}" class="finalize-reception-btn w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-3 rounded-md">Finalizar Recepción</button></div>`; }
+            let receptionEvidenceHtml = ''; if (isFinalized && req.reception && req.reception.notes) { receptionEvidenceHtml = `<div class="mt-3 p-3 bg-green-50 rounded-lg border border-green-200"><p class="text-sm font-semibold text-green-800">Revisión del Solicitante:</p><p class="text-sm text-green-900 italic">"${req.reception.notes}"</p></div>`; }
+            const reqDate = req.deliveryDate ? new Date(req.deliveryDate + 'T00:00:00').toLocaleDateString('es-CO', { year: 'numeric', month: 'long', day: 'numeric' }) : 'No especificada'; const creationDate = req.timestamp ? new Date(req.timestamp.seconds * 1000).toLocaleDateString('es-CO') : '';
+            card.innerHTML = `<div class="flex justify-between items-start"><div><h4 class="font-semibold text-lg text-gray-800">${req.requesterName}</h4><p class="text-sm text-gray-600">Para: <strong>${req.toWarehouse}</strong></p><p class="text-xs text-gray-400">ID: ${req.id} | Creada: ${creationDate}</p><p class="text-sm mt-1">Fecha Requerida: <b>${reqDate}</b></p><span class="inline-block mt-2 px-2 py-1 text-xs font-bold rounded-full ${getRequestStatusColor(req.status)}">${translateStatus(req.status)}</span>${req.requesterNotes ? `<div class="mt-3 p-3 bg-gray-50 rounded-lg border"><p class="text-sm font-semibold text-gray-600">Observaciones:</p><p class="text-sm text-gray-800 italic">"${req.requesterNotes}"</p></div>` : ''}${req.adminNotes ? `<div class="mt-3 p-3 bg-red-50 rounded-lg border border-red-200"><p class="text-sm font-semibold text-red-800">Nota del Admin:</p><p class="text-sm text-red-900 italic">"${req.adminNotes}"</p></div>` : ''}${(role === 'admin' && req.status.startsWith('processing')) ? `<div class="mt-4 border-t pt-4"><label for="adminNotes-${req.id}" class="text-sm font-medium text-gray-700">Añadir/Editar Nota:</label><textarea id="adminNotes-${req.id}" rows="2" class="w-full mt-1 border rounded-md p-2">${req.adminNotes || ''}</textarea><button data-request-id="${req.id}" class="save-admin-note-btn mt-1 text-xs bg-gray-800 text-white px-3 py-1.5 rounded-md hover:bg-black">Guardar Nota</button></div>` : ''}</div>${requesterActionsHtml}</div><div class="mt-4"><p class="text-sm font-semibold mb-2 text-gray-600">Items:</p><ul class="space-y-2">${itemsHtml}</ul></div>${receptionEvidenceHtml}${adminActionsHtml}${receptionFormHtml}`;
+            card.querySelectorAll('.action-btn').forEach(b => b.onclick = handleAdminAction);
+            card.querySelectorAll('.finalize-reception-btn').forEach(b => b.onclick = handleFinalizeReception);
+            card.querySelectorAll('.admin-qty-input').forEach(i => i.onchange = handleAdminQuantityChange);
+            card.querySelectorAll('.delete-my-request-btn').forEach(b => b.onclick = handleDeleteMyRequest);
+            card.querySelectorAll('.edit-my-request-btn').forEach(b => b.onclick = handleEditRequest);
+            card.querySelectorAll('.edit-shipment-btn').forEach(b => b.onclick = openEditShipmentModal);
+            card.querySelectorAll('.save-admin-note-btn').forEach(b => b.onclick = handleSaveAdminNote);
+            return card;
         }
-        buttons += `<button data-request-id="${req.id}" data-action="cancel" class="action-btn bg-red-600 hover:bg-red-700 text-white text-xs font-semibold py-2 px-3 rounded-md ml-1">Cancelar</button>`;
-        adminActionsHtml = `<div class="mt-4 border-t pt-4 text-right">${buttons}</div>`;
-    }
 
-    // --- FORMULARIO DE RECEPCIÓN DEL SOLICITANTE (Simplificado) ---
-    let receptionFormHtml = '';
-    if (role === 'requester' && isShipped) {
-        receptionFormHtml = `
-            <div class="mt-4 border-t-2 border-red-200 pt-4 space-y-3">
-                <h5 class="font-bold text-md text-red-700">Confirmar Recepción</h5>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">Observaciones de Recepción:</label>
-                    <textarea id="receptionNotes-${req.id}" rows="2" class="w-full mt-1 border rounded-md p-2" placeholder="Ej: La caja llegó golpeada, un producto dañado..."></textarea>
-                </div>
-                <button data-request-id="${req.id}" class="finalize-reception-btn w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-3 rounded-md">Finalizar y Confirmar Recepción</button>
-            </div>
-        `;
-    }
-
-    // --- EVIDENCIAS DEL SOLICITANTE (Texto solamente) ---
-    let receptionEvidenceHtml = '';
-    if (isFinalized && req.reception && req.reception.notes) {
-        receptionEvidenceHtml = `
-            <div class="mt-3 p-3 bg-green-50 rounded-lg border border-green-200">
-                <p class="text-sm font-semibold text-green-800">Revisión del Solicitante:</p>
-                <p class="text-sm text-green-900 italic">"${req.reception.notes}"</p>
-            </div>
-        `;
-    }
-
-    // --- ARMADO FINAL DE LA TARJETA ---
-    card.innerHTML = `
-        <div class="flex justify-between items-start">
-            <div>
-                <h4 class="font-semibold text-lg text-gray-800">${req.requesterName}</h4>
-                <p class="text-sm text-gray-600">ID: ${req.id}</p>
-                <span class="inline-block mt-2 px-2 py-1 text-xs font-bold rounded-full ${getRequestStatusColor(req.status)}">${translateStatus(req.status)}</span>
-            </div>
-        </div>
-        <div class="mt-4"><p class="text-sm font-semibold mb-2 text-gray-600">Items:</p><ul class="space-y-2">${itemsHtml}</ul></div>
-        ${receptionEvidenceHtml}
-        ${adminActionsHtml}
-        ${receptionFormHtml}
-    `;
-
-    // Asignar eventos
-    card.querySelectorAll('.action-btn').forEach(b => b.onclick = handleAdminAction);
-    card.querySelectorAll('.finalize-reception-btn').forEach(b => b.onclick = handleFinalizeReception);
-    return card;
-}
+        function resetTransferForm() { editingRequestId = null; currentTransferItems = []; renderCurrentTransfer(); dom.transferForm.reset(); dom.formTitle.textContent = 'Nueva solicitud de traslado'; dom.transferForm.querySelector('button[type="submit"]').textContent = 'ENVIAR SOLICITUD'; dom.cancelEditBtn.style.display = 'none'; localStorage.removeItem('currentTransferDraft'); }
         function transformRawJsonToProducts(rawData) { const uniqueProductStrings = new Set(); if (Array.isArray(rawData)) { rawData.forEach(item => { Object.keys(item).forEach(key => key && uniqueProductStrings.add(key.trim())); Object.values(item).forEach(val => val && uniqueProductStrings.add(val.trim())); }); } if (uniqueProductStrings.size === 0) return []; const productsMap = new Map(); let genericCounter = 1; uniqueProductStrings.forEach(fullProductName => { const parts = String(fullProductName).split(' - '); let idPart, namePart; if (parts.length > 1 && (/\d/.test(parts[0].trim()) || /^[a-zA-Z]{2,}/.test(parts[0].trim()))) { idPart = parts[0].trim().replace(/\s+/g, '-'); namePart = parts.slice(1).join(' - ').trim(); } else { idPart = `prod-gen-${genericCounter++}`; namePart = fullProductName; } let finalId = idPart, idCounter = 1; while (productsMap.has(finalId)) finalId = `${idPart}_${idCounter++}`; productsMap.set(finalId, { id: finalId, name: namePart, description: fullProductName }); }); return Array.from(productsMap.values()).sort((a, b) => a.name.localeCompare(b.name)); }
-        async function handleProductUpload() { const fileInput = dom.productFile; const statusEl = dom.uploadStatus; if (fileInput.files.length === 0) { alert("Por favor, selecciona un archivo primero."); return; } const file = fileInput.files[0]; const reader = new FileReader(); reader.onload = async (event) => { let newProducts; try { const rawData = JSON.parse(event.target.result); newProducts = transformRawJsonToProducts(rawData); if (!newProducts || newProducts.length === 0) { throw new Error("No se pudieron procesar productos válidos desde el archivo JSON."); } } catch (e) { statusEl.textContent = `Error: ${e.message}`; statusEl.className = 'mt-3 text-sm font-medium text-red-600'; return; } statusEl.textContent = 'Actualizando, por favor espera...'; statusEl.className = 'mt-3 text-sm font-medium text-blue-600'; try { const batch = db.batch(); const oldDocsSnapshot = await productsCollection.get(); oldDocsSnapshot.forEach(doc => batch.delete(doc.ref)); newProducts.forEach(product => { const docRef = productsCollection.doc(product.id); batch.set(docRef, { name: product.name, description: product.description || '' }); }); await batch.commit(); statusEl.textContent = `¡Éxito! Se actualizaron ${newProducts.length} productos.`; statusEl.className = 'mt-3 text-sm font-medium text-green-600'; allProducts = await loadAndTransformProducts(); renderProducts(allProducts); } catch (error) { console.error("Error al actualizar productos en Firestore: ", error); statusEl.textContent = 'Error al subir a la base de datos.'; statusEl.className = 'mt-3 text-sm font-medium text-red-600'; } }; reader.onerror = () => { statusEl.textContent = 'Error al leer el archivo.'; statusEl.className = 'mt-3 text-sm font-medium text-red-600'; }; reader.readAsText(file); }
+        async function handleProductUpload() { const fileInput = dom.productFile; const statusEl = dom.uploadStatus; if (fileInput.files.length === 0) { alert("Por favor, selecciona un archivo primero."); return; } const file = fileInput.files[0]; const reader = new FileReader(); reader.onload = async (event) => { let newProducts; try { const rawData = JSON.parse(event.target.result); newProducts = transformRawJsonToProducts(rawData); if (!newProducts || newProducts.length === 0) { throw new Error("No se pudieron procesar productos válidos."); } } catch (e) { statusEl.textContent = `Error: ${e.message}`; statusEl.className = 'mt-3 text-sm font-medium text-red-600'; return; } statusEl.textContent = 'Actualizando...'; statusEl.className = 'mt-3 text-sm font-medium text-blue-600'; try { const batch = db.batch(); const oldDocsSnapshot = await productsCollection.get(); oldDocsSnapshot.forEach(doc => batch.delete(doc.ref)); newProducts.forEach(product => { const docRef = productsCollection.doc(product.id); batch.set(docRef, { name: product.name, description: product.description || '' }); }); await batch.commit(); statusEl.textContent = `¡Éxito! Se actualizaron ${newProducts.length} productos.`; statusEl.className = 'mt-3 text-sm font-medium text-green-600'; allProducts = await loadAndTransformProducts(); renderProducts(allProducts); } catch (error) { console.error("Error al actualizar productos:", error); statusEl.textContent = 'Error al subir a la DB.'; statusEl.className = 'mt-3 text-sm font-medium text-red-600'; } }; reader.onerror = () => { statusEl.textContent = 'Error al leer archivo.'; statusEl.className = 'mt-3 text-sm font-medium text-red-600'; }; reader.readAsText(file); }
         function generateCustomId() { const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'; const nums = '0123456789'; let result = ''; let startWithLetter = Math.random() < 0.5; for (let i = 0; i < 7; i++) { if ((i % 2 === 0 && startWithLetter) || (i % 2 !== 0 && !startWithLetter)) { result += chars.charAt(Math.floor(Math.random() * chars.length)); } else { result += nums.charAt(Math.floor(Math.random() * nums.length)); } } return result; }
-        function handleUpdateItemQuantity(event) { const input = event.currentTarget; currentTransferItems[input.dataset.itemIndex].quantity = parseInt(input.value, 10); localStorage.setItem('currentTransferDraft', JSON.stringify(currentTransferItems)); }
-        function handleRemoveItem(event) { currentTransferItems.splice(parseInt(event.currentTarget.dataset.itemIndex, 10), 1); localStorage.setItem('currentTransferDraft', JSON.stringify(currentTransferItems)); renderCurrentTransfer(); }
+        function handleUpdateItemQuantity(event) { const input = event.currentTarget; currentTransferItems[input.dataset.itemIndex].quantity = parseInt(input.value, 10); if(!editingRequestId) localStorage.setItem('currentTransferDraft', JSON.stringify(currentTransferItems)); }
+        function handleRemoveItem(event) { currentTransferItems.splice(parseInt(event.currentTarget.dataset.itemIndex, 10), 1); if(!editingRequestId) localStorage.setItem('currentTransferDraft', JSON.stringify(currentTransferItems)); renderCurrentTransfer(); if (editingRequestId && currentTransferItems.length === 0) { alert("Has eliminado todos los productos. Se cancelará el modo edición."); resetTransferForm(); } }
         function handleSearchInput() { const searchTerm = dom.searchInput.value.toLowerCase().trim(); renderProducts(allProducts.filter(p => p.name.toLowerCase().includes(searchTerm) || (p.description && p.description.toLowerCase().includes(searchTerm)) || p.id.toLowerCase().includes(searchTerm))); }
-        async function handleSubmitTransferForm(event) { event.preventDefault(); const deliveryDateInput = document.getElementById('deliveryDate'); if (!dom.toWarehouse.value) { alert("Por favor, seleccione una Bodega Destino."); return; } if (!dom.requesterName.value) { alert("Por favor, seleccione un Solicitante."); return; } if (currentTransferItems.length === 0) { alert("Agrega productos antes de enviar."); return; } if (!deliveryDateInput.value) { alert("Por favor, selecciona una fecha requerida."); return; } const customId = generateCustomId(); const newReq = { id: customId, items: currentTransferItems.map(item => ({ ...item, sentQuantity: item.quantity })), fromWarehouse: document.getElementById('fromWarehouse').value, toWarehouse: dom.toWarehouse.value, requesterName: dom.requesterName.value, deliveryDate: deliveryDateInput.value, requesterNotes: document.getElementById('requesterNotes').value, status: 'pending', timestamp: firebase.firestore.FieldValue.serverTimestamp() }; try { await transfersCollection.doc(customId).set(newReq); currentTransferItems = []; localStorage.removeItem('currentTransferDraft'); renderCurrentTransfer(); dom.transferForm.reset(); alert(`¡Solicitud enviada con éxito! ID de seguimiento: ${customId}`); } catch (error) { console.error("Error al guardar en Firebase: ", error); } }
-        async function handleDeleteMyRequest(event) { const requestId = event.currentTarget.dataset.requestId; if (confirm("¿Eliminar esta solicitud de la nube?")) { try { await transfersCollection.doc(requestId).delete(); } catch (error) { console.error("Error al eliminar: ", error); } } }
-        async function handleAdminAction(event) { const { requestId, action } = event.currentTarget.dataset; const reqRef = transfersCollection.doc(requestId); try { const doc = await reqRef.get(); if (!doc.exists) return; const currentData = doc.data(); let updateData = {}; switch(action) { case 'start_processing': updateData = { status: 'processing_partial_items' }; break; case 'completed': const hasMissingItems = currentData.items.some(item => item.sentQuantity < item.quantity); if (hasMissingItems && !confirm("Hay ítems faltantes. ¿Completar el traslado de todas formas?")) return; updateData = { status: 'completed' }; break; case 'revert_to_pending': if (confirm("¿Revertir a Pendiente?")) { const resetItems = currentData.items.map(i => ({ ...i, sentQuantity: i.quantity })); updateData = { status: 'pending', items: resetItems }; } else return; break; case 'cancel': if (confirm("¿Cancelar esta solicitud?")) { updateData = { status: 'cancelled' }; } else return; break; } await reqRef.update(updateData); } catch(e) { console.error("Error al actualizar la solicitud:", e); } }
+        async function handleSubmitTransferForm(event) { event.preventDefault(); const deliveryDateInput = document.getElementById('deliveryDate'); if (!dom.toWarehouse.value) { alert("Seleccione Bodega Destino."); return; } if (currentTransferItems.length === 0) { alert("Agregue productos."); return; } if (!deliveryDateInput.value) { alert("Seleccione fecha."); return; } const requestData = { items: currentTransferItems.map(item => ({ productId: item.productId, productName: item.productName, quantity: item.quantity, sentQuantity: item.sentQuantity || 0, receivedQuantity: item.receivedQuantity || 0 })), toWarehouse: dom.toWarehouse.value, deliveryDate: deliveryDateInput.value, requesterNotes: dom.requesterNotes.value }; try { if (editingRequestId) { const reqRef = transfersCollection.doc(editingRequestId); await reqRef.update(requestData); alert(`¡Solicitud ${editingRequestId} actualizada con éxito!`); } else { const customId = generateCustomId(); const newReq = { ...requestData, id: customId, fromWarehouse: 'Bodega Principal', requesterName: currentUserData.name, status: 'pending', timestamp: firebase.firestore.FieldValue.serverTimestamp() }; await transfersCollection.doc(customId).set(newReq); alert(`¡Solicitud enviada! ID: ${customId}`); } resetTransferForm(); } catch (error) { console.error("Error al guardar en Firebase:", error); alert("Ocurrió un error al guardar la solicitud."); } }
+        async function handleDeleteMyRequest(event) { const requestId = event.currentTarget.dataset.requestId; if (confirm("¿Eliminar esta solicitud?")) { try { await transfersCollection.doc(requestId).delete(); } catch (error) { console.error("Error al eliminar:", error); } } }
+        async function handleAdminAction(event) { const { requestId, action } = event.currentTarget.dataset; const reqRef = transfersCollection.doc(requestId); let updateData = {}; try { if (action === 'start_processing') { const doc = await reqRef.get(); if (!doc.exists) return; const items = doc.data().items.map(item => ({ ...item, sentQuantity: item.quantity })); updateData = { status: 'processing_partial_items', items: items }; } else if (action === 'shipped') { if (!confirm("¿Marcar este traslado como ENVIADO?")) return; updateData = { status: 'shipped' }; } else if (action === 'cancel') { if (!confirm("¿Cancelar esta solicitud?")) return; updateData = { status: 'cancelled' }; } else { return; } await reqRef.update(updateData); } catch(e) { console.error("Error al actualizar la solicitud:", e); } }
         async function handleAdminQuantityChange(event) { const input = event.currentTarget; const { requestId, itemIndex } = input.dataset; const newSentQuantity = parseInt(input.value, 10); if (isNaN(newSentQuantity) || newSentQuantity < 0) return; const reqRef = transfersCollection.doc(requestId); try { const doc = await reqRef.get(); if (doc.exists) { let items = doc.data().items; if (items && items[itemIndex]) { items[itemIndex].sentQuantity = newSentQuantity; } await reqRef.update({ items }); } } catch(e) { console.error("Error al actualizar cantidad:", e); } }
-        function handleAddToTransfer(event) { const button = event.currentTarget; const product = allProducts.find(p => p.id === button.dataset.productId); if (!product) return; const qtyInput = document.getElementById(`qty-${product.id.replace(/[^a-zA-Z0-9-_]/g, '')}`); const quantity = parseInt(qtyInput.value, 10); if (isNaN(quantity) || quantity < 1) { alert("Cantidad inválida."); return; } const existingItem = currentTransferItems.find(i => i.productId === product.id); if (existingItem) { existingItem.quantity += quantity; } else { currentTransferItems.push({ productId: product.id, productName: product.name, quantity }); } qtyInput.value = "1"; localStorage.setItem('currentTransferDraft', JSON.stringify(currentTransferItems)); renderCurrentTransfer(); }
-        async function handleSaveAdminNote(event) { const button = event.currentTarget; const requestId = button.dataset.requestId; const adminNotes = document.getElementById(`adminNotes-${requestId}`).value; const reqRef = transfersCollection.doc(requestId); try { await reqRef.update({ adminNotes: adminNotes }); alert("Nota del administrador guardada."); } catch (e) { console.error("Error al guardar la nota:", e); alert("No se pudo guardar la nota."); } }
-        function exportHistoryToExcel() { const historyRequests = allTransferRequests.filter( r => r.status === 'completed' || r.status === 'cancelled' ); if (historyRequests.length === 0) { alert("No hay datos en el historial para exportar."); return; } let excelData = []; historyRequests.forEach(req => { const creationTimestamp = req.timestamp ? new Date(req.timestamp.seconds * 1000) : null; const creationDate = creationTimestamp ? creationTimestamp.toLocaleDateString('es-CO') : 'N/A'; const creationTime = creationTimestamp ? creationTimestamp.toLocaleTimeString('es-CO') : 'N/A'; if (req.items && req.items.length > 0) { req.items.forEach(item => { excelData.push({ 'ID Traslado': req.id, 'Estado': translateStatus(req.status), 'Fecha Solicitud (Requerida)': req.deliveryDate, 'Fecha Creación': creationDate, 'Hora Creación': creationTime, 'Solicitante': req.requesterName, 'Bodega Destino': req.toWarehouse, 'ID Producto': item.productId, 'Nombre Producto': item.productName, 'Unidades Solicitadas': item.quantity, 'Unidades Enviadas': item.sentQuantity, 'Observaciones Solicitante': req.requesterNotes || '', 'Notas Administrador': req.adminNotes || '' }); }); } else { excelData.push({ 'ID Traslado': req.id, 'Estado': translateStatus(req.status), 'Fecha Solicitud (Requerida)': req.deliveryDate, 'Fecha Creación': creationDate, 'Hora Creación': creationTime, 'Solicitante': req.requesterName, 'Bodega Destino': req.toWarehouse, 'ID Producto': 'N/A', 'Nombre Producto': 'Sin items registrados', 'Unidades Solicitadas': 0, 'Unidades Enviadas': 0, 'Observaciones Solicitante': req.requesterNotes || '', 'Notas Administrador': req.adminNotes || '' }); } }); const worksheet = XLSX.utils.json_to_sheet(excelData); const workbook = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(workbook, worksheet, "Historial de Traslados"); worksheet['!cols'] = [ { wch: 20 }, { wch: 15 }, { wch: 25 }, { wch: 15 }, { wch: 15 }, { wch: 25 }, { wch: 25 }, { wch: 20 }, { wch: 40 }, { wch: 20 }, { wch: 20 }, { wch: 50 }, { wch: 50 } ]; XLSX.writeFile(workbook, "Historial_Traslados_Parabarberos.xlsx"); }
-        async function loadAndTransformProducts() { try { const snapshot = await productsCollection.orderBy("name").get(); if (snapshot.empty) { console.warn("La colección 'products' está vacía."); return []; } return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })); } catch (error) { console.error("Error al cargar productos desde Firestore: ", error); alert("No se pudo cargar la lista de productos. Revisa las REGLAS DE SEGURIDAD de Firestore."); return []; } }
-        
-        // --- 6. INICIALIZACIÓN DE LA APLICACIÓN ---
+        function handleAddToTransfer(event) { const button = event.currentTarget; const product = allProducts.find(p => p.id === button.dataset.productId); if (!product) return; const qtyInput = document.getElementById(`qty-${product.id.replace(/[^a-zA-Z0-9-_]/g, '')}`); const quantity = parseInt(qtyInput.value, 10); if (isNaN(quantity) || quantity < 1) { alert("Cantidad inválida."); return; } const existingItem = currentTransferItems.find(i => i.productId === product.id); if (existingItem) { existingItem.quantity += quantity; } else { currentTransferItems.push({ productId: product.id, productName: product.name, quantity }); } qtyInput.value = "1"; if(!editingRequestId) localStorage.setItem('currentTransferDraft', JSON.stringify(currentTransferItems)); renderCurrentTransfer(); }
+        async function handleSaveAdminNote(event) { const button = event.currentTarget; const requestId = button.dataset.requestId; const adminNotes = document.getElementById(`adminNotes-${requestId}`).value; const reqRef = transfersCollection.doc(requestId); try { await reqRef.update({ adminNotes: adminNotes }); alert("Nota guardada."); } catch (e) { console.error("Error al guardar nota:", e); alert("No se pudo guardar la nota."); } }
+        function exportHistoryToExcel() { const historyRequests = allTransferRequests.filter( r => r.status.startsWith('completed') || r.status === 'cancelled' ); if (historyRequests.length === 0) { alert("No hay datos en historial."); return; } let excelData = []; historyRequests.forEach(req => { const creationDate = req.timestamp ? new Date(req.timestamp.seconds * 1000).toLocaleDateString('es-CO') : 'N/A'; if (req.items && req.items.length > 0) { req.items.forEach(item => { excelData.push({ 'ID Traslado': req.id, 'Estado': translateStatus(req.status), 'Fecha Creación': creationDate, 'Solicitante': req.requesterName, 'Bodega Destino': req.toWarehouse, 'ID Producto': item.productId, 'Nombre Producto': item.productName, 'U. Solicitadas': item.quantity, 'U. Enviadas': item.sentQuantity, 'U. Recibidas': item.receivedQuantity, 'Obs. Solicitante': req.requesterNotes || '', 'Obs. Admin': req.adminNotes || '', 'Obs. Recepción': req.reception?.notes || '' }); }); } else { excelData.push({ 'ID Traslado': req.id, 'Estado': translateStatus(req.status), 'Fecha Creación': creationDate, 'Solicitante': req.requesterName, 'Bodega Destino': req.toWarehouse, 'ID Producto': 'N/A', 'Nombre Producto': 'Sin items', 'U. Solicitadas': 0, 'U. Enviadas': 0, 'U. Recibidas': 0, 'Obs. Solicitante': req.requesterNotes || '', 'Obs. Admin': req.adminNotes || '', 'Obs. Recepción': req.reception?.notes || '' }); } }); const worksheet = XLSX.utils.json_to_sheet(excelData); const workbook = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(workbook, worksheet, "Historial"); worksheet['!cols'] = [ { wch: 15 }, { wch: 25 }, { wch: 15 }, { wch: 25 }, { wch: 25 }, { wch: 20 }, { wch: 40 }, { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 50 }, { wch: 50 }, { wch: 50 } ]; XLSX.writeFile(workbook, "Historial_Traslados_Parabarberos.xlsx"); }
+        async function loadAndTransformProducts() { try { const snapshot = await productsCollection.orderBy("name").get(); if (snapshot.empty) { console.warn("La colección 'products' está vacía."); return []; } return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })); } catch (error) { console.error("Error al cargar productos: ", error); alert("No se pudo cargar la lista de productos."); return []; } }
+        async function handleFinalizeReception(event) { const button = event.currentTarget; const requestId = button.dataset.requestId; button.disabled = true; button.textContent = 'Procesando...'; const receptionNotes = document.getElementById(`receptionNotes-${requestId}`).value; const qtyInputs = document.querySelectorAll(`.reception-qty-input[data-request-id="${requestId}"]`); const reqRef = transfersCollection.doc(requestId); try { const doc = await reqRef.get(); if (!doc.exists) throw new Error("Documento no encontrado."); let items = doc.data().items; let isComplete = true; qtyInputs.forEach(input => { const index = parseInt(input.dataset.itemIndex, 10); const receivedQty = parseInt(input.value, 10); if (items[index]) { items[index].receivedQuantity = receivedQty; if (receivedQty < items[index].sentQuantity) { isComplete = false; } } }); const newStatus = isComplete ? 'completed' : 'completed_incomplete'; const updatePayload = { status: newStatus, items: items, reception: { notes: receptionNotes, timestamp: firebase.firestore.FieldValue.serverTimestamp(), finalizedBy: currentUserData.user.email } }; await reqRef.update(updatePayload); } catch (error) { console.error("Error al finalizar recepción:", error); alert("Ocurrió un error. Inténtalo de nuevo."); button.disabled = false; button.textContent = 'Finalizar y Confirmar Recepción'; } }
+        async function handleEditRequest(event) { if (!confirm("¿Deseas editar esta solicitud? Los datos se cargarán en el formulario.")) return; const requestId = event.currentTarget.dataset.requestId; const request = allTransferRequests.find(r => r.id === requestId); if (!request) { alert("La solicitud no se encontró."); return; } editingRequestId = requestId; currentTransferItems = request.items.map(item => ({...item})); renderCurrentTransfer(); dom.toWarehouse.value = request.toWarehouse; dom.deliveryDate.value = request.deliveryDate; dom.requesterNotes.value = request.requesterNotes || ''; dom.formTitle.textContent = `Editando Solicitud (ID: ${requestId})`; dom.transferForm.querySelector('button[type="submit"]').textContent = 'GUARDAR CAMBIOS'; dom.cancelEditBtn.style.display = 'inline-block'; dom.transferForm.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+        function openEditShipmentModal(event) { const requestId = event.currentTarget.dataset.requestId; const request = allTransferRequests.find(r => r.id === requestId); if (!request) return; const itemsHtml = request.items.map((item, index) => `<div class="grid grid-cols-3 gap-4 items-center mb-2"><span class="col-span-2 text-sm">${item.productName}</span><input type="number" value="${item.sentQuantity}" data-item-index="${index}" class="modal-sent-qty w-full p-1 border rounded-md text-center"></div>`).join(''); const modalHtml = `<div id="edit-modal" class="modal-backdrop"><div class="modal-content"><h3 class="text-2xl font-bold mb-4">Editar Envío (ID: ${request.id})</h3><div class="space-y-4"><div><h4 class="font-semibold mb-2">Cantidades Enviadas:</h4>${itemsHtml}</div><div><label for="modalAdminNotes" class="block text-sm font-medium text-gray-700">Notas de Administrador:</label><textarea id="modalAdminNotes" rows="3" class="w-full mt-1 border rounded-md p-2">${request.adminNotes || ''}</textarea></div></div><div class="mt-6 flex justify-end space-x-3"><button id="close-modal-btn" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-lg">Cancelar</button><button id="save-modal-btn" data-request-id="${requestId}" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg">Guardar Cambios</button></div></div></div>`; dom.editModalContainer.innerHTML = modalHtml; document.getElementById('close-modal-btn').onclick = closeEditShipmentModal; document.getElementById('save-modal-btn').onclick = handleSaveShipmentChanges; }
+        function closeEditShipmentModal() { dom.editModalContainer.innerHTML = ''; }
+        async function handleSaveShipmentChanges(event) { const button = event.currentTarget; const requestId = button.dataset.requestId; button.disabled = true; button.textContent = 'Guardando...'; const reqRef = transfersCollection.doc(requestId); try { const doc = await reqRef.get(); if (!doc.exists) throw new Error("Documento no encontrado"); const currentItems = doc.data().items; const newAdminNotes = document.getElementById('modalAdminNotes').value; document.querySelectorAll('.modal-sent-qty').forEach(input => { const index = parseInt(input.dataset.itemIndex, 10); const newQty = parseInt(input.value, 10); if (currentItems[index] && !isNaN(newQty)) { currentItems[index].sentQuantity = newQty; } }); await reqRef.update({ items: currentItems, adminNotes: newAdminNotes }); closeEditShipmentModal(); } catch (error) { console.error("Error al guardar cambios del envío:", error); alert("Ocurrió un error al guardar los cambios."); button.disabled = false; button.textContent = 'Guardar Cambios'; } }
+
         async function initializeApp() {
             setupUIForUser();
-            
             allProducts = await loadAndTransformProducts();
             renderProducts(allProducts);
             renderCurrentTransfer();
-
             const warehouseOptions = ['Bodega Cali Centro', 'Bodega Cali Sur', 'Bodega Pasto', 'Bodega Tulua', 'Bodega Medellín'];
             const warehousePlaceholder = '<option value="" selected disabled>-- Seleccione una bodega --</option>';
             dom.toWarehouse.innerHTML = warehousePlaceholder + warehouseOptions.map(w => `<option value="${w}">${w}</option>`).join('');
-            
             dom.exportExcelBtn.onclick = exportHistoryToExcel;
             dom.uploadProductsBtn.onclick = handleProductUpload;
             dom.transferForm.onsubmit = handleSubmitTransferForm;
             dom.searchInput.oninput = handleSearchInput;
-            dom.productFile.onchange = () => {
-                if (dom.productFile.files.length > 0) {
-                    dom.fileNameDisplay.textContent = dom.productFile.files[0].name;
-                    dom.uploadStatus.textContent = '';
-                } else {
-                    dom.fileNameDisplay.textContent = 'Ningún archivo seleccionado.';
-                }
-            };
-            
+            dom.productFile.onchange = () => { if (dom.productFile.files.length > 0) { dom.fileNameDisplay.textContent = dom.productFile.files[0].name; dom.uploadStatus.textContent = ''; } else { dom.fileNameDisplay.textContent = 'Ningún archivo seleccionado.'; } };
             const filterInputs = ['requesterSearchId', 'requesterDateFrom', 'requesterDateTo', 'adminActiveSearchId', 'adminActiveDateFrom', 'adminActiveDateTo', 'adminHistorySearchId', 'adminHistoryDateFrom', 'adminHistoryDateTo'];
-            filterInputs.forEach(id => dom[id].addEventListener('input', renderAllSections));
-
+            filterInputs.forEach(id => dom[id] && dom[id].addEventListener('input', renderAllSections));
             transfersCollection.orderBy("timestamp", "desc").onSnapshot(snapshot => {
-                allTransferRequests = snapshot.docs.map(doc => ({ ...doc.data() })); // ID ya está en los datos
+                allTransferRequests = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                 renderAllSections();
             }, error => {
                 console.error("Error al conectar con 'transferencias': ", error);
