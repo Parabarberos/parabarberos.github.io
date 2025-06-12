@@ -183,16 +183,26 @@
             'completed':'Recibido Completo', 'completed_incomplete':'Recibido Incompleto', 'cancelled':'Cancelado'
         }[s] || s);
 
-        auth.onAuthStateChanged(user => {
-            if (user) {
-                const userDataFromMap = USER_ROLES[user.email];
-                if (!userDataFromMap) { alert("Tu usuario no está autorizado."); auth.signOut(); return; }
-                const [name, role] = userDataFromMap;
-                currentUserData = { user, name, role };
-                dom.userEmailDisplay.textContent = user.email;
-                initializeApp();
-            } else { window.location.href = 'index.html'; }
-        });
+        // ... DENTRO DE index.html ...
+auth.onAuthStateChanged(user => {
+    if (user) {
+        // La lógica para un usuario que sí ha iniciado sesión se mantiene igual
+        const userDataFromMap = USER_ROLES[user.email];
+        if (!userDataFromMap) {
+            alert("Tu usuario no está autorizado para acceder a esta aplicación.");
+            auth.signOut(); // Cierra la sesión por si acaso
+            window.location.href = 'login.html'; // Y lo manda al login
+            return;
+        }
+        const [name, role] = userDataFromMap;
+        currentUserData = { user, name, role };
+        dom.userEmailDisplay.textContent = user.email; // Actualiza el email del usuario
+        initializeApp(); // Inicia el resto de la aplicación
+    } else {
+        // Si no hay usuario, lo mandamos a la página de login
+        window.location.href = 'login.html';
+    }
+});
 
         dom.logoutBtn.onclick = () => auth.signOut();
         dom.cancelEditBtn.onclick = () => resetTransferForm();
