@@ -312,29 +312,24 @@
                 div.appendChild(button);
             }
         }
-
         function createRequestCard(req, role) {
     const isExpanded = expandedRequestsState.has(req.id);
     const card = document.createElement('div');
     card.className = `p-4 rounded-lg shadow-sm flex flex-col ${getRequestStatusColor(req.status)}`;
 
-    // --- LÓGICA DE DATOS ---
+    // --- Lógica de datos ---
     const isShipped = req.status === 'shipped';
     const hasItems = req.items && req.items.length > 0;
-    
-    // --> CAMBIO 1: La condición para habilitar el botón ahora es más compleja.
-    // La definiremos aquí para que sea más fácil de leer.
     const ntNumberInputId = `nt-number-${req.id}`;
+    
     let isReadyForShipping = false;
     if (req.status === 'pending_nt_active') {
         const allItemsChecked = hasItems && req.items.every(item => item.nt_checked);
-        // Para estar listo, todos los items deben estar marcados. El número de NT lo leeremos al hacer clic.
         isReadyForShipping = allItemsChecked; 
     }
 
-    // --- RENDERIZADO DE ITEMS --- (Sin cambios)
+    // --- Renderizado de Items ---
     const itemsHtml = hasItems ? (req.items || []).map((item, index) => {
-        // ... (el código de itemsHtml no cambia)
         if (role === 'admin' && req.status === 'pending_nt_active') {
             const itemChecked = item.nt_checked === true;
             const itemBgColor = itemChecked ? 'bg-green-100' : 'bg-red-100';
@@ -352,7 +347,7 @@
         return `<li class="p-2 rounded-md bg-white flex justify-between items-center text-sm"><div><span class="font-medium text-gray-800">${item.productName}</span><div class="text-xs text-gray-600">${quantityDisplay}</div></div>${receptionInput}${adminInput}</li>`;
     }).join('') : '<p class="text-sm text-gray-500 italic">No hay artículos en esta solicitud.</p>';
 
-    // --- LÓGICA DE BOTONES DEL ADMIN ---
+    // --- Lógica de Botones del Admin ---
     let adminActionsHtml = '';
     if (role === 'admin') {
         let buttons = '';
@@ -367,7 +362,6 @@
         }
         if (req.status === 'pending_nt_active') {
             buttons += `<button data-request-id="${req.id}" data-action="return_to_pending" class="action-btn bg-yellow-600 hover:bg-yellow-700 text-white text-xs font-semibold py-2 px-3 rounded-md">Devolver a Revisión</button>`;
-            // --> CAMBIO 2: El botón 'shipped' ahora usa la variable 'isReadyForShipping'
             buttons += `<button data-request-id="${req.id}" data-action="shipped" class="action-btn bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold py-2 px-3 rounded-md disabled:bg-gray-400 disabled:cursor-not-allowed" ${!isReadyForShipping ? 'disabled' : ''}>Marcar como enviado</button>`;
         }
         if (['pending', 'processing_partial_items', 'pending_nt_start', 'pending_nt_active'].includes(req.status)) {
@@ -378,61 +372,54 @@
         }
     }
     
-    // --- OTRAS PARTES DE LA TARJETA --- (Sin cambios)
-    let requesterActionsHtml = ''; //... etc
-    let receptionFormHtml = ''; //... etc
+    let requesterActionsHtml = '';
+    if (role === 'requester' && req.status === 'pending') {
+        requesterActionsHtml = `<div class="flex flex-col space-y-2"><button data-request-id="${req.id}" class="edit-my-request-btn bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold py-1 px-2 rounded-md">Editar</button><button data-request-id="${req.id}" class="delete-my-request-btn bg-red-600 hover:bg-red-700 text-white text-xs font-semibold py-1 px-2 rounded-md">Eliminar</button></div>`;
+    }
+
+    let receptionFormHtml = '';
+    if (role === 'requester' && isShipped) {
+        receptionFormHtml = `<div class="mt-4 border-t-2 border-blue-200 pt-4 space-y-3"><h5 class="font-bold text-md text-blue-700">Confirmar recepción</h5><div><label class="block text-sm font-medium text-gray-700">Observaciones de recepción:</label><textarea id="receptionNotes-${req.id}" rows="2" class="w-full mt-1 border rounded-md p-2" placeholder="Ej: La caja llegó dañada..."></textarea></div><button data-request-id="${req.id}" class="finalize-reception-btn w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-3 rounded-md">Finalizar y confirmar Recepción</button></div>`;
+    }
     
-    // --- VARIABLES DE VISUALIZACIÓN ---
     const reqDate = req.deliveryDate ? new Date(req.deliveryDate + 'T00:00:00').toLocaleDateString('es-CO', { year: 'numeric', month: 'long', day: 'numeric' }) : 'No especificada';
     const creationDate = req.timestamp ? new Date(req.timestamp.seconds * 1000).toLocaleDateString('es-CO') : '';
-    const hasDetailsToShow = true; // Siempre mostraremos el botón para mantener la consistencia del diseño.
+    const hasDetailsToShow = true;
 
-    // --- ESTRUCTURA HTML DE LA TARJETA ---
     card.innerHTML = `
-        <!-- Cabecera de la tarjeta -->
         <div class="flex justify-between items-start">
             <div>
                 <h4 class="font-semibold text-lg text-gray-800">${req.requesterName}</h4>
                 <p class="text-sm text-gray-600">Para: <strong>${req.toWarehouse}</strong></p>
                 <p class="text-xs text-gray-400">ID: ${req.id} | Creada: ${creationDate}</p>
                 <p class="text-sm mt-1">Fecha Requerida: <b>${reqDate}</b></p>
-                
-                <!-- --> CAMBIO 3: Mostrar el Número de NT si existe -->
                 ${req.ntNumber ? `<p class="text-sm mt-2 font-medium text-gray-800">Nº de NT: <span class="font-bold text-blue-600">${req.ntNumber}</span></p>` : ''}
-                
                 <span class="inline-block mt-2 px-2 py-1 text-xs font-bold rounded-full ${getRequestStatusColor(req.status)} text-black">${translateStatus(req.status)}</span>
             </div>
             ${requesterActionsHtml}
         </div>
-        
-        <!-- Detalles de la tarjeta -->
         <div id="details-${req.id}" class="flex-grow ${isExpanded ? 'flex flex-col' : 'hidden'} mt-4 pt-4 border-t border-gray-200">
             <div class="flex-grow">
                 ${req.requesterNotes ? `<div class="mb-3 p-3 bg-gray-50 rounded-lg border"><p class="text-sm font-semibold text-gray-600">Observaciones:</p><p class="text-sm text-gray-800 italic">"${req.requesterNotes}"</p></div>` : ''}
                 ${req.adminNotes ? `<div class="mb-3 p-3 bg-red-50 rounded-lg border border-red-200"><p class="text-sm font-semibold text-red-800">Nota del Admin:</p><p class="text-sm text-red-900 italic">"${req.adminNotes}"</p></div>` : ''}
-                
-                <!-- --> CAMBIO 4: Input para el Número de NT -->
+                ${(role === 'admin' && req.status.startsWith('processing')) ? `<div class="mt-4"><label for="adminNotes-${req.id}" class="text-sm font-medium text-gray-700">Añadir/Editar Nota:</label><textarea id="adminNotes-${req.id}" rows="2" class="w-full mt-1 border rounded-md p-2">${req.adminNotes || ''}</textarea><button data-request-id="${req.id}" class="save-admin-note-btn mt-1 text-xs bg-gray-800 text-white px-3 py-1.5 rounded-md hover:bg-black">Guardar Nota</button></div>` : ''}
                 ${req.status === 'pending_nt_active' ? `
                     <div class="my-4">
                         <label for="${ntNumberInputId}" class="block text-sm font-bold text-gray-700">Número de NT:</label>
                         <input type="text" id="${ntNumberInputId}" placeholder="Ingresa el número de la nota de traslado" class="w-full mt-1 border rounded-md p-2 focus:ring-blue-500 focus:border-blue-500">
                     </div>
                 ` : ''}
-                
                 <h5 class="font-bold text-gray-700 mt-3 mb-2">Items:</h5>
                 <ul class="space-y-2">${itemsHtml}</ul>
             </div>
             ${adminActionsHtml}
             ${receptionFormHtml}
         </div>
-        
-        <!-- Botón Ver más/menos -->
         <div class="text-center mt-2 border-t border-transparent pt-2">
             <button data-request-id="${req.id}" class="toggle-details-btn text-sm font-semibold text-blue-600 hover:text-blue-800 py-1 px-3 rounded-full hover:bg-blue-50 transition-colors">${isExpanded ? 'Ver menos' : 'Ver más'}</button>
         </div>
     `;
 
-    // --- VINCULACIÓN DE EVENTOS ---
     card.querySelectorAll('.action-btn').forEach(b => b.onclick = handleAdminAction);
     card.querySelectorAll('.finalize-reception-btn').forEach(b => b.onclick = handleFinalizeReception);
     card.querySelectorAll('.admin-qty-input').forEach(i => i.onchange = handleAdminQuantityChange);
