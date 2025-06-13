@@ -64,7 +64,7 @@
                     <h4 class="text-lg font-medium text-gray-700 mb-2">Activas</h4>
                     <div id="myPendingRequests" class="grid gap-4 mb-6"></div>
                     <h4 class="text-lg font-medium text-gray-700 mb-2">Historial</h4>
-                    <div id="myHistoryRequests" class="grid gap-4"></div>v>
+                    <div id="myHistoryRequests" class="grid gap-4"></div>
                 </div>
             </div>
         </div>
@@ -127,14 +127,16 @@
 
         // --- CONFIGURACIÓN DE FIREBASE ---
         const firebaseConfig = {
-            apiKey: "AIzaSyBmmNg525KrnOTsebzAV9dzfsKiq3o-0iQ",
-            authDomain: "base-de-datos-traslados.firebaseapp.com",
-            projectId: "base-de-datos-traslados",
-            storageBucket: "base-de-datos-traslados.firebasestorage.app",
-            messagingSenderId: "569583717634",
-            appId: "1:569583717634:web:f7baa7aaf66a639624461b",
-            measurementId: "G-9CSBCGJRGS"
+            apiKey: "AIzaSyDzjjtmK0XNo94KarKVJ5juuBnSoKqbtbo",
+            authDomain: "parabarberos-traslados-v2.firebaseapp.com",
+            projectId: "parabarberos-traslados-v2",
+            storageBucket: "parabarberos-traslados-v2.firebasestorage.app",
+            messagingSenderId: "939654956238",
+            appId: "1:939654956238:web:454d07ae95f81bab267c9f",
+            measurementId: "G-28PM922YL1"
         };
+        
+        // Inicializamos Firebase
         firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
         const db = firebase.firestore();
@@ -212,7 +214,11 @@
                 currentUserData = { user, name, role };
                 dom.userEmailDisplay.textContent = user.email;
                 initializeApp();
-            } else { window.location.href = 'index.html'; }
+            } else { 
+                if(window.location.pathname.includes('app.html')) {
+                    window.location.href = 'index.html';
+                }
+            }
         });
 
         dom.logoutBtn.onclick = () => auth.signOut();
@@ -307,11 +313,9 @@
             }
         }
 
-        // --- FUNCIÓN 'createRequestCard' CORREGIDA FINAL ---
         function createRequestCard(req, role) {
             const isExpanded = expandedRequestsState.has(req.id);
             const card = document.createElement('div');
-            // *** CAMBIO 1: La tarjeta es un contenedor flex en columna ***
             card.className = `p-4 rounded-lg shadow-sm flex flex-col ${getRequestStatusColor(req.status)}`;
         
             const isShipped = req.status === 'shipped';
@@ -374,9 +378,7 @@
             const creationDate = req.timestamp ? new Date(req.timestamp.seconds * 1000).toLocaleDateString('es-CO') : '';
             const hasDetailsToShow = hasItems || req.requesterNotes || req.adminNotes || adminActionsHtml || receptionFormHtml;
         
-            // *** CAMBIO 2: La estructura HTML interna se organiza para que flexbox funcione ***
             card.innerHTML = `
-                <!-- Parte superior: Cabecera -->
                 <div class="flex justify-between items-start">
                     <div>
                         <h4 class="font-semibold text-lg text-gray-800">${req.requesterName}</h4>
@@ -387,8 +389,6 @@
                     </div>
                     ${requesterActionsHtml}
                 </div>
-                
-                <!-- Parte media: Detalles (este div se estirará) -->
                 <div id="details-${req.id}" class="flex-grow ${isExpanded ? 'flex flex-col' : 'hidden'} mt-4 pt-4 border-t border-gray-200">
                     <div class="flex-grow">
                         ${req.requesterNotes ? `<div class="mb-3 p-3 bg-gray-50 rounded-lg border"><p class="text-sm font-semibold text-gray-600">Observaciones:</p><p class="text-sm text-gray-800 italic">"${req.requesterNotes}"</p></div>` : ''}
@@ -400,8 +400,6 @@
                     ${adminActionsHtml}
                     ${receptionFormHtml}
                 </div>
-                
-                <!-- Parte inferior: Botón "Ver más" -->
                 ${hasDetailsToShow ? `<div class="text-center mt-2 border-t border-transparent pt-2"><button data-request-id="${req.id}" class="toggle-details-btn text-sm font-semibold text-blue-600 hover:text-blue-800 py-1 px-3 rounded-full hover:bg-blue-50 transition-colors">${isExpanded ? 'Ver menos' : 'Ver más'}</button></div>` : ''}
             `;
         
@@ -804,7 +802,10 @@
         async function loadAndTransformProducts() {
             try {
                 const snapshot = await productsCollection.orderBy("name").get();
-                if (snapshot.empty) { console.warn("La colección 'products' está vacía."); return []; }
+                if (snapshot.empty) { 
+                    console.warn("La colección 'products' está vacía o no existe.");
+                    return []; 
+                }
                 return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             } catch (error) {
                 console.error("Error al cargar productos: ", error);
@@ -941,5 +942,8 @@
                 console.error("Error al conectar con 'transferencias': ", error);
             });
         }
-    });
+        
+    }); // <-- ¡¡AQUÍ CIERRA EL 'DOMContentLoaded'!!
 </script>
+</body>
+</html>
