@@ -384,8 +384,7 @@
     
     const reqDate = req.deliveryDate ? new Date(req.deliveryDate + 'T00:00:00').toLocaleDateString('es-CO', { year: 'numeric', month: 'long', day: 'numeric' }) : 'No especificada';
     const creationDate = req.timestamp ? new Date(req.timestamp.seconds * 1000).toLocaleDateString('es-CO') : '';
-    const hasDetailsToShow = true;
-
+    
     card.innerHTML = `
         <div class="flex justify-between items-start">
             <div>
@@ -468,82 +467,82 @@
         }
         
         // --- MANEJADORES DE EVENTOS Y ACCIONES ---
-        
         async function handleAdminAction(evento) {
     const { requestId, action } = evento.currentTarget.dataset;
     const reqRef = transfersCollection.doc(requestId);
     let updateData = {};
 
     try {
-        switch (action) {
-            case 'start_processing':
-                // ... (sin cambios)
-                break;
-            
-            case 'finalize_processing':
-                // ... (sin cambios)
-                break;
-
-            case 'start_nt_preparation':
-                // ... (sin cambios)
-                break;
-
-            case 'return_to_pending':
-                // ... (sin cambios, pero ahora también borrará ntNumber)
-                const docToReset = await reqRef.get();
-                if (!docToReset.exists) return;
-                const resetItems = docToReset.data().items.map(item => {
-                    const { productId, productName, quantity } = item; 
-                    return { productId, productName, quantity }; 
-                });
-                updateData = { 
-                    status: 'pending',
-                    adminNotes: firebase.firestore.FieldValue.delete(), 
-                    ntNumber: firebase.firestore.FieldValue.delete(), // Borra también el número de NT
-                    items: resetItems 
-                };
-                expandedRequestsState.delete(requestId);
-                break;
-            
-            // --> CAMBIO 5: Lógica para la acción 'shipped'
-            case 'shipped':
-                // Primero, obtenemos el valor del input del número de NT
-                const ntNumberInputId = `nt-number-${requestId}`;
-                const ntNumberInput = document.getElementById(ntNumberInputId);
-                const ntNumber = ntNumberInput ? ntNumberInput.value.trim() : '';
-
-                // Validamos que no esté vacío
-                if (!ntNumber) {
-                    alert("Por favor, ingresa el Número de NT antes de marcar como enviado.");
-                    ntNumberInput.focus(); // Ponemos el foco en el campo para guiar al usuario
-                    return; // Detenemos la ejecución
-                }
-                
-                if (!confirm(`¿Confirmas el envío con el N° de NT: "${ntNumber}"?`)) return;
-
-                // Si todo es correcto, preparamos los datos para actualizar
-                updateData = { 
-                    status: 'shipped',
-                    ntNumber: ntNumber // Guardamos el número de NT
-                };
-                expandedRequestsState.delete(requestId);
-                break;
-
-            case 'cancel':
-                // ... (sin cambios)
-                break;
-            
-            default:
+        if (action === 'start_processing') {
+            const doc = await reqRef.get();
+            if (!doc.exists) return;
+            const itemsToProcess = doc.data().items.map(item => ({
+                ...item,
+                sentQuantity: item.quantity,
+                nt_checked: false
+            }));
+            updateData = {
+                status: 'processing_partial_items',
+                items: itemsToProcess
+            };
+            expandedRequestsState.add(requestId);
+        } else if (action === 'finalize_processing') {
+            if (!confirm("¿Estás seguro de que has finalizado la revisión de esta solicitud?")) return;
+            updateData = { status: 'pending_nt_start' };
+            expandedRequestsState.delete(requestId);
+        } else if (action === 'start_nt_preparation') {
+            updateData = { status: 'pending_nt_active' };
+            expandedRequestsState.add(requestId);
+        } else if (action === 'return_to_pending') {
+            if (!confirm("¿Seguro que quieres devolver esta solicitud a revisión? Se borrarán todas las notas y cantidades modificadas.")) {
                 return;
+            }
+            const docToReset = await reqRef.get();
+            if (!docToReset.exists) return;
+            const resetItems = docToReset.data().items.map(item => {
+                const { productId, productName, quantity } = item;
+                return { productId, productName, quantity };
+            });
+            updateData = {
+                status: 'pending',
+                adminNotes: firebase.firestore.FieldValue.delete(),
+                ntNumber: firebase.firestore.FieldValue.delete(),
+                items: resetItems
+            };
+            expandedRequestsState.delete(requestId);
+        } else if (action === 'shipped') {
+            const ntNumberInputId = `nt-number-${requestId}`;
+            const ntNumberInput = document.getElementById(ntNumberInputId);
+            const ntNumber = ntNumberInput ? ntNumberInput.value.trim() : '';
+
+            if (!ntNumber) {
+                alert("Por favor, ingresa el Número de NT antes de marcar como enviado.");
+                ntNumberInput.focus();
+                return;
+            }
+            if (!confirm(`¿Confirmas el envío con el N° de NT: "${ntNumber}"?`)) return;
+
+            updateData = {
+                status: 'shipped',
+                ntNumber: ntNumber
+            };
+            expandedRequestsState.delete(requestId);
+        } else if (action === 'cancel') {
+            if (!confirm("¿Cancelar esta solicitud?")) return;
+            updateData = { status: 'cancelled' };
+            expandedRequestsState.delete(requestId);
+        } else {
+            return; // Acción no reconocida
         }
 
         if (Object.keys(updateData).length > 0) {
             await reqRef.update(updateData);
         } else {
+            // Si una acción no requiere actualización de la DB pero sí de la UI (como expandir), se re-renderiza.
             renderAllSections();
         }
 
-    } catch(e) {
+    } catch (e) {
         console.error("Error al procesar la acción:", e);
         alert("Ocurrió un error al procesar la acción.");
     }
