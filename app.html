@@ -142,7 +142,7 @@
         const db = firebase.firestore();
         const transfersCollection = db.collection("transferencias");
         const productsCollection = db.collection("products");
-
+        
         // --- ROLES DE USUARIO ---
         const USER_ROLES = {
             'inventarios.parabarberos@gmail.com': ['Administrador', 'admin'],
@@ -197,8 +197,8 @@
         const translateStatus = (s) => ({
             'pending':'Pendiente por revisión', 
             'processing_partial_items':'En Revisión',
-            'pending_nt_start': 'Pendiente por Nota de Traslado',
-            'pending_nt_active': 'Preparando Nota de Traslado',
+            'pending_nt_start': 'Pendiente por NT (Iniciar)',
+            'pending_nt_active': 'Preparando NT',
             'shipped': 'Enviado (Por Recibir)',
             'completed':'Recibido Completo', 
             'completed_incomplete':'Recibido Incompleto',
@@ -223,6 +223,8 @@
 
         dom.logoutBtn.onclick = () => auth.signOut();
         
+        // --- LÓGICA DE LA APLICACIÓN ---
+        
         function setupUIForUser() {
             if (!currentUserData) return;
             const { name, role } = currentUserData;
@@ -238,7 +240,6 @@
             }
         }
         
-        // --- LÓGICA DE RENDERIZADO Y FILTROS ---
         function applyFilters(requests, searchInput, dateFromInput, dateToInput) {
              const searchTerm = searchInput.value.toLowerCase().trim();
              const dateFrom = dateFromInput.value;
@@ -301,6 +302,14 @@
             }
             const requestsToShow = data.slice(0, sectionDisplayCounts[sectionId]);
             requestsToShow.forEach(req => div.appendChild(createRequestCard(req, role)));
+
+            // Re-vinculamos los eventos de los nuevos inputs de NT
+            document.querySelectorAll('.nt-number-input').forEach(input => {
+                input.oninput = () => checkShipButtonState(input.dataset.requestId);
+                // Comprobamos el estado inicial al renderizar
+                checkShipButtonState(input.dataset.requestId);
+            });
+
             if (data.length > sectionDisplayCounts[sectionId]) {
                 const remaining = data.length - sectionDisplayCounts[sectionId];
                 const loadAmount = Math.min(LOAD_MORE_COUNT, remaining);
@@ -312,133 +321,133 @@
                 div.appendChild(button);
             }
         }
+
+        // --- Nueva función de ayuda para el botón de envío ---
+        function checkShipButtonState(requestId) {
+            if (!requestId) return;
+            const request = allTransferRequests.find(r => r.id === requestId);
+            if (!request || request.status !== 'pending_nt_active') return;
+
+            const allItemsChecked = request.items && request.items.every(item => item.nt_checked);
+            const ntNumberInput = document.getElementById(`nt-number-${requestId}`);
+            const ntNumber = ntNumberInput ? ntNumberInput.value.trim() : '';
+            
+            const shipButton = document.querySelector(`.action-btn[data-request-id="${requestId}"][data-action="shipped"]`);
+            if (shipButton) {
+                shipButton.disabled = !(allItemsChecked && ntNumber);
+            }
+        }
+
         function createRequestCard(req, role) {
-    const isExpanded = expandedRequestsState.has(req.id);
-    const card = document.createElement('div');
-    card.className = `p-4 rounded-lg shadow-sm flex flex-col ${getRequestStatusColor(req.status)}`;
-
-    const isShipped = req.status === 'shipped';
-    const hasItems = req.items && req.items.length > 0;
-    const ntNumberInputId = `nt-number-${req.id}`;
-    
-    // La condición inicial para el botón ahora solo depende de los checkboxes
-    const allItemsChecked = hasItems && req.status === 'pending_nt_active' && req.items.every(item => item.nt_checked);
-    const ntNumberExists = req.ntNumber && req.ntNumber.trim() !== '';
-
-    // El botón se deshabilita si los items no están marcados O si no hay número de NT
-    const isReadyForShipping = allItemsChecked && ntNumberExists;
-
-    const itemsHtml = hasItems ? (req.items || []).map((item, index) => {
-        // ... (código de itemsHtml sin cambios)
-        if (role === 'admin' && req.status === 'pending_nt_active') {
-            const itemChecked = item.nt_checked === true;
-            const itemBgColor = itemChecked ? 'bg-green-100' : 'bg-red-100';
-            const itemBorderColor = itemChecked ? 'border-green-200' : 'border-red-200';
-            return `<li class="p-2 rounded-md border ${itemBorderColor} ${itemBgColor} flex justify-between items-center text-sm transition-colors"><div><span class="font-medium text-gray-800">${item.productName}</span><div class="text-xs text-gray-600">Enviado: <b>${item.sentQuantity}</b></div></div><input type="checkbox" ${itemChecked ? 'checked' : ''} data-request-id="${req.id}" data-item-index="${index}" class="nt-checkbox h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"></li>`;
-        }
-        let quantityDisplay = `Solicitado: <b>${item.quantity}</b>`;
-        if (item.sentQuantity !== undefined) { quantityDisplay += ` | Enviado: <b>${item.sentQuantity}</b>`; }
-        if (item.receivedQuantity !== undefined) {
-            const color = item.receivedQuantity < item.sentQuantity ? 'text-red-600' : 'text-green-700';
-            quantityDisplay += ` | Recibido: <b class="${color}">${item.receivedQuantity}</b>`;
-        }
-        const receptionInput = (role === 'requester' && isShipped) ? `<div class="flex items-center"><label class="text-sm mr-2">Recibido:</label><input type="number" value="${item.sentQuantity}" data-request-id="${req.id}" data-item-index="${index}" class="reception-qty-input w-20 p-1 border rounded-md text-center"></div>` : ``;
-        const adminInput = (role === 'admin' && req.status === 'processing_partial_items') ? `<input type="number" value="${item.sentQuantity ?? item.quantity}" data-request-id="${req.id}" data-item-index="${index}" class="admin-qty-input w-20 p-1 border rounded-md text-center">` : ``;
-        return `<li class="p-2 rounded-md bg-white flex justify-between items-center text-sm"><div><span class="font-medium text-gray-800">${item.productName}</span><div class="text-xs text-gray-600">${quantityDisplay}</div></div>${receptionInput}${adminInput}</li>`;
-    }).join('') : '<p class="text-sm text-gray-500 italic">No hay artículos en esta solicitud.</p>';
-
-    let adminActionsHtml = '';
-    if (role === 'admin') {
-        let buttons = '';
-        if (req.status === 'pending') {
-            buttons += `<button data-request-id="${req.id}" data-action="start_processing" class="action-btn bg-gray-800 hover:bg-black text-white text-xs font-semibold py-2 px-3 rounded-md">Iniciar revisión</button>`;
-        }
-        if (req.status.startsWith('processing')) {
-            buttons += `<button data-request-id="${req.id}" data-action="finalize_processing" class="action-btn bg-teal-600 hover:bg-teal-700 text-white text-xs font-semibold py-2 px-3 rounded-md">Finalizar Revisión</button>`;
-        }
-        if (req.status === 'pending_nt_start') {
-            buttons += `<button data-request-id="${req.id}" data-action="start_nt_preparation" class="action-btn bg-orange-500 hover:bg-orange-600 text-white text-xs font-semibold py-2 px-3 rounded-md">Iniciar Preparación NT</button>`;
-        }
-        if (req.status === 'pending_nt_active') {
-            buttons += `<button data-request-id="${req.id}" data-action="return_to_pending" class="action-btn bg-yellow-600 hover:bg-yellow-700 text-white text-xs font-semibold py-2 px-3 rounded-md">Devolver a Revisión</button>`;
-            // El botón se deshabilita inicialmente si no se cumplen las condiciones
-            buttons += `<button data-request-id="${req.id}" data-action="shipped" class="action-btn bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold py-2 px-3 rounded-md disabled:bg-gray-400 disabled:cursor-not-allowed" ${!isReadyForShipping ? 'disabled' : ''}>Marcar como enviado</button>`;
-        }
-        if (['pending', 'processing_partial_items', 'pending_nt_start', 'pending_nt_active'].includes(req.status)) {
-            buttons += `<button data-request-id="${req.id}" data-action="cancel" class="action-btn bg-red-700 hover:bg-red-800 text-white text-xs font-semibold py-2 px-3 rounded-md">Cancelar</button>`;
-        }
-        if (buttons) {
-            adminActionsHtml = `<div class="mt-4 border-t pt-4 flex justify-end items-center flex-wrap gap-2">${buttons}</div>`;
-        }
-    }
-    
-    // ... (resto de la función sin cambios) ...
-    // --- ESTRUCTURA HTML ---
-    // ...
-    // Dentro de la estructura, busca la creación del input y añade el oninput
-     card.innerHTML = `
-        <div class="flex justify-between items-start">
-            <div>
-                <h4 class="font-semibold text-lg text-gray-800">${req.requesterName}</h4>
-                <p class="text-sm text-gray-600">Para: <strong>${req.toWarehouse}</strong></p>
-                <p class="text-xs text-gray-400">ID: ${req.id} | Creada: ${creationDate}</p>
-                <p class="text-sm mt-1">Fecha Requerida: <b>${reqDate}</b></p>
-                ${req.ntNumber ? `<p class="text-sm mt-2 font-medium text-gray-800">Nº de NT: <span class="font-bold text-blue-600">${req.ntNumber}</span></p>` : ''}
-                <span class="inline-block mt-2 px-2 py-1 text-xs font-bold rounded-full ${getRequestStatusColor(req.status)} text-black">${translateStatus(req.status)}</span>
-            </div>
-            ${requesterActionsHtml}
-        </div>
-        <div id="details-${req.id}" class="flex-grow ${isExpanded ? 'flex flex-col' : 'hidden'} mt-4 pt-4 border-t border-gray-200">
-            <div class="flex-grow">
-                ${req.requesterNotes ? `<div class="mb-3 p-3 bg-gray-50 rounded-lg border"><p class="text-sm font-semibold text-gray-600">Observaciones:</p><p class="text-sm text-gray-800 italic">"${req.requesterNotes}"</p></div>` : ''}
-                ${req.adminNotes ? `<div class="mb-3 p-3 bg-red-50 rounded-lg border border-red-200"><p class="text-sm font-semibold text-red-800">Nota del Admin:</p><p class="text-sm text-red-900 italic">"${req.adminNotes}"</p></div>` : ''}
-                ${(role === 'admin' && req.status.startsWith('processing')) ? `<div class="mt-4"><label for="adminNotes-${req.id}" class="text-sm font-medium text-gray-700">Añadir/Editar Nota:</label><textarea id="adminNotes-${req.id}" rows="2" class="w-full mt-1 border rounded-md p-2">${req.adminNotes || ''}</textarea><button data-request-id="${req.id}" class="save-admin-note-btn mt-1 text-xs bg-gray-800 text-white px-3 py-1.5 rounded-md hover:bg-black">Guardar Nota</button></div>` : ''}
-                ${req.status === 'pending_nt_active' ? `
-                    <div class="my-4">
-                        <label for="${ntNumberInputId}" class="block text-sm font-bold text-gray-700">Número de NT:</label>
-                        <input type="text" id="${ntNumberInputId}" placeholder="Ingresa el número de la nota de traslado" class="nt-number-input w-full mt-1 border rounded-md p-2 focus:ring-blue-500 focus:border-blue-500" value="${req.ntNumber || ''}">
+            const isExpanded = expandedRequestsState.has(req.id);
+            const card = document.createElement('div');
+            card.className = `p-4 rounded-lg shadow-sm flex flex-col ${getRequestStatusColor(req.status)}`;
+        
+            const isShipped = req.status === 'shipped';
+            const hasItems = req.items && req.items.length > 0;
+            const ntNumberInputId = `nt-number-${req.id}`;
+            const allItemsChecked = hasItems && req.status === 'pending_nt_active' && req.items.every(item => item.nt_checked);
+            
+            const itemsHtml = hasItems ? (req.items || []).map((item, index) => {
+                if (role === 'admin' && req.status === 'pending_nt_active') {
+                    const itemChecked = item.nt_checked === true;
+                    const itemBgColor = itemChecked ? 'bg-green-100' : 'bg-red-100';
+                    const itemBorderColor = itemChecked ? 'border-green-200' : 'border-red-200';
+                    return `<li class="p-2 rounded-md border ${itemBorderColor} ${itemBgColor} flex justify-between items-center text-sm transition-colors"><div><span class="font-medium text-gray-800">${item.productName}</span><div class="text-xs text-gray-600">Enviado: <b>${item.sentQuantity}</b></div></div><input type="checkbox" ${itemChecked ? 'checked' : ''} data-request-id="${req.id}" data-item-index="${index}" class="nt-checkbox h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"></li>`;
+                }
+                let quantityDisplay = `Solicitado: <b>${item.quantity}</b>`;
+                if (item.sentQuantity !== undefined) { quantityDisplay += ` | Enviado: <b>${item.sentQuantity}</b>`; }
+                if (item.receivedQuantity !== undefined) {
+                    const color = item.receivedQuantity < item.sentQuantity ? 'text-red-600' : 'text-green-700';
+                    quantityDisplay += ` | Recibido: <b class="${color}">${item.receivedQuantity}</b>`;
+                }
+                const receptionInput = (role === 'requester' && isShipped) ? `<div class="flex items-center"><label class="text-sm mr-2">Recibido:</label><input type="number" value="${item.sentQuantity}" data-request-id="${req.id}" data-item-index="${index}" class="reception-qty-input w-20 p-1 border rounded-md text-center"></div>` : ``;
+                const adminInput = (role === 'admin' && req.status === 'processing_partial_items') ? `<input type="number" value="${item.sentQuantity ?? item.quantity}" data-request-id="${req.id}" data-item-index="${index}" class="admin-qty-input w-20 p-1 border rounded-md text-center">` : ``;
+                return `<li class="p-2 rounded-md bg-white flex justify-between items-center text-sm"><div><span class="font-medium text-gray-800">${item.productName}</span><div class="text-xs text-gray-600">${quantityDisplay}</div></div>${receptionInput}${adminInput}</li>`;
+            }).join('') : '<p class="text-sm text-gray-500 italic">No hay artículos en esta solicitud.</p>';
+        
+            let adminActionsHtml = '';
+            if (role === 'admin') {
+                let buttons = '';
+                if (req.status === 'pending') {
+                    buttons += `<button data-request-id="${req.id}" data-action="start_processing" class="action-btn bg-gray-800 hover:bg-black text-white text-xs font-semibold py-2 px-3 rounded-md">Iniciar revisión</button>`;
+                }
+                if (req.status.startsWith('processing')) {
+                    buttons += `<button data-request-id="${req.id}" data-action="finalize_processing" class="action-btn bg-teal-600 hover:bg-teal-700 text-white text-xs font-semibold py-2 px-3 rounded-md">Finalizar Revisión</button>`;
+                }
+                if (req.status === 'pending_nt_start') {
+                    buttons += `<button data-request-id="${req.id}" data-action="start_nt_preparation" class="action-btn bg-orange-500 hover:bg-orange-600 text-white text-xs font-semibold py-2 px-3 rounded-md">Iniciar Preparación NT</button>`;
+                }
+                if (req.status === 'pending_nt_active') {
+                    buttons += `<button data-request-id="${req.id}" data-action="return_to_pending" class="action-btn bg-yellow-600 hover:bg-yellow-700 text-white text-xs font-semibold py-2 px-3 rounded-md">Devolver a Revisión</button>`;
+                    buttons += `<button data-request-id="${req.id}" data-action="shipped" class="action-btn bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold py-2 px-3 rounded-md disabled:bg-gray-400 disabled:cursor-not-allowed" disabled>Marcar como enviado</button>`;
+                }
+                if (['pending', 'processing_partial_items', 'pending_nt_start', 'pending_nt_active'].includes(req.status)) {
+                    buttons += `<button data-request-id="${req.id}" data-action="cancel" class="action-btn bg-red-700 hover:bg-red-800 text-white text-xs font-semibold py-2 px-3 rounded-md">Cancelar</button>`;
+                }
+                if (buttons) {
+                    adminActionsHtml = `<div class="mt-4 border-t pt-4 flex justify-end items-center flex-wrap gap-2">${buttons}</div>`;
+                }
+            }
+            
+            let requesterActionsHtml = '';
+            if (role === 'requester' && req.status === 'pending') {
+                requesterActionsHtml = `<div class="flex flex-col space-y-2"><button data-request-id="${req.id}" class="edit-my-request-btn bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold py-1 px-2 rounded-md">Editar</button><button data-request-id="${req.id}" class="delete-my-request-btn bg-red-600 hover:bg-red-700 text-white text-xs font-semibold py-1 px-2 rounded-md">Eliminar</button></div>`;
+            }
+        
+            let receptionFormHtml = '';
+            if (role === 'requester' && isShipped) {
+                receptionFormHtml = `<div class="mt-4 border-t-2 border-blue-200 pt-4 space-y-3"><h5 class="font-bold text-md text-blue-700">Confirmar recepción</h5><div><label class="block text-sm font-medium text-gray-700">Observaciones de recepción:</label><textarea id="receptionNotes-${req.id}" rows="2" class="w-full mt-1 border rounded-md p-2" placeholder="Ej: La caja llegó dañada..."></textarea></div><button data-request-id="${req.id}" class="finalize-reception-btn w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-3 rounded-md">Finalizar y confirmar Recepción</button></div>`;
+            }
+            
+            const reqDate = req.deliveryDate ? new Date(req.deliveryDate + 'T00:00:00').toLocaleDateString('es-CO', { year: 'numeric', month: 'long', day: 'numeric' }) : 'No especificada';
+            const creationDate = req.timestamp ? new Date(req.timestamp.seconds * 1000).toLocaleDateString('es-CO') : '';
+            
+            card.innerHTML = `
+                <div class="flex justify-between items-start">
+                    <div>
+                        <h4 class="font-semibold text-lg text-gray-800">${req.requesterName}</h4>
+                        <p class="text-sm text-gray-600">Para: <strong>${req.toWarehouse}</strong></p>
+                        <p class="text-xs text-gray-400">ID: ${req.id} | Creada: ${creationDate}</p>
+                        <p class="text-sm mt-1">Fecha Requerida: <b>${reqDate}</b></p>
+                        ${req.ntNumber ? `<p class="text-sm mt-2 font-medium text-gray-800">Nº de NT: <span class="font-bold text-blue-600">${req.ntNumber}</span></p>` : ''}
+                        <span class="inline-block mt-2 px-2 py-1 text-xs font-bold rounded-full ${getRequestStatusColor(req.status)} text-black">${translateStatus(req.status)}</span>
                     </div>
-                ` : ''}
-                <h5 class="font-bold text-gray-700 mt-3 mb-2">Items:</h5>
-                <ul class="space-y-2">${itemsHtml}</ul>
-            </div>
-            ${adminActionsHtml}
-            ${receptionFormHtml}
-        </div>
-        <div class="text-center mt-2 border-t border-transparent pt-2">
-            <button data-request-id="${req.id}" class="toggle-details-btn text-sm font-semibold text-blue-600 hover:text-blue-800 py-1 px-3 rounded-full hover:bg-blue-50 transition-colors">${isExpanded ? 'Ver menos' : 'Ver más'}</button>
-        </div>
-    `;
-
-    // --- VINCULACIÓN DE EVENTOS ---
-    card.querySelectorAll('.action-btn').forEach(b => b.onclick = handleAdminAction);
-    card.querySelectorAll('.nt-number-input').forEach(i => i.oninput = () => checkShipButtonState(req.id)); // <-- NUEVO EVENTO
-    // ... (resto de vinculaciones)
-    
-    // Al final, después de añadir la tarjeta al DOM, verificamos el estado
-    // Esto es importante para el estado inicial
-    setTimeout(() => checkShipButtonState(req.id), 0);
-
-    return card;
-}
-        // --- NUEVA FUNCIÓN DE AYUDA ---
-function checkShipButtonState(requestId) {
-    const request = allTransferRequests.find(r => r.id === requestId);
-    if (!request || request.status !== 'pending_nt_active') return;
-
-    const allItemsChecked = request.items && request.items.every(item => item.nt_checked);
-    const ntNumberInput = document.getElementById(`nt-number-${requestId}`);
-    const ntNumber = ntNumberInput ? ntNumberInput.value.trim() : '';
-    
-    const shipButton = document.querySelector(`.action-btn[data-request-id="${requestId}"][data-action="shipped"]`);
-    if (shipButton) {
-        if (allItemsChecked && ntNumber) {
-            shipButton.disabled = false;
-        } else {
-            shipButton.disabled = true;
+                    ${requesterActionsHtml}
+                </div>
+                <div id="details-${req.id}" class="flex-grow ${isExpanded ? 'flex flex-col' : 'hidden'} mt-4 pt-4 border-t border-gray-200">
+                    <div class="flex-grow">
+                        ${req.requesterNotes ? `<div class="mb-3 p-3 bg-gray-50 rounded-lg border"><p class="text-sm font-semibold text-gray-600">Observaciones:</p><p class="text-sm text-gray-800 italic">"${req.requesterNotes}"</p></div>` : ''}
+                        ${req.adminNotes ? `<div class="mb-3 p-3 bg-red-50 rounded-lg border border-red-200"><p class="text-sm font-semibold text-red-800">Nota del Admin:</p><p class="text-sm text-red-900 italic">"${req.adminNotes}"</p></div>` : ''}
+                        ${(role === 'admin' && req.status.startsWith('processing')) ? `<div class="mt-4"><label for="adminNotes-${req.id}" class="text-sm font-medium text-gray-700">Añadir/Editar Nota:</label><textarea id="adminNotes-${req.id}" rows="2" class="w-full mt-1 border rounded-md p-2">${req.adminNotes || ''}</textarea><button data-request-id="${req.id}" class="save-admin-note-btn mt-1 text-xs bg-gray-800 text-white px-3 py-1.5 rounded-md hover:bg-black">Guardar Nota</button></div>` : ''}
+                        ${req.status === 'pending_nt_active' ? `
+                            <div class="my-4">
+                                <label for="${ntNumberInputId}" class="block text-sm font-bold text-gray-700">Número de NT:</label>
+                                <input type="text" id="${ntNumberInputId}" data-request-id="${req.id}" placeholder="Ingresa el número de la nota de traslado" class="nt-number-input w-full mt-1 border rounded-md p-2 focus:ring-blue-500 focus:border-blue-500" value="${req.ntNumber || ''}">
+                            </div>
+                        ` : ''}
+                        <h5 class="font-bold text-gray-700 mt-3 mb-2">Items:</h5>
+                        <ul class="space-y-2">${itemsHtml}</ul>
+                    </div>
+                    ${adminActionsHtml}
+                    ${receptionFormHtml}
+                </div>
+                <div class="text-center mt-2 border-t border-transparent pt-2">
+                    <button data-request-id="${req.id}" class="toggle-details-btn text-sm font-semibold text-blue-600 hover:text-blue-800 py-1 px-3 rounded-full hover:bg-blue-50 transition-colors">${isExpanded ? 'Ver menos' : 'Ver más'}</button>
+                </div>
+            `;
+        
+            card.querySelectorAll('.action-btn').forEach(b => b.onclick = handleAdminAction);
+            card.querySelectorAll('.finalize-reception-btn').forEach(b => b.onclick = handleFinalizeReception);
+            card.querySelectorAll('.admin-qty-input').forEach(i => i.onchange = handleAdminQuantityChange);
+            card.querySelectorAll('.delete-my-request-btn').forEach(b => b.onclick = handleDeleteMyRequest);
+            card.querySelectorAll('.save-admin-note-btn').forEach(b => b.onclick = handleSaveAdminNote);
+            card.querySelectorAll('.edit-my-request-btn').forEach(b => b.onclick = handleStartEdit);
+            card.querySelectorAll('.toggle-details-btn').forEach(b => b.onclick = handleToggleDetails);
+            card.querySelectorAll('.nt-checkbox').forEach(c => c.onchange = handleNtCheckboxChange);
+        
+            return card;
         }
-    }
-}
 
         function renderProducts(productsToRender) {
             dom.productList.innerHTML = '';
@@ -475,100 +484,72 @@ function checkShipButtonState(requestId) {
             dom.currentTransferRequest.querySelectorAll('.remove-item-btn').forEach(button => button.onclick = handleRemoveItem);
         }
         
-        // --- MANEJADORES DE EVENTOS Y ACCIONES ---
         async function handleAdminAction(evento) {
-    const { requestId, action } = evento.currentTarget.dataset;
-    const reqRef = transfersCollection.doc(requestId);
-    let updateData = {};
-
-    try {
-        if (action === 'start_processing') {
-            const doc = await reqRef.get();
-            if (!doc.exists) return;
-            const itemsToProcess = doc.data().items.map(item => ({
-                ...item,
-                sentQuantity: item.quantity,
-                nt_checked: false
-            }));
-            updateData = {
-                status: 'processing_partial_items',
-                items: itemsToProcess
-            };
-            expandedRequestsState.add(requestId);
-        } else if (action === 'finalize_processing') {
-            if (!confirm("¿Estás seguro de que has finalizado la revisión de esta solicitud?")) return;
-            updateData = { status: 'pending_nt_start' };
-            expandedRequestsState.delete(requestId);
-        } else if (action === 'start_nt_preparation') {
-            updateData = { status: 'pending_nt_active' };
-            expandedRequestsState.add(requestId);
-        } else if (action === 'return_to_pending') {
-            if (!confirm("¿Seguro que quieres devolver esta solicitud a revisión? Se borrarán todas las notas y cantidades modificadas.")) {
-                return;
+            const { requestId, action } = evento.currentTarget.dataset;
+            const reqRef = transfersCollection.doc(requestId);
+            let updateData = {};
+        
+            try {
+                if (action === 'start_processing') {
+                    const doc = await reqRef.get();
+                    if (!doc.exists) return;
+                    const itemsToProcess = doc.data().items.map(item => ({ ...item, sentQuantity: item.quantity, nt_checked: false }));
+                    updateData = { status: 'processing_partial_items', items: itemsToProcess };
+                    expandedRequestsState.add(requestId);
+                } else if (action === 'finalize_processing') {
+                    if (!confirm("¿Estás seguro de que has finalizado la revisión de esta solicitud?")) return;
+                    updateData = { status: 'pending_nt_start' };
+                    expandedRequestsState.delete(requestId);
+                } else if (action === 'start_nt_preparation') {
+                    updateData = { status: 'pending_nt_active' };
+                    expandedRequestsState.add(requestId);
+                } else if (action === 'return_to_pending') {
+                    if (!confirm("¿Seguro que quieres devolver esta solicitud a revisión? Se borrarán todas las notas y cantidades modificadas.")) return;
+                    const docToReset = await reqRef.get();
+                    if (!docToReset.exists) return;
+                    const resetItems = docToReset.data().items.map(item => {
+                        const { productId, productName, quantity } = item; 
+                        return { productId, productName, quantity }; 
+                    });
+                    updateData = { status: 'pending', adminNotes: firebase.firestore.FieldValue.delete(), ntNumber: firebase.firestore.FieldValue.delete(), items: resetItems };
+                    expandedRequestsState.delete(requestId);
+                } else if (action === 'shipped') {
+                    const ntNumberInput = document.getElementById(`nt-number-${requestId}`);
+                    const ntNumber = ntNumberInput ? ntNumberInput.value.trim() : '';
+                    if (!ntNumber) {
+                        alert("Por favor, ingresa el Número de NT antes de marcar como enviado.");
+                        ntNumberInput.focus();
+                        return;
+                    }
+                    if (!confirm(`¿Confirmas el envío con el N° de NT: "${ntNumber}"?`)) return;
+                    updateData = { status: 'shipped', ntNumber: ntNumber };
+                    expandedRequestsState.delete(requestId);
+                } else if (action === 'cancel') {
+                    if (!confirm("¿Cancelar esta solicitud?")) return;
+                    updateData = { status: 'cancelled' };
+                    expandedRequestsState.delete(requestId);
+                } else {
+                    return;
+                }
+        
+                if (Object.keys(updateData).length > 0) {
+                    await reqRef.update(updateData);
+                } else {
+                    renderAllSections();
+                }
+        
+            } catch(e) {
+                console.error("Error al procesar la acción:", e);
+                alert("Ocurrió un error al procesar la acción.");
             }
-            const docToReset = await reqRef.get();
-            if (!docToReset.exists) return;
-            const resetItems = docToReset.data().items.map(item => {
-                const { productId, productName, quantity } = item;
-                return { productId, productName, quantity };
-            });
-            updateData = {
-                status: 'pending',
-                adminNotes: firebase.firestore.FieldValue.delete(),
-                ntNumber: firebase.firestore.FieldValue.delete(),
-                items: resetItems
-            };
-            expandedRequestsState.delete(requestId);
-        } else if (action === 'shipped') {
-    const ntNumberInput = document.getElementById(`nt-number-${requestId}`);
-    const ntNumber = ntNumberInput ? ntNumberInput.value.trim() : '';
-
-    // Validamos que no esté vacío
-    if (!ntNumber) {
-        alert("Por favor, ingresa el Número de NT antes de marcar como enviado.");
-        ntNumberInput.focus();
-        return;
-    }
-    
-    if (!confirm(`¿Confirmas el envío con el N° de NT: "${ntNumber}"?`)) {
-        return;
-    }
-
-    updateData = { 
-        status: 'shipped',
-        ntNumber: ntNumber
-    };
-    expandedRequestsState.delete(requestId);
-            
-        } else if (action === 'cancel') {
-            if (!confirm("¿Cancelar esta solicitud?")) return;
-            updateData = { status: 'cancelled' };
-            expandedRequestsState.delete(requestId);
-        } else {
-            return; // Acción no reconocida
         }
-
-        if (Object.keys(updateData).length > 0) {
-            await reqRef.update(updateData);
-        } else {
-            // Si una acción no requiere actualización de la DB pero sí de la UI (como expandir), se re-renderiza.
-            renderAllSections();
-        }
-
-    } catch (e) {
-        console.error("Error al procesar la acción:", e);
-        alert("Ocurrió un error al procesar la acción.");
-    }
-}
         
         function handleToggleDetails(evento) {
             const button = evento.currentTarget;
             const requestId = button.dataset.requestId;
             const detailsContainer = document.getElementById(`details-${requestId}`);
             if (!detailsContainer) return;
-        
             const isHidden = detailsContainer.classList.contains('hidden');
-        
             if (isHidden) {
                 detailsContainer.classList.remove('hidden');
                 button.innerHTML = 'Ver menos';
@@ -588,30 +569,27 @@ function checkShipButtonState(requestId) {
             renderAllSections();
         }
 
-       async function handleNtCheckboxChange(event) {
-    const checkbox = event.currentTarget;
-    const { requestId, itemIndex } = checkbox.dataset;
-    const isChecked = checkbox.checked;
-
-    const reqRef = transfersCollection.doc(requestId);
-    try {
-        const doc = await reqRef.get();
-        if (!doc.exists) return;
-
-        let items = doc.data().items;
-        if (items && items[itemIndex]) {
-            items[itemIndex].nt_checked = isChecked;
-        }
-        await reqRef.update({ items });
+        async function handleNtCheckboxChange(event) {
+            const checkbox = event.currentTarget;
+            const { requestId, itemIndex } = checkbox.dataset;
+            const isChecked = checkbox.checked;
         
-        // ¡LLAMADA A LA FUNCIÓN DE AYUDA!
-        checkShipButtonState(requestId);
+            const reqRef = transfersCollection.doc(requestId);
+            try {
+                const doc = await reqRef.get();
+                if (!doc.exists) return;
+                let items = doc.data().items;
+                if (items && items[itemIndex]) {
+                    items[itemIndex].nt_checked = isChecked;
+                }
+                await reqRef.update({ items });
+                checkShipButtonState(requestId);
+            } catch (e) {
+                console.error("Error al actualizar el estado del item NT:", e);
+                checkbox.checked = !isChecked;
+            }
+        }
 
-    } catch (e) {
-        console.error("Error al actualizar el estado del item NT:", e);
-        checkbox.checked = !isChecked;
-    }
-}
         async function handleDeleteMyRequest(event) {
              const requestId = event.currentTarget.dataset.requestId;
              if (confirm("¿Eliminar esta solicitud?")) {
@@ -678,8 +656,6 @@ function checkShipButtonState(requestId) {
             }
         }
 
-        // --- MANEJADORES DE FORMULARIOS ---
-
         async function handleSubmitTransferForm(event) {
             event.preventDefault();
             const editingId = document.getElementById('editingRequestId').value;
@@ -688,22 +664,14 @@ function checkShipButtonState(requestId) {
             if (!dom.requesterName.value) { alert("Seleccione Solicitante."); return; }
             if (currentTransferItems.length === 0) { alert("Agregue productos."); return; }
             if (!deliveryDateInput.value) { alert("Seleccione fecha."); return; }
-
             const transferData = {
-                items: currentTransferItems.map(item => ({ 
-                    productId: item.productId, 
-                    productName: item.productName, 
-                    quantity: item.quantity,
-                    sentQuantity: item.sentQuantity || 0, 
-                    receivedQuantity: item.receivedQuantity || 0 
-                })),
+                items: currentTransferItems.map(item => ({ productId: item.productId, productName: item.productName, quantity: item.quantity, sentQuantity: item.sentQuantity || 0, receivedQuantity: item.receivedQuantity || 0 })),
                 fromWarehouse: document.getElementById('fromWarehouse').value,
                 toWarehouse: dom.toWarehouse.value,
                 requesterName: dom.requesterName.value,
                 deliveryDate: deliveryDateInput.value,
                 requesterNotes: document.getElementById('requesterNotes').value,
             };
-            
             try {
                 if (editingId) {
                     const reqRef = transfersCollection.doc(editingId);
@@ -711,12 +679,7 @@ function checkShipButtonState(requestId) {
                     alert(`¡Solicitud ${editingId} actualizada con éxito!`);
                 } else {
                     const customId = generateCustomId();
-                    const newReq = {
-                        ...transferData,
-                        id: customId,
-                        status: 'pending',
-                        timestamp: firebase.firestore.FieldValue.serverTimestamp()
-                    };
+                    const newReq = { ...transferData, id: customId, status: 'pending', timestamp: firebase.firestore.FieldValue.serverTimestamp() };
                     await transfersCollection.doc(customId).set(newReq);
                     alert(`¡Solicitud enviada! ID: ${customId}`);
                 }
@@ -730,10 +693,7 @@ function checkShipButtonState(requestId) {
         async function handleStartEdit(event) {
             const requestId = event.currentTarget.dataset.requestId;
             const requestToEdit = allTransferRequests.find(r => r.id === requestId);
-            if (!requestToEdit) {
-                alert("Error: No se encontró la solicitud para editar.");
-                return;
-            }
+            if (!requestToEdit) { alert("Error: No se encontró la solicitud para editar."); return; }
             document.getElementById('editingRequestId').value = requestId;
             dom.toWarehouse.value = requestToEdit.toWarehouse;
             document.getElementById('deliveryDate').value = requestToEdit.deliveryDate;
@@ -804,8 +764,6 @@ function checkShipButtonState(requestId) {
                 button.textContent = 'Finalizar y Confirmar Recepción';
             }
         }
-
-        // --- FUNCIONES DE UTILIDAD Y GESTIÓN DE PRODUCTOS ---
         
         function exportHistoryToExcel() {
             const historyRequests = allTransferRequests.filter(r => r.status.startsWith('completed') || r.status === 'cancelled');
@@ -815,16 +773,16 @@ function checkShipButtonState(requestId) {
                 const creationDate = req.timestamp ? new Date(req.timestamp.seconds * 1000).toLocaleDateString('es-CO') : 'N/A';
                 if (req.items && req.items.length > 0) {
                     req.items.forEach(item => {
-                        excelData.push({ 'ID Traslado': req.id, 'Estado': translateStatus(req.status), 'Fecha Creación': creationDate, 'Solicitante': req.requesterName, 'Bodega Destino': req.toWarehouse, 'ID Producto': item.productId, 'Nombre Producto': item.productName, 'U. Solicitadas': item.quantity, 'U. Enviadas': item.sentQuantity, 'U. Recibidas': item.receivedQuantity, 'Obs. Solicitante': req.requesterNotes || '', 'Obs. Admin': req.adminNotes || '', 'Obs. Recepción': req.reception?.notes || '' });
+                        excelData.push({ 'ID Traslado': req.id, 'Estado': translateStatus(req.status), 'Fecha Creación': creationDate, 'Solicitante': req.requesterName, 'Bodega Destino': req.toWarehouse, 'ID Producto': item.productId, 'Nombre Producto': item.productName, 'U. Solicitadas': item.quantity, 'U. Enviadas': item.sentQuantity, 'U. Recibidas': item.receivedQuantity, 'Obs. Solicitante': req.requesterNotes || '', 'Obs. Admin': req.adminNotes || '', 'Obs. Recepción': req.reception?.notes || '', 'Nº NT': req.ntNumber || '' });
                     });
                 } else {
-                    excelData.push({ 'ID Traslado': req.id, 'Estado': translateStatus(req.status), 'Fecha Creación': creationDate, 'Solicitante': req.requesterName, 'Bodega Destino': req.toWarehouse, 'ID Producto': 'N/A', 'Nombre Producto': 'Sin items', 'U. Solicitadas': 0, 'U. Enviadas': 0, 'U. Recibidas': 0, 'Obs. Solicitante': req.requesterNotes || '', 'Obs. Admin': req.adminNotes || '', 'Obs. Recepción': req.reception?.notes || '' });
+                    excelData.push({ 'ID Traslado': req.id, 'Estado': translateStatus(req.status), 'Fecha Creación': creationDate, 'Solicitante': req.requesterName, 'Bodega Destino': req.toWarehouse, 'ID Producto': 'N/A', 'Nombre Producto': 'Sin items', 'U. Solicitadas': 0, 'U. Enviadas': 0, 'U. Recibidas': 0, 'Obs. Solicitante': req.requesterNotes || '', 'Obs. Admin': req.adminNotes || '', 'Obs. Recepción': req.reception?.notes || '', 'Nº NT': req.ntNumber || '' });
                 }
             });
             const worksheet = XLSX.utils.json_to_sheet(excelData);
             const workbook = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(workbook, worksheet, "Historial");
-            worksheet['!cols'] = [ { wch: 15 }, { wch: 25 }, { wch: 15 }, { wch: 25 }, { wch: 25 }, { wch: 20 }, { wch: 40 }, { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 50 }, { wch: 50 }, { wch: 50 } ];
+            worksheet['!cols'] = [ { wch: 15 }, { wch: 25 }, { wch: 15 }, { wch: 25 }, { wch: 25 }, { wch: 20 }, { wch: 40 }, { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 50 }, { wch: 50 }, { wch: 50 }, { wch: 20 } ];
             XLSX.writeFile(workbook, "Historial_Traslados_Parabarberos.xlsx");
         }
         
@@ -972,7 +930,7 @@ function checkShipButtonState(requestId) {
             });
         }
         
-    }); // <-- ¡¡AQUÍ CIERRA EL 'DOMContentLoaded'!!
+    });
 </script>
 </body>
 </html>
