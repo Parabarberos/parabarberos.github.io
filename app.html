@@ -317,19 +317,19 @@
     const card = document.createElement('div');
     card.className = `p-4 rounded-lg shadow-sm flex flex-col ${getRequestStatusColor(req.status)}`;
 
-    // --- Lógica de datos ---
     const isShipped = req.status === 'shipped';
     const hasItems = req.items && req.items.length > 0;
     const ntNumberInputId = `nt-number-${req.id}`;
     
-    let isReadyForShipping = false;
-    if (req.status === 'pending_nt_active') {
-        const allItemsChecked = hasItems && req.items.every(item => item.nt_checked);
-        isReadyForShipping = allItemsChecked; 
-    }
+    // La condición inicial para el botón ahora solo depende de los checkboxes
+    const allItemsChecked = hasItems && req.status === 'pending_nt_active' && req.items.every(item => item.nt_checked);
+    const ntNumberExists = req.ntNumber && req.ntNumber.trim() !== '';
 
-    // --- Renderizado de Items ---
+    // El botón se deshabilita si los items no están marcados O si no hay número de NT
+    const isReadyForShipping = allItemsChecked && ntNumberExists;
+
     const itemsHtml = hasItems ? (req.items || []).map((item, index) => {
+        // ... (código de itemsHtml sin cambios)
         if (role === 'admin' && req.status === 'pending_nt_active') {
             const itemChecked = item.nt_checked === true;
             const itemBgColor = itemChecked ? 'bg-green-100' : 'bg-red-100';
@@ -347,7 +347,6 @@
         return `<li class="p-2 rounded-md bg-white flex justify-between items-center text-sm"><div><span class="font-medium text-gray-800">${item.productName}</span><div class="text-xs text-gray-600">${quantityDisplay}</div></div>${receptionInput}${adminInput}</li>`;
     }).join('') : '<p class="text-sm text-gray-500 italic">No hay artículos en esta solicitud.</p>';
 
-    // --- Lógica de Botones del Admin ---
     let adminActionsHtml = '';
     if (role === 'admin') {
         let buttons = '';
@@ -362,6 +361,7 @@
         }
         if (req.status === 'pending_nt_active') {
             buttons += `<button data-request-id="${req.id}" data-action="return_to_pending" class="action-btn bg-yellow-600 hover:bg-yellow-700 text-white text-xs font-semibold py-2 px-3 rounded-md">Devolver a Revisión</button>`;
+            // El botón se deshabilita inicialmente si no se cumplen las condiciones
             buttons += `<button data-request-id="${req.id}" data-action="shipped" class="action-btn bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold py-2 px-3 rounded-md disabled:bg-gray-400 disabled:cursor-not-allowed" ${!isReadyForShipping ? 'disabled' : ''}>Marcar como enviado</button>`;
         }
         if (['pending', 'processing_partial_items', 'pending_nt_start', 'pending_nt_active'].includes(req.status)) {
@@ -372,20 +372,11 @@
         }
     }
     
-    let requesterActionsHtml = '';
-    if (role === 'requester' && req.status === 'pending') {
-        requesterActionsHtml = `<div class="flex flex-col space-y-2"><button data-request-id="${req.id}" class="edit-my-request-btn bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold py-1 px-2 rounded-md">Editar</button><button data-request-id="${req.id}" class="delete-my-request-btn bg-red-600 hover:bg-red-700 text-white text-xs font-semibold py-1 px-2 rounded-md">Eliminar</button></div>`;
-    }
-
-    let receptionFormHtml = '';
-    if (role === 'requester' && isShipped) {
-        receptionFormHtml = `<div class="mt-4 border-t-2 border-blue-200 pt-4 space-y-3"><h5 class="font-bold text-md text-blue-700">Confirmar recepción</h5><div><label class="block text-sm font-medium text-gray-700">Observaciones de recepción:</label><textarea id="receptionNotes-${req.id}" rows="2" class="w-full mt-1 border rounded-md p-2" placeholder="Ej: La caja llegó dañada..."></textarea></div><button data-request-id="${req.id}" class="finalize-reception-btn w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-3 rounded-md">Finalizar y confirmar Recepción</button></div>`;
-    }
-    
-    const reqDate = req.deliveryDate ? new Date(req.deliveryDate + 'T00:00:00').toLocaleDateString('es-CO', { year: 'numeric', month: 'long', day: 'numeric' }) : 'No especificada';
-    const creationDate = req.timestamp ? new Date(req.timestamp.seconds * 1000).toLocaleDateString('es-CO') : '';
-    
-    card.innerHTML = `
+    // ... (resto de la función sin cambios) ...
+    // --- ESTRUCTURA HTML ---
+    // ...
+    // Dentro de la estructura, busca la creación del input y añade el oninput
+     card.innerHTML = `
         <div class="flex justify-between items-start">
             <div>
                 <h4 class="font-semibold text-lg text-gray-800">${req.requesterName}</h4>
@@ -405,7 +396,7 @@
                 ${req.status === 'pending_nt_active' ? `
                     <div class="my-4">
                         <label for="${ntNumberInputId}" class="block text-sm font-bold text-gray-700">Número de NT:</label>
-                        <input type="text" id="${ntNumberInputId}" placeholder="Ingresa el número de la nota de traslado" class="w-full mt-1 border rounded-md p-2 focus:ring-blue-500 focus:border-blue-500">
+                        <input type="text" id="${ntNumberInputId}" placeholder="Ingresa el número de la nota de traslado" class="nt-number-input w-full mt-1 border rounded-md p-2 focus:ring-blue-500 focus:border-blue-500" value="${req.ntNumber || ''}">
                     </div>
                 ` : ''}
                 <h5 class="font-bold text-gray-700 mt-3 mb-2">Items:</h5>
@@ -419,16 +410,34 @@
         </div>
     `;
 
+    // --- VINCULACIÓN DE EVENTOS ---
     card.querySelectorAll('.action-btn').forEach(b => b.onclick = handleAdminAction);
-    card.querySelectorAll('.finalize-reception-btn').forEach(b => b.onclick = handleFinalizeReception);
-    card.querySelectorAll('.admin-qty-input').forEach(i => i.onchange = handleAdminQuantityChange);
-    card.querySelectorAll('.delete-my-request-btn').forEach(b => b.onclick = handleDeleteMyRequest);
-    card.querySelectorAll('.save-admin-note-btn').forEach(b => b.onclick = handleSaveAdminNote);
-    card.querySelectorAll('.edit-my-request-btn').forEach(b => b.onclick = handleStartEdit);
-    card.querySelectorAll('.toggle-details-btn').forEach(b => b.onclick = handleToggleDetails);
-    card.querySelectorAll('.nt-checkbox').forEach(c => c.onchange = handleNtCheckboxChange);
+    card.querySelectorAll('.nt-number-input').forEach(i => i.oninput = () => checkShipButtonState(req.id)); // <-- NUEVO EVENTO
+    // ... (resto de vinculaciones)
+    
+    // Al final, después de añadir la tarjeta al DOM, verificamos el estado
+    // Esto es importante para el estado inicial
+    setTimeout(() => checkShipButtonState(req.id), 0);
 
     return card;
+}
+        // --- NUEVA FUNCIÓN DE AYUDA ---
+function checkShipButtonState(requestId) {
+    const request = allTransferRequests.find(r => r.id === requestId);
+    if (!request || request.status !== 'pending_nt_active') return;
+
+    const allItemsChecked = request.items && request.items.every(item => item.nt_checked);
+    const ntNumberInput = document.getElementById(`nt-number-${requestId}`);
+    const ntNumber = ntNumberInput ? ntNumberInput.value.trim() : '';
+    
+    const shipButton = document.querySelector(`.action-btn[data-request-id="${requestId}"][data-action="shipped"]`);
+    if (shipButton) {
+        if (allItemsChecked && ntNumber) {
+            shipButton.disabled = false;
+        } else {
+            shipButton.disabled = true;
+        }
+    }
 }
 
         function renderProducts(productsToRender) {
@@ -579,27 +588,30 @@
             renderAllSections();
         }
 
-        async function handleNtCheckboxChange(event) {
-            const checkbox = event.currentTarget;
-            const { requestId, itemIndex } = checkbox.dataset;
-            const isChecked = checkbox.checked;
-        
-            const reqRef = transfersCollection.doc(requestId);
-            try {
-                const doc = await reqRef.get();
-                if (!doc.exists) return;
-        
-                let items = doc.data().items;
-                if (items && items[itemIndex]) {
-                    items[itemIndex].nt_checked = isChecked;
-                }
-                await reqRef.update({ items });
-            } catch (e) {
-                console.error("Error al actualizar el estado del item NT:", e);
-                checkbox.checked = !isChecked;
-            }
-        }
+       async function handleNtCheckboxChange(event) {
+    const checkbox = event.currentTarget;
+    const { requestId, itemIndex } = checkbox.dataset;
+    const isChecked = checkbox.checked;
 
+    const reqRef = transfersCollection.doc(requestId);
+    try {
+        const doc = await reqRef.get();
+        if (!doc.exists) return;
+
+        let items = doc.data().items;
+        if (items && items[itemIndex]) {
+            items[itemIndex].nt_checked = isChecked;
+        }
+        await reqRef.update({ items });
+        
+        // ¡LLAMADA A LA FUNCIÓN DE AYUDA!
+        checkShipButtonState(requestId);
+
+    } catch (e) {
+        console.error("Error al actualizar el estado del item NT:", e);
+        checkbox.checked = !isChecked;
+    }
+}
         async function handleDeleteMyRequest(event) {
              const requestId = event.currentTarget.dataset.requestId;
              if (confirm("¿Eliminar esta solicitud?")) {
