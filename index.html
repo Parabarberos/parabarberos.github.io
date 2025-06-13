@@ -1,4 +1,3 @@
-<!-- NOMBRE DEL ARCHIVO: index.html -->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -10,73 +9,76 @@
     <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-auth-compat.js"></script>
 </head>
-<body class="bg-gray-100 flex items-center justify-center h-screen font-sans">
-    <div class="w-full max-w-md bg-white p-8 rounded-2xl shadow-xl border-t-4 border-red-600">
-        <div class="text-center mb-10">
-            <img src="https://parabarberos.github.io/2.jpg" alt="Logo Parabarberos" class="h-24 w-24 mx-auto mb-4 rounded-full">
-            <h1 class="text-3xl font-extrabold text-gray-800">TRASLADOS ENTRE BODEGAS PARABARBEROS S.A.S.</h1>
-            <p class="text-gray-500 mt-2">Bienvenido, por favor inicia sesión</p>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen">
+    <div class="w-full max-w-md bg-white rounded-2xl shadow-xl p-8 space-y-6">
+        <div class="text-center">
+            <img src="https://parabarberos.github.io/logot.jpeg" alt="Logo Traslados Parabarberos" class="w-24 h-24 mx-auto mb-4">
+            <h1 class="text-2xl font-bold text-gray-900">TRASLADOS ENTRE BODEGAS</h1>
+            <h2 class="text-xl font-semibold text-gray-700">PARABARBEROS S.A.S.</h2>
+            <p class="mt-2 text-sm text-gray-600">Bienvenido, por favor inicia sesión</p>
         </div>
-        
-        <form id="loginForm">
-            <div class="mb-6">
-                <label for="email" class="block text-gray-700 text-sm font-bold mb-2">Correo Electrónico</label>
-                <input type="email" id="email" required class="shadow-sm appearance-none border rounded-lg w-full py-3 px-4 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-red-500">
+
+        <form id="loginForm" class="space-y-6">
+            <div>
+                <label for="email" class="block text-sm font-medium text-gray-700">Correo Electrónico</label>
+                <input type="email" id="email" required class="mt-1 block w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500">
             </div>
-            <div class="mb-6">
-                <label for="password" class="block text-gray-700 text-sm font-bold mb-2">Contraseña</label>
-                <input type="password" id="password" required class="shadow-sm appearance-none border rounded-lg w-full py-3 px-4 text-gray-700 mb-3 leading-tight focus:outline-none focus:ring-2 focus:ring-red-500">
+            <div>
+                <label for="password" class="block text-sm font-medium text-gray-700">Contraseña</label>
+                <input type="password" id="password" required class="mt-1 block w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500">
             </div>
-            <div id="errorMessage" class="text-red-500 text-center mb-4 font-semibold h-5"></div>
-            <div class="flex items-center justify-between">
-                <button type="submit" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-4 rounded-lg focus:outline-none focus:shadow-outline transition-transform transform hover:scale-105">
-                    Ingresar
-                </button>
-            </div>
+            <p id="loginError" class="text-sm text-red-600 font-medium" style="display: none;"></p>
+            <button type="submit" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-4 rounded-lg shadow-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
+                Ingresar
+            </button>
         </form>
     </div>
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
+            // --- CONFIGURACIÓN DE FIREBASE ---
+            // Usa la misma configuración que en tu archivo principal
             const firebaseConfig = {
-                apiKey: "AIzaSyBmmNg525KrnOTsebzAV9dzfsKiq3o-0iQ",
-                authDomain: "base-de-datos-traslados.firebaseapp.com",
-                projectId: "base-de-datos-traslados",
-                storageBucket: "base-de-datos-traslados.appspot.com",
-                messagingSenderId: "569583717634",
-                appId: "1:569583717634:web:f7baa7aaf66a639624461b",
-                measurementId: "G-9CSBCGJRGS"
+                apiKey: "AIzaSyDzjjtmK0XNo94KarKVJ5juuBnSoKqbtbo",
+                authDomain: "parabarberos-traslados-v2.firebaseapp.com",
+                projectId: "parabarberos-traslados-v2",
+                storageBucket: "parabarberos-traslados-v2.firebasestorage.app",
+                messagingSenderId: "939654956238",
+                appId: "1:939654956238:web:454d07ae95f81bab267c9f",
+                measurementId: "G-28PM922YL1"
             };
 
+            // --- INICIALIZACIÓN CORRECTA ---
             firebase.initializeApp(firebaseConfig);
             const auth = firebase.auth();
-            const loginForm = document.getElementById('loginForm');
-            const errorMessage = document.getElementById('errorMessage');
 
+            const loginForm = document.getElementById('loginForm');
+            const emailInput = document.getElementById('email');
+            const passwordInput = document.getElementById('password');
+            const loginError = document.getElementById('loginError');
+
+            // Redirigir si ya hay una sesión activa
             auth.onAuthStateChanged(user => {
                 if (user) {
-                    window.location.href = 'app.html';
+                    window.location.href = 'app.html'; // Cambia 'app.html' por el nombre de tu página principal si es diferente
                 }
             });
 
             loginForm.addEventListener('submit', (e) => {
                 e.preventDefault();
-                const email = document.getElementById('email').value;
-                const password = document.getElementById('password').value;
-                errorMessage.textContent = 'Verificando...';
-                errorMessage.classList.remove('text-red-500');
-                errorMessage.classList.add('text-gray-500');
+                loginError.style.display = 'none';
+                
+                const email = emailInput.value;
+                const password = passwordInput.value;
 
                 auth.signInWithEmailAndPassword(email, password)
+                    .then((userCredential) => {
+                        // El onAuthStateChanged se encargará de la redirección
+                    })
                     .catch((error) => {
-                        console.error("Error de inicio de sesión:", error.code);
-                        errorMessage.classList.add('text-red-500');
-                        errorMessage.classList.remove('text-gray-500');
-                        if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
-                            errorMessage.textContent = 'Correo o contraseña incorrectos.';
-                        } else {
-                            errorMessage.textContent = 'CREDENCIALES INCORRECTAS. Inténtalo de nuevo.';
-                        }
+                        console.error("Error de inicio de sesión:", error);
+                        loginError.textContent = 'Correo o contraseña incorrectos. Por favor, inténtalo de nuevo.';
+                        loginError.style.display = 'block';
                     });
             });
         });
