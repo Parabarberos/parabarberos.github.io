@@ -134,7 +134,7 @@
             messagingSenderId: "569583717634",
             appId: "1:569583717634:web:f7baa7aaf66a639624461b",
             measurementId: "G-9CSBCGJRGS"
-};
+        };
         firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
         const db = firebase.firestore();
@@ -311,7 +311,7 @@
         function createRequestCard(req, role) {
             const isExpanded = expandedRequestsState.has(req.id);
             const card = document.createElement('div');
-            // *** CAMBIO 1: Añadimos 'flex flex-col' a la tarjeta principal ***
+            // *** CAMBIO 1: La tarjeta es un contenedor flex en columna ***
             card.className = `p-4 rounded-lg shadow-sm flex flex-col ${getRequestStatusColor(req.status)}`;
         
             const isShipped = req.status === 'shipped';
@@ -325,7 +325,6 @@
                     const itemBorderColor = itemChecked ? 'border-green-200' : 'border-red-200';
                     return `<li class="p-2 rounded-md border ${itemBorderColor} ${itemBgColor} flex justify-between items-center text-sm transition-colors"><div><span class="font-medium text-gray-800">${item.productName}</span><div class="text-xs text-gray-600">Enviado: <b>${item.sentQuantity}</b></div></div><input type="checkbox" ${itemChecked ? 'checked' : ''} data-request-id="${req.id}" data-item-index="${index}" class="nt-checkbox h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"></li>`;
                 }
-                
                 let quantityDisplay = `Solicitado: <b>${item.quantity}</b>`;
                 if (item.sentQuantity !== undefined) { quantityDisplay += ` | Enviado: <b>${item.sentQuantity}</b>`; }
                 if (item.receivedQuantity !== undefined) {
@@ -334,7 +333,6 @@
                 }
                 const receptionInput = (role === 'requester' && isShipped) ? `<div class="flex items-center"><label class="text-sm mr-2">Recibido:</label><input type="number" value="${item.sentQuantity}" data-request-id="${req.id}" data-item-index="${index}" class="reception-qty-input w-20 p-1 border rounded-md text-center"></div>` : ``;
                 const adminInput = (role === 'admin' && req.status === 'processing_partial_items') ? `<input type="number" value="${item.sentQuantity ?? item.quantity}" data-request-id="${req.id}" data-item-index="${index}" class="admin-qty-input w-20 p-1 border rounded-md text-center">` : ``;
-                
                 return `<li class="p-2 rounded-md bg-white flex justify-between items-center text-sm"><div><span class="font-medium text-gray-800">${item.productName}</span><div class="text-xs text-gray-600">${quantityDisplay}</div></div>${receptionInput}${adminInput}</li>`;
             }).join('') : '<p class="text-sm text-gray-500 italic">No hay artículos en esta solicitud.</p>';
         
@@ -376,8 +374,9 @@
             const creationDate = req.timestamp ? new Date(req.timestamp.seconds * 1000).toLocaleDateString('es-CO') : '';
             const hasDetailsToShow = hasItems || req.requesterNotes || req.adminNotes || adminActionsHtml || receptionFormHtml;
         
-            // *** CAMBIO 2: Añadimos 'flex-grow' al div de detalles para que se estire ***
+            // *** CAMBIO 2: La estructura HTML interna se organiza para que flexbox funcione ***
             card.innerHTML = `
+                <!-- Parte superior: Cabecera -->
                 <div class="flex justify-between items-start">
                     <div>
                         <h4 class="font-semibold text-lg text-gray-800">${req.requesterName}</h4>
@@ -388,16 +387,22 @@
                     </div>
                     ${requesterActionsHtml}
                 </div>
-                <div id="details-${req.id}" class="flex-grow ${isExpanded ? '' : 'hidden'} mt-4 pt-4 border-t border-gray-200">
-                    ${req.requesterNotes ? `<div class="mb-3 p-3 bg-gray-50 rounded-lg border"><p class="text-sm font-semibold text-gray-600">Observaciones:</p><p class="text-sm text-gray-800 italic">"${req.requesterNotes}"</p></div>` : ''}
-                    ${req.adminNotes ? `<div class="mb-3 p-3 bg-red-50 rounded-lg border border-red-200"><p class="text-sm font-semibold text-red-800">Nota del Admin:</p><p class="text-sm text-red-900 italic">"${req.adminNotes}"</p></div>` : ''}
-                    ${(role === 'admin' && req.status.startsWith('processing')) ? `<div class="mt-4"><label for="adminNotes-${req.id}" class="text-sm font-medium text-gray-700">Añadir/Editar Nota:</label><textarea id="adminNotes-${req.id}" rows="2" class="w-full mt-1 border rounded-md p-2">${req.adminNotes || ''}</textarea><button data-request-id="${req.id}" class="save-admin-note-btn mt-1 text-xs bg-gray-800 text-white px-3 py-1.5 rounded-md hover:bg-black">Guardar Nota</button></div>` : ''}
-                    <h5 class="font-bold text-gray-700 mt-3 mb-2">Items:</h5>
-                    <ul class="space-y-2">${itemsHtml}</ul>
+                
+                <!-- Parte media: Detalles (este div se estirará) -->
+                <div id="details-${req.id}" class="flex-grow ${isExpanded ? 'flex flex-col' : 'hidden'} mt-4 pt-4 border-t border-gray-200">
+                    <div class="flex-grow">
+                        ${req.requesterNotes ? `<div class="mb-3 p-3 bg-gray-50 rounded-lg border"><p class="text-sm font-semibold text-gray-600">Observaciones:</p><p class="text-sm text-gray-800 italic">"${req.requesterNotes}"</p></div>` : ''}
+                        ${req.adminNotes ? `<div class="mb-3 p-3 bg-red-50 rounded-lg border border-red-200"><p class="text-sm font-semibold text-red-800">Nota del Admin:</p><p class="text-sm text-red-900 italic">"${req.adminNotes}"</p></div>` : ''}
+                        ${(role === 'admin' && req.status.startsWith('processing')) ? `<div class="mt-4"><label for="adminNotes-${req.id}" class="text-sm font-medium text-gray-700">Añadir/Editar Nota:</label><textarea id="adminNotes-${req.id}" rows="2" class="w-full mt-1 border rounded-md p-2">${req.adminNotes || ''}</textarea><button data-request-id="${req.id}" class="save-admin-note-btn mt-1 text-xs bg-gray-800 text-white px-3 py-1.5 rounded-md hover:bg-black">Guardar Nota</button></div>` : ''}
+                        <h5 class="font-bold text-gray-700 mt-3 mb-2">Items:</h5>
+                        <ul class="space-y-2">${itemsHtml}</ul>
+                    </div>
                     ${adminActionsHtml}
                     ${receptionFormHtml}
                 </div>
-                ${hasDetailsToShow ? `<div class="text-center mt-2"><button data-request-id="${req.id}" class="toggle-details-btn text-sm font-semibold text-blue-600 hover:text-blue-800 py-1 px-3 rounded-full hover:bg-blue-50 transition-colors">${isExpanded ? 'Ver menos' : 'Ver más'}</button></div>` : ''}
+                
+                <!-- Parte inferior: Botón "Ver más" -->
+                ${hasDetailsToShow ? `<div class="text-center mt-2 border-t border-transparent pt-2"><button data-request-id="${req.id}" class="toggle-details-btn text-sm font-semibold text-blue-600 hover:text-blue-800 py-1 px-3 rounded-full hover:bg-blue-50 transition-colors">${isExpanded ? 'Ver menos' : 'Ver más'}</button></div>` : ''}
             `;
         
             card.querySelectorAll('.action-btn').forEach(b => b.onclick = handleAdminAction);
