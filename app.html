@@ -511,22 +511,26 @@
             };
             expandedRequestsState.delete(requestId);
         } else if (action === 'shipped') {
-            const ntNumberInputId = `nt-number-${requestId}`;
-            const ntNumberInput = document.getElementById(ntNumberInputId);
-            const ntNumber = ntNumberInput ? ntNumberInput.value.trim() : '';
+    const ntNumberInput = document.getElementById(`nt-number-${requestId}`);
+    const ntNumber = ntNumberInput ? ntNumberInput.value.trim() : '';
 
-            if (!ntNumber) {
-                alert("Por favor, ingresa el Número de NT antes de marcar como enviado.");
-                ntNumberInput.focus();
-                return;
-            }
-            if (!confirm(`¿Confirmas el envío con el N° de NT: "${ntNumber}"?`)) return;
+    // Validamos que no esté vacío
+    if (!ntNumber) {
+        alert("Por favor, ingresa el Número de NT antes de marcar como enviado.");
+        ntNumberInput.focus();
+        return;
+    }
+    
+    if (!confirm(`¿Confirmas el envío con el N° de NT: "${ntNumber}"?`)) {
+        return;
+    }
 
-            updateData = {
-                status: 'shipped',
-                ntNumber: ntNumber
-            };
-            expandedRequestsState.delete(requestId);
+    updateData = { 
+        status: 'shipped',
+        ntNumber: ntNumber
+    };
+    expandedRequestsState.delete(requestId);
+            
         } else if (action === 'cancel') {
             if (!confirm("¿Cancelar esta solicitud?")) return;
             updateData = { status: 'cancelled' };
