@@ -684,56 +684,45 @@
                 alert("No se pudo guardar el cambio. Inténtalo de nuevo.");
             }
         }
-        
-        // REEMPLAZA LA FUNCIÓN ANTIGUA CON ESTA VERSIÓN CORREGIDA
-
-async function handleAdminQuantityChange(event) {
-    const input = event.currentTarget;
-    // Parsea los valores del dataset para asegurar que son números
-    const requestId = input.dataset.requestId;
-    const itemIndex = parseInt(input.dataset.itemIndex, 10); 
-    const newSentQuantity = parseInt(input.value, 10);
-
-    // 1. Añadimos una validación para evitar guardar valores inválidos
-    if (isNaN(newSentQuantity) || newSentQuantity < 0) {
-        alert("Por favor, ingrese una cantidad numérica válida.");
-        renderAllSections(); // Recargamos para restaurar el valor original en la UI
-        return;
-    }
-
-    const reqRef = transfersCollection.doc(requestId);
-    
-    try {
-        await db.runTransaction(async (transaction) => {
-            const doc = await transaction.get(reqRef);
-            if (!doc.exists) {
-                throw "El documento no existe!";
+        // --- NUEVA VERSIÓN RECOMENDADA ---
+// REEMPLAZA LA FUNCIÓN ANTERIOR CON ESTA
+        async function handleAdminQuantityChange(event) {
+            const input = event.currentTarget;
+            const requestId = input.dataset.requestId;
+            const itemIndex = parseInt(input.dataset.itemIndex, 10);
+            const newSentQuantity = parseInt(input.value, 10);
+            // Validación para asegurar que la cantidad es un número válido
+            if (isNaN(newSentQuantity) || newSentQuantity < 0) {
+                alert("Por favor, ingrese una cantidad numérica válida.");
+                renderAllSections(); // Recargamos para restaurar el valor original
+                return;
             }
-            
-            const originalItems = doc.data().items || [];
-
-            // 2. La corrección principal: creamos un NUEVO array usando .map()
-            // en lugar de modificar el original.
-            const newItems = originalItems.map((item, index) => {
-                // Si el índice actual es el que queremos cambiar...
-                if (index === itemIndex) {
-                    // ...devolvemos un objeto nuevo con la cantidad actualizada.
-                    return { ...item, sentQuantity: newSentQuantity };
+            const reqRef = transfersCollection.doc(requestId);
+            try {
+                // Obtenemos el documento actual directamente
+                const doc = await reqRef.get();
+                if (!doc.exists) {
+                    throw new Error("El documento de la solicitud no fue encontrado.");
                 }
-                // Si no, devolvemos el ítem original sin cambios.
-                return item;
-            });
-
-            // 3. Actualizamos el documento con el array completamente nuevo.
-            transaction.update(reqRef, { items: newItems });
-        });
-    } catch (e) {
-        console.error("Fallo la transacción de cantidad:", e);
-        alert("No se pudo guardar la cantidad. Inténtalo de nuevo.");
-        // Volvemos a renderizar todo para que la UI muestre el valor correcto de la DB
-        renderAllSections();
-    }
-}
+                const originalItems = doc.data().items || [];
+                // Creamos un nuevo array con los cambios (enfoque inmutable)
+                const newItems = originalItems.map((item, index) => {
+                    if (index === itemIndex) {
+                        // Devolvemos una copia del ítem con la cantidad actualizada
+                        return { ...item, sentQuantity: newSentQuantity };
+                    }
+                    return item; // Devolvemos el ítem sin cambios
+                });
+                await reqRef.update({
+                    items: newItems
+                });
+            } catch (e) {
+                console.error("Error al actualizar la cantidad:", e);
+                alert("No se pudo guardar la cantidad. Por favor, revisa tu conexión e inténtalo de nuevo.");
+                // Si falla, volvemos a renderizar para que la UI no muestre un cambio que no se guardó
+                renderAllSections();
+            }
+        }
 
         async function handleNtNumberInput(event) {
             const { requestId } = event.currentTarget.dataset;
