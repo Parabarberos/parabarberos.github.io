@@ -161,7 +161,7 @@
             apiKey: "AIzaSyDzJjtmK0XNo94KarKVJ5juuBnSoKqbtbo",
             authDomain: "parabarberos-traslados-v2.firebaseapp.com",
             projectId: "parabarberos-traslados-v2",
-            storageBucket: "parabarberos-traslados-v2.firebasestorage.app",
+            storageBucket: "parabarberos-traslados-v2.appspot.com",
             messagingSenderId: "939654956238",
             appId: "1:939654956238:web:454d07ae95f81bab267c9f",
             measurementId: "G-28PM922YL1"
@@ -181,7 +181,6 @@
             'parabarberossedetulua@gmail.com': ['Punto de venta Tulua', 'requester'],
             'parabarberossedemedellin@gmail.com': ['Punto de venta Medellin', 'requester'],
             'separador.parabarberos@gmail.com': ['Revisor Bodega', 'reviewer'],
-            
         };
 
         // --- ESTADO GLOBAL DE LA APLICACIÓN ---
@@ -230,7 +229,6 @@
             return 'border-l-4 border-gray-300 bg-gray-50';
         };
 
-        // --- CAMBIO CLAVE: Lógica mejorada para traducir estados de novedad ---
         const translateStatus = (s, req) => {
             const statusMap = {
                 'pending':'Pendiente', 'processing_partial_items':'En Revisión',
@@ -249,7 +247,7 @@
                     if (hasShortage) return 'Incompleto';
                     if (hasExcess) return 'Excedente';
                 }
-                return 'Novedad'; // Fallback
+                return 'Novedad';
             };
 
             if (s === 'completed_incomplete') {
@@ -645,6 +643,8 @@
             renderAllSections();
         }
 
+        // --- INICIO DE CÓDIGO CORREGIDO ---
+
         async function handleNtCheckboxChange(event) {
             const checkbox = event.currentTarget;
             const { requestId, itemIndex } = checkbox.dataset;
@@ -662,14 +662,15 @@
             const finalizeBtn = document.querySelector(`#card-${requestId} button[data-action="finalize_processing"]`);
             if(finalizeBtn) finalizeBtn.disabled = !allReviewItemsChecked;
 
-            // REEMPLAZA ESTE BLOQUE EN handleNtCheckboxChang
             try {
+                // Actualización directa y atómica del campo específico
                 const fieldToUpdate = `items.${itemIndex}.nt_checked`;
                 await reqRef.update({
                     [fieldToUpdate]: isChecked
                 });
             } catch (e) {
                 console.error("Fallo la actualización del checkbox, revirtiendo UI:", e);
+                // Si falla, revertimos los cambios en la interfaz para mantener la consistencia
                 checkbox.checked = !isChecked; 
                 if (itemRow) {
                     itemRow.classList.toggle('bg-green-100', !isChecked);
@@ -685,25 +686,22 @@
             const { requestId, itemIndex } = input.dataset;
             const newSentQuantity = parseInt(input.value, 10);
             const reqRef = transfersCollection.doc(requestId);
-            // REEMPLAZA ESTE BLOQUE EN handleNtCheckboxChange
+            
             try {
-                // Crea la ruta al campo específico usando "notación de puntos"
-                const fieldToUpdate = `items.${itemIndex}.nt_checked`;
-                // Actualiza directamente ese campo sin una transacción
+                // Actualización directa y atómica del campo específico de cantidad
+                const fieldToUpdate = `items.${itemIndex}.sentQuantity`;
                 await reqRef.update({
-                    [fieldToUpdate]: isChecked
+                    [fieldToUpdate]: newSentQuantity
                 });
             } catch (e) {
-                console.error("Fallo la actualización del checkbox, revirtiendo UI:", e);
-                // Si falla, revertimos los cambios en la interfaz
-                checkbox.checked = !isChecked; 
-                if (itemRow) {
-                    itemRow.classList.toggle('bg-green-100', !isChecked);
-                    itemRow.classList.toggle('bg-red-100', isChecked);
-                }
-                if(finalizeBtn) finalizeBtn.disabled = true;
-                alert("No se pudo guardar el cambio. Inténtalo de nuevo.");
+                console.error("Fallo la actualización de cantidad:", e);
+                alert("No se pudo guardar la cantidad. Inténtalo de nuevo.");
+                // Si falla, volvemos a renderizar todo para asegurar que la UI muestre el valor correcto de la DB
+                renderAllSections();
             }
+        }
+
+        // --- FIN DE CÓDIGO CORREGIDO ---
 
         async function handleNtNumberInput(event) {
             const { requestId } = event.currentTarget.dataset;
@@ -1039,7 +1037,10 @@
             transfersCollection.orderBy("timestamp", "desc").onSnapshot(snapshot => {
                 allTransferRequests = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                 renderAllSections();
-            }, error => console.error("Error al conectar: ", error));
+            }, error => {
+                console.error("Error al conectar con Firestore: ", error);
+                alert("Error de conexión con la base de datos. Verifica tu conexión y las reglas de seguridad de Firestore.");
+            });
         }
     });
 </script>
