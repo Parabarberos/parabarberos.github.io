@@ -662,19 +662,14 @@
             const finalizeBtn = document.querySelector(`#card-${requestId} button[data-action="finalize_processing"]`);
             if(finalizeBtn) finalizeBtn.disabled = !allReviewItemsChecked;
 
+            // REEMPLAZA ESTE BLOQUE EN handleNtCheckboxChang
             try {
-                await db.runTransaction(async (transaction) => {
-                    const doc = await transaction.get(reqRef);
-                    if (!doc.exists) throw "El documento no existe!";
-                    
-                    const items = doc.data().items;
-                    if (items[itemIndex]) {
-                        items[itemIndex].nt_checked = isChecked;
-                        transaction.update(reqRef, { items: items });
-                    }
+                const fieldToUpdate = `items.${itemIndex}.nt_checked`;
+                await reqRef.update({
+                    [fieldToUpdate]: isChecked
                 });
             } catch (e) {
-                console.error("Fallo la transacción del checkbox, revirtiendo UI:", e);
+                console.error("Fallo la actualización del checkbox, revirtiendo UI:", e);
                 checkbox.checked = !isChecked; 
                 if (itemRow) {
                     itemRow.classList.toggle('bg-green-100', !isChecked);
@@ -690,24 +685,25 @@
             const { requestId, itemIndex } = input.dataset;
             const newSentQuantity = parseInt(input.value, 10);
             const reqRef = transfersCollection.doc(requestId);
-            
+            // REEMPLAZA ESTE BLOQUE EN handleNtCheckboxChange
             try {
-                await db.runTransaction(async (transaction) => {
-                    const doc = await transaction.get(reqRef);
-                    if (!doc.exists) throw "El documento no existe!";
-                    
-                    const items = doc.data().items;
-                    if (items[itemIndex]) {
-                        items[itemIndex].sentQuantity = newSentQuantity;
-                        transaction.update(reqRef, { items: items });
-                    }
+                // Crea la ruta al campo específico usando "notación de puntos"
+                const fieldToUpdate = `items.${itemIndex}.nt_checked`;
+                // Actualiza directamente ese campo sin una transacción
+                await reqRef.update({
+                    [fieldToUpdate]: isChecked
                 });
             } catch (e) {
-                console.error("Fallo la transacción de cantidad:", e);
-                alert("No se pudo guardar la cantidad. Inténtalo de nuevo.");
-                renderAllSections();
+                console.error("Fallo la actualización del checkbox, revirtiendo UI:", e);
+                // Si falla, revertimos los cambios en la interfaz
+                checkbox.checked = !isChecked; 
+                if (itemRow) {
+                    itemRow.classList.toggle('bg-green-100', !isChecked);
+                    itemRow.classList.toggle('bg-red-100', isChecked);
+                }
+                if(finalizeBtn) finalizeBtn.disabled = true;
+                alert("No se pudo guardar el cambio. Inténtalo de nuevo.");
             }
-        }
 
         async function handleNtNumberInput(event) {
             const { requestId } = event.currentTarget.dataset;
