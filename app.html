@@ -10,6 +10,9 @@
     <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-firestore-compat.js"></script>
     <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+    <!-- LIBRERÍAS AÑADIDAS -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.9.3/html2pdf.bundle.min.js"></script>
 </head>
 <body class="bg-gray-100 font-sans">
     <div class="container mx-auto p-4 md:p-8">
@@ -154,18 +157,19 @@
             </div>
         </div>
         
-        <!-- VISTA GERENCIAL -->
+        <!-- VISTA GERENCIAL (ACTUALIZADA Y MEJORADA) -->
         <div id="managerView" class="space-y-8" style="display: none;">
             <div class="bg-white p-6 rounded-xl shadow-lg">
                 <h2 class="text-2xl font-semibold mb-4 text-gray-800 border-b pb-3">Panel de Informes Gerenciales</h2>
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
-                    <div>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 items-end">
+                    <div class="lg:col-span-2">
                         <label for="reportTimeRange" class="block text-sm font-medium text-gray-700">Rango de Tiempo</label>
                         <select id="reportTimeRange" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm">
                             <option value="today">Hoy</option>
                             <option value="this_week">Esta Semana</option>
                             <option value="this_month" selected>Este Mes</option>
                             <option value="last_3_months">Últimos 3 Meses</option>
+                            <option value="all_time">Todo el Historial</option>
                             <option value="custom">Personalizado</option>
                         </select>
                     </div>
@@ -179,30 +183,75 @@
                             <input type="date" id="reportDateTo" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm">
                         </div>
                     </div>
-                    <div>
+                    <div class="lg:col-span-1">
                         <button id="generateReportBtn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg shadow-lg">Generar Informe</button>
                     </div>
                 </div>
             </div>
-            <div id="reportResults" class="space-y-8" style="display: none;">
-                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
-                    <div class="bg-white p-4 rounded-xl shadow-lg"><h3 class="text-sm font-medium text-gray-500">Total Solicitudes</h3><p id="kpiTotalRequests" class="mt-1 text-3xl font-semibold text-gray-900">-</p></div>
-                    <div class="bg-white p-4 rounded-xl shadow-lg"><h3 class="text-sm font-medium text-gray-500">Completadas</h3><p id="kpiCompleted" class="mt-1 text-3xl font-semibold text-green-600">-</p></div>
-                    <div class="bg-white p-4 rounded-xl shadow-lg"><h3 class="text-sm font-medium text-gray-500">Con Novedad</h3><p id="kpiWithNovelty" class="mt-1 text-3xl font-semibold text-yellow-600">-</p></div>
-                    <div class="bg-white p-4 rounded-xl shadow-lg"><h3 class="text-sm font-medium text-gray-500">Canceladas</h3><p id="kpiCancelled" class="mt-1 text-3xl font-semibold text-red-600">-</p></div>
+            
+            <div id="reportContainer" style="display: none;">
+                <div id="reportContent" class="bg-white p-8 space-y-8 rounded-xl shadow-lg">
+                    <div class="text-center">
+                        <h2 class="text-3xl font-bold text-gray-800">Informe Gerencial de Traslados</h2>
+                        <p id="reportDateSubtitle" class="text-gray-500 mt-1"></p>
+                    </div>
+                    <hr/>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+                        <div><h3 class="text-gray-500">Total Solicitudes</h3><p id="kpiTotalRequests" class="text-2xl font-bold text-gray-900">-</p></div>
+                        <div><h3 class="text-gray-500">Completadas</h3><p id="kpiCompleted" class="text-2xl font-bold text-green-600">-</p></div>
+                        <div><h3 class="text-gray-500">Con Novedad</h3><p id="kpiWithNovelty" class="text-2xl font-bold text-yellow-600">-</p></div>
+                        <div><h3 class="text-gray-500">Canceladas</h3><p id="kpiCancelled" class="text-2xl font-bold text-red-600">-</p></div>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 pt-8">
+                        
+                        <div class="col-span-2 lg:col-span-1 bg-white p-6 rounded-xl shadow-lg border border-gray-200">
+                            <h3 class="text-xl font-semibold text-gray-800 mb-4 text-center">Estado de Solicitudes</h3>
+                            <div class="relative h-80">
+                                <canvas id="statusChart"></canvas>
+                            </div>
+                        </div>
+
+                        <div class="col-span-2 lg:col-span-1 bg-white p-6 rounded-xl shadow-lg border border-gray-200">
+                            <h3 class="text-xl font-semibold text-gray-800 mb-4 text-center">Top 5 Productos Más Solicitados</h3>
+                            <div class="relative h-80">
+                                <canvas id="topProductsChart"></canvas>
+                            </div>
+                        </div>
+
+                        <div class="col-span-2 lg:col-span-1 bg-white p-6 rounded-xl shadow-lg border border-gray-200">
+                            <h3 class="text-xl font-semibold text-gray-800 mb-4 text-center">Volumen por Bodega Destino</h3>
+                            <div class="relative h-80">
+                                <canvas id="warehouseChart"></canvas>
+                            </div>
+                        </div>
+
+                        <div class="col-span-2 lg:col-span-1 bg-white p-6 rounded-xl shadow-lg border border-gray-200">
+                            <h3 class="text-xl font-semibold text-gray-800 mb-4 text-center">Tasa de Cumplimiento (Unidades Recibidas)</h3>
+                            <div class="relative h-80">
+                                <canvas id="fulfillmentChart"></canvas>
+                            </div>
+                        </div>
+
+                        <div class="col-span-2 lg:col-span-1 bg-white p-6 rounded-xl shadow-lg border border-gray-200">
+                            <h3 class="text-xl font-semibold text-gray-800 mb-4 text-center">Unidades Solicitadas vs. Enviadas</h3>
+                            <div class="relative h-80">
+                                <canvas id="requestedVsSentChart"></canvas>
+                            </div>
+                        </div>
+
+                    </div>
                 </div>
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                    <div class="bg-white p-6 rounded-xl shadow-lg"><h3 class="text-lg font-semibold text-gray-800 mb-4">Estado de Solicitudes</h3><canvas id="statusChart"></canvas></div>
-                    <div class="bg-white p-6 rounded-xl shadow-lg"><h3 class="text-lg font-semibold text-gray-800 mb-4">Top 5 Productos Más Solicitados</h3><canvas id="topProductsChart"></canvas></div>
-                    <div class="bg-white p-6 rounded-xl shadow-lg"><h3 class="text-lg font-semibold text-gray-800 mb-4">Volumen por Bodega Destino</h3><canvas id="warehouseChart"></canvas></div>
-                    <div class="bg-white p-6 rounded-xl shadow-lg"><h3 class="text-lg font-semibold text-gray-800 mb-4">Tasa de Cumplimiento (Unidades)</h3><p class="text-sm text-gray-500 -mt-2 mb-4">(Enviadas vs. Recibidas en traslados finalizados)</p><canvas id="fulfillmentChart"></canvas></div>
+                <div class="mt-6 flex justify-end gap-4">
+                    <button id="exportManagerReportBtn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg shadow-lg flex items-center space-x-2"><span>Exportar a Excel</span></button>
+                    <button id="downloadPdfBtn" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg shadow-lg flex items-center space-x-2"><span>Descargar como PDF</span></button>
                 </div>
             </div>
         </div>
     </div>
 <script>
     document.addEventListener('DOMContentLoaded', () => {
-        // --- CONFIGURACIÓN DE FIREBASE ---
+        // --- CONFIGURACIÓN DE FIREBASE (ORIGINAL) ---
         const firebaseConfig = {
             apiKey: "AIzaSyDzJjtmK0XNo94KarKVJ5juuBnSoKqbtbo",
             authDomain: "parabarberos-traslados-v2.firebaseapp.com",
@@ -218,7 +267,7 @@
         const transfersCollection = db.collection("transferencias");
         const productsCollection = db.collection("products");
 
-        // --- ROLES DE USUARIO ---
+        // --- ROLES DE USUARIO (ORIGINALES) ---
         const USER_ROLES = {
             'inventarios.parabarberos@gmail.com': ['Administrador', 'admin'],
             'parabarberossedecentro@gmail.com': ['Punto de venta Cali centro', 'requester'],
@@ -229,16 +278,18 @@
             'separador.parabarberos@gmail.com': ['Revisor Bodega', 'reviewer'],
             'gerencia.parabarberos@gmail.com': ['Gerencia', 'manager'],
         };
+        
         // --- ESTADO GLOBAL DE LA APLICACIÓN ---
         let allProducts = [], currentTransferItems = [], allTransferRequests = [], currentUserData = null;
         let charts = {};
+        let lastFilteredRequests = []; // Para los informes
         const expandedRequestsState = new Set();
         const sectionDisplayCounts = {};
         const INITIAL_DISPLAY_COUNT = 2;
         const LOAD_MORE_COUNT = 10;
         currentTransferItems = JSON.parse(localStorage.getItem('currentTransferDraft')) || [];
 
-        // --- REFERENCIAS AL DOM ---
+        // --- REFERENCIAS AL DOM (UNIFICADAS) ---
         const dom = {
             productList: document.getElementById('productList'),
             currentTransferRequest: document.getElementById('currentTransferRequest'),
@@ -285,13 +336,16 @@
             reviewerSearchId: document.getElementById('reviewerSearchId'),
             reviewerDateFrom: document.getElementById('reviewerDateFrom'),
             reviewerDateTo: document.getElementById('reviewerDateTo'),
+            // Nuevas referencias para la Vista Gerencial
             managerView: document.getElementById('managerView'),
             reportTimeRange: document.getElementById('reportTimeRange'),
             customDateRange: document.getElementById('customDateRange'),
             reportDateFrom: document.getElementById('reportDateFrom'),
             reportDateTo: document.getElementById('reportDateTo'),
             generateReportBtn: document.getElementById('generateReportBtn'),
-            reportResults: document.getElementById('reportResults'),
+            reportContainer: document.getElementById('reportContainer'),
+            reportContent: document.getElementById('reportContent'),
+            reportDateSubtitle: document.getElementById('reportDateSubtitle'),
             kpiTotalRequests: document.getElementById('kpiTotalRequests'),
             kpiCompleted: document.getElementById('kpiCompleted'),
             kpiWithNovelty: document.getElementById('kpiWithNovelty'),
@@ -299,7 +353,10 @@
             statusChart: document.getElementById('statusChart'),
             topProductsChart: document.getElementById('topProductsChart'),
             warehouseChart: document.getElementById('warehouseChart'),
-            fulfillmentChart: document.getElementById('fulfillmentChart')
+            fulfillmentChart: document.getElementById('fulfillmentChart'),
+            requestedVsSentChart: document.getElementById('requestedVsSentChart'),
+            exportManagerReportBtn: document.getElementById('exportManagerReportBtn'),
+            downloadPdfBtn: document.getElementById('downloadPdfBtn')
         };
 
         // --- FUNCIONES AUXILIARES ---
@@ -342,13 +399,15 @@
         
         function setupUIForUser() {
             if (!currentUserData) return;
-            const { name, role } = currentUserData;
+            const { role } = currentUserData;
+            
             dom.requesterView.style.display = 'none';
             dom.adminView.style.display = 'none';
             dom.reviewerView.style.display = 'none';
             dom.managerView.style.display = 'none';
+            
             if (dom.productManagementCard) dom.productManagementCard.style.display = 'none';
-            if (dom.reportResults) dom.reportResults.style.display = 'none';
+            if (dom.reportContainer) dom.reportContainer.style.display = 'none';
 
             if (role === 'admin') {
                 dom.adminView.style.display = 'block';
@@ -359,8 +418,10 @@
                 dom.managerView.style.display = 'block';
             } else { 
                 dom.requesterView.style.display = 'grid';
-                dom.requesterName.innerHTML = `<option value="${currentUserData.name}">${currentUserData.name}</option>`;
-                dom.requesterName.value = currentUserData.name;
+                if (dom.requesterName) {
+                    dom.requesterName.innerHTML = `<option value="${currentUserData.name}">${currentUserData.name}</option>`;
+                    dom.requesterName.value = currentUserData.name;
+                }
             }
         }
         
@@ -914,6 +975,7 @@
         }
         
         function renderCurrentTransfer() {
+            if (!dom.currentTransferRequest) return;
             dom.currentTransferRequest.innerHTML = currentTransferItems.length === 0 ? '<p class="text-gray-500 italic text-center py-4">Añade productos.</p>' : '';
             if (currentTransferItems.length > 0) {
                 const ul = document.createElement('ul');
@@ -1013,36 +1075,9 @@
             });
             return Array.from(productsMap.values()).sort((a, b) => a.name.localeCompare(b.name));
         }
-
-        function exportHistoryToExcel() {
-            const historyRequests = allTransferRequests.filter(r => r.status.startsWith('completed') || r.status === 'cancelled');
-            if (historyRequests.length === 0) { alert("No hay datos en historial."); return; }
-            let excelData = [];
-            historyRequests.forEach(req => {
-                const creationDate = req.timestamp ? new Date(req.timestamp.seconds * 1000).toLocaleString('es-CO') : 'N/A';
-                if (req.items && req.items.length > 0) {
-                    req.items.forEach(item => {
-                        excelData.push({ 
-                            'ID Traslado': req.id, 'Estado': translateStatus(req.status, req), 'Fecha Creación': creationDate, 
-                            'Solicitante': req.requesterName, 'Bodega Destino': req.toWarehouse, 
-                            'ID Producto': item.productId, 'Nombre Producto': item.productName, 
-                            'U. Solicitadas': item.quantity, 'U. Enviadas': item.sentQuantity, 'U. Recibidas': item.receivedQuantity, 
-                            'Nota Solicitante': req.requesterNotes || '', 'Obs. Admin': req.adminNotes || '', 'Obs. Recepción': req.reception?.notes || '',
-                            'Causa Novedad': req.novelty?.reason || '', 'Solución Novedad': req.novelty?.solution || ''
-                        });
-                    });
-                } else {
-                    excelData.push({ 'ID Traslado': req.id, 'Estado': translateStatus(req.status, req), 'Fecha Creación': creationDate, 'Solicitante': req.requesterName, 'Bodega Destino': req.toWarehouse, 'ID Producto': 'N/A', 'Nombre Producto': 'Sin items', 'U. Solicitadas': 0, 'U. Enviadas': 0, 'U. Recibidas': 0, 'Nota Solicitante': req.requesterNotes || '', 'Obs. Admin': req.adminNotes || '', 'Obs. Recepción': req.reception?.notes || '', 'Causa Novedad': '', 'Solución Novedad': '' });
-                }
-            });
-            const worksheet = XLSX.utils.json_to_sheet(excelData);
-            const workbook = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(workbook, worksheet, "Historial");
-            worksheet['!cols'] = [ { wch: 15 }, { wch: 30 }, { wch: 20 }, { wch: 25 }, { wch: 25 }, { wch: 20 }, { wch: 40 }, { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 50 }, { wch: 50 }, { wch: 50 }, { wch: 30 }, { wch: 50 } ];
-            XLSX.writeFile(workbook, "Historial_Traslados_Parabarberos.xlsx");
-        }
         
         function renderProducts(productsToRender) {
+            if(!dom.productList) return;
             dom.productList.innerHTML = '';
             if (!productsToRender || productsToRender.length === 0) {
                 dom.productList.innerHTML = '<p class="text-gray-500 col-span-full text-center">No se encontraron productos.</p>';
@@ -1061,8 +1096,11 @@
         async function initializeApp() {
             setupUIForUser();
             allProducts = await loadAndTransformProducts();
-            renderProducts(allProducts);
-            renderCurrentTransfer();
+            
+            if(currentUserData.role === 'requester'){
+                renderProducts(allProducts);
+                renderCurrentTransfer();
+            }
             
             if(document.getElementById('deliveryDate')) {
                 document.getElementById('deliveryDate').valueAsDate = new Date();
@@ -1076,139 +1114,38 @@
             if(dom.toWarehouse) dom.toWarehouse.innerHTML = '<option value="" selected disabled>-- Seleccione una bodega --</option>' + 
                                         warehouseOptions.map(w => `<option value="${w}">${w}</option>`).join('');
             
-            if (dom.exportExcelBtn) dom.exportExcelBtn.addEventListener('click', exportHistoryToExcel);
+            if (dom.exportExcelBtn) dom.exportExcelBtn.addEventListener('click', exportManagerReport);
             if (dom.uploadProductsBtn) dom.uploadProductsBtn.addEventListener('click', handleProductUpload);
             if (dom.transferForm) dom.transferForm.addEventListener('submit', handleSubmitTransferForm);
             if (dom.searchInput) dom.searchInput.addEventListener('input', () => renderProducts(allProducts.filter(p => p.name.toLowerCase().includes(dom.searchInput.value.toLowerCase()))));
             if (dom.productFile) dom.productFile.addEventListener('change', () => { dom.fileNameDisplay.textContent = dom.productFile.files.length > 0 ? dom.productFile.files[0].name : 'Ningún archivo seleccionado.'; dom.uploadStatus.textContent = ''; });
             
             ['requesterSearchId', 'requesterDateFrom', 'requesterDateTo', 'adminActiveSearchId', 'adminActiveDateFrom', 'adminActiveDateTo', 'adminHistorySearchId', 'adminHistoryDateFrom', 'adminHistoryDateTo', 'reviewerSearchId', 'reviewerDateFrom', 'reviewerDateTo'].forEach(id => {
-                const element = document.getElementById(id);
+                const element = dom[id];
                 if (element) {
                     element.addEventListener('input', renderAllSections);
                 }
             });
-            
+
             if (dom.reportTimeRange) {
                 dom.reportTimeRange.addEventListener('change', () => {
                     dom.customDateRange.classList.toggle('hidden', dom.reportTimeRange.value !== 'custom');
                 });
             }
-            if (dom.generateReportBtn) {
-                dom.generateReportBtn.addEventListener('click', handleReportGeneration);
-            }
+            if (dom.generateReportBtn) dom.generateReportBtn.addEventListener('click', handleReportGeneration);
+            if (dom.exportManagerReportBtn) dom.exportManagerReportBtn.addEventListener('click', exportManagerReport);
+            if (dom.downloadPdfBtn) dom.downloadPdfBtn.addEventListener('click', downloadPdfReport);
 
             transfersCollection.orderBy("timestamp", "desc").onSnapshot(snapshot => {
                 allTransferRequests = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                 renderAllSections();
+                 if ((currentUserData.role === 'manager' || currentUserData.role === 'admin') && dom.reportContainer.style.display === 'block') {
+                    handleReportGeneration();
+                }
             }, error => console.error("Error al conectar: ", error));
         }
 
-        function destroyCharts() {
-            Object.values(charts).forEach(chart => chart.destroy());
-            charts = {};
-        }
-
-                function handleReportGeneration() {
-            const timeRange = dom.reportTimeRange.value;
-            let endDate = new Date();
-            endDate.setHours(23, 59, 59, 999); // Final del día actual
-            let startDate = new Date();
-
-            if (timeRange === 'today') {
-                startDate.setHours(0, 0, 0, 0); // Inicio del día actual
-            } else if (timeRange === 'this_week') {
-                const day = startDate.getDay();
-                // Ajuste para que la semana empiece en Lunes (1) y termine en Domingo (0)
-                const diff = startDate.getDate() - day + (day === 0 ? -6 : 1); 
-                startDate = new Date(startDate.setDate(diff));
-                startDate.setHours(0, 0, 0, 0);
-            } else if (timeRange === 'this_month') {
-                startDate = new Date(endDate.getFullYear(), endDate.getMonth(), 1);
-                startDate.setHours(0, 0, 0, 0);
-            } else if (timeRange === 'last_3_months') {
-                startDate = new Date();
-                startDate.setMonth(startDate.getMonth() - 3);
-                startDate.setHours(0, 0, 0, 0);
-            } else if (timeRange === 'custom') {
-                if (!dom.reportDateFrom.value || !dom.reportDateTo.value) {
-                    alert("Por favor, selecciona un rango de fechas personalizado.");
-                    return;
-                }
-                // Asegurar que las fechas personalizadas se interpreten correctamente
-                startDate = new Date(dom.reportDateFrom.value + 'T00:00:00');
-                endDate = new Date(dom.reportDateTo.value + 'T23:59:59');
-            }
-
-            const filteredRequests = allTransferRequests.filter(req => {
-                if (!req.timestamp || typeof req.timestamp.toDate !== 'function') {
-                    return false; // Ignorar solicitudes sin timestamp válido
-                }
-                const reqDate = req.timestamp.toDate();
-                return reqDate >= startDate && reqDate <= endDate;
-            });
-
-            if (filteredRequests.length === 0) {
-                alert("No se encontraron datos para el rango de fechas seleccionado.");
-                dom.reportResults.style.display = 'none';
-                return;
-            }
-
-            dom.reportResults.style.display = 'block';
-            destroyCharts();
-            generateAllReports(filteredRequests);
-        }
-
-        function generateAllReports(data) {
-            dom.kpiTotalRequests.textContent = data.length;
-            dom.kpiCompleted.textContent = data.filter(r => r.status.startsWith('completed')).length;
-            dom.kpiWithNovelty.textContent = data.filter(r => r.status === 'completed_incomplete' || r.status === 'novelty_review').length;
-            dom.kpiCancelled.textContent = data.filter(r => r.status === 'cancelled').length;
-
-            const statusCounts = data.reduce((acc, req) => {
-                const status = translateStatus(req.status, req);
-                acc[status] = (acc[status] || 0) + 1;
-                return acc;
-            }, {});
-            charts.statusChart = new Chart(dom.statusChart, {
-                type: 'doughnut', data: { labels: Object.keys(statusCounts), datasets: [{ data: Object.values(statusCounts), backgroundColor: ['#22c55e', '#ef4444', '#f59e0b', '#3b82f6', '#6b7280', '#8b5cf6', '#f97316', '#06b6d4'] }] },
-                options: { responsive: true, maintainAspectRatio: false }
-            });
-
-            const productCounts = data.reduce((acc, req) => {
-                if(req.items) req.items.forEach(item => { acc[item.productName] = (acc[item.productName] || 0) + item.quantity; });
-                return acc;
-            }, {});
-            const sortedProducts = Object.entries(productCounts).sort((a, b) => b[1] - a[1]).slice(0, 5);
-            charts.topProductsChart = new Chart(dom.topProductsChart, {
-                type: 'bar', data: { labels: sortedProducts.map(p => p[0]), datasets: [{ label: 'Unidades Solicitadas', data: sortedProducts.map(p => p[1]), backgroundColor: '#1f2937' }] },
-                options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
-            });
-
-            const warehouseCounts = data.reduce((acc, req) => {
-                if (req.toWarehouse) acc[req.toWarehouse] = (acc[req.toWarehouse] || 0) + 1;
-                return acc;
-            }, {});
-            charts.warehouseChart = new Chart(dom.warehouseChart, {
-                type: 'pie', data: { labels: Object.keys(warehouseCounts), datasets: [{ data: Object.values(warehouseCounts), backgroundColor: ['#1d4ed8', '#059669', '#d97706', '#dc2626', '#6d28d9', '#db2777'] }] },
-                options: { responsive: true, maintainAspectRatio: false }
-            });
-            
-            const fulfillmentData = data.filter(r => r.status.startsWith('completed')).reduce((acc, req) => {
-                if(req.items) req.items.forEach(item => {
-                    acc.sent += (item.sentQuantity || 0);
-                    acc.received += (item.receivedQuantity || 0);
-                });
-                return acc;
-            }, { sent: 0, received: 0 });
-            charts.fulfillmentChart = new Chart(dom.fulfillmentChart, {
-                type: 'bar', data: { labels: ['Cumplimiento de Unidades'], datasets: [
-                    { label: 'Unidades Enviadas', data: [fulfillmentData.sent], backgroundColor: '#a8a29e' },
-                    { label: 'Unidades Recibidas', data: [fulfillmentData.received], backgroundColor: '#16a34a' }
-                ]},
-                options: { responsive: true, maintainAspectRatio: false }
-            });
-        }
     });
 </script>
+</body>
 </html>
