@@ -276,7 +276,7 @@
         // --- ESTADO GLOBAL DE LA APLICACIÓN ---
         let allProducts = [], currentTransferItems = [], allTransferRequests = [], currentUserData = null;
         let charts = {};
-        let lastFilteredRequests = []; // Para los informes
+        let lastFilteredRequests = [];
         const expandedRequestsState = new Set();
         const sectionDisplayCounts = {};
         const INITIAL_DISPLAY_COUNT = 2;
@@ -285,7 +285,6 @@
 
         // --- REFERENCIAS AL DOM (UNIFICADAS Y CORREGIDAS) ---
         const dom = {
-            // ... (todas las referencias existentes de solicitante, admin, revisor) ...
             productList: document.getElementById('productList'),
             currentTransferRequest: document.getElementById('currentTransferRequest'),
             transferForm: document.getElementById('transferForm'),
@@ -331,7 +330,6 @@
             reviewerSearchId: document.getElementById('reviewerSearchId'),
             reviewerDateFrom: document.getElementById('reviewerDateFrom'),
             reviewerDateTo: document.getElementById('reviewerDateTo'),
-            // Referencias para la Vista Gerencial
             managerView: document.getElementById('managerView'),
             reportTimeRange: document.getElementById('reportTimeRange'),
             customDateRange: document.getElementById('customDateRange'),
@@ -353,8 +351,6 @@
             exportManagerReportBtn: document.getElementById('exportManagerReportBtn'),
             downloadPdfBtn: document.getElementById('downloadPdfBtn')
         };
-        
-        // --- El resto del código JavaScript es el mismo, aquí se incluye completo ---
         
         // --- FUNCIONES AUXILIARES ---
         const getRequestStatusColor = (s, req) => {
@@ -1284,13 +1280,14 @@
         }
 
         function exportManagerReport() {
-            if (lastFilteredRequests.length === 0) {
-                alert("Primero genera un resumen para poder exportar los datos.");
+            const dataToExport = lastFilteredRequests.length > 0 ? lastFilteredRequests : allTransferRequests;
+             if (dataToExport.length === 0) {
+                alert("No hay datos para exportar.");
                 return;
             }
             
             let excelData = [];
-            lastFilteredRequests.forEach(req => {
+            dataToExport.forEach(req => {
                 const creationDate = req.timestamp ? new Date(req.timestamp.seconds * 1000).toLocaleString('es-CO') : 'N/A';
                 if (req.items && req.items.length > 0) {
                     req.items.forEach(item => {
