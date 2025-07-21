@@ -10,6 +10,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-firestore-compat.js"></script>
     <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+    <!-- LIBRERÍAS AÑADIDAS PARA REPORTES -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.9.3/html2pdf.bundle.min.js"></script>
 </head>
@@ -31,7 +32,7 @@
             </div>
         </header>
 
-        <!-- VISTA DE SOLICITANTE -->
+        <!-- VISTA DE SOLICITANTE (SIN CAMBIOS) -->
         <div id="requesterView" class="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start" style="display: none;">
             <div class="lg:col-span-2 bg-white p-6 rounded-xl shadow-lg">
                 <h2 class="text-2xl font-semibold mb-4 text-gray-800 border-b pb-3">Nueva solicitud de traslado</h2>
@@ -80,7 +81,7 @@
             </div>
         </div>
 
-        <!-- VISTA DE ADMINISTRADOR -->
+        <!-- VISTA DE ADMINISTRADOR (SIN CAMBIOS) -->
         <div id="adminView" class="space-y-8" style="display: none;">
             <div id="productManagementCard" class="bg-white p-6 rounded-xl shadow-lg" style="display: none;">
                 <h2 class="text-2xl font-semibold mb-4 text-gray-800 border-b pb-3">Gestión de Productos</h2>
@@ -139,7 +140,7 @@
             </div>
         </div>
         
-        <!-- VISTA DE REVISOR -->
+        <!-- VISTA DE REVISOR (SIN CAMBIOS) -->
         <div id="reviewerView" class="space-y-8" style="display: none;">
             <div class="bg-white p-6 rounded-xl shadow-lg">
                 <h2 class="text-2xl font-semibold mb-4 text-gray-800 border-b pb-3">Pendientes de Revisión</h2>
@@ -156,7 +157,7 @@
             </div>
         </div>
         
-                <!-- VISTA GERENCIAL -->
+        <!-- VISTA GERENCIAL (ACTUALIZADA Y MEJORADA) -->
         <div id="managerView" class="space-y-8" style="display: none;">
             <div class="bg-white p-6 rounded-xl shadow-lg">
                 <h2 class="text-2xl font-semibold mb-4 text-gray-800 border-b pb-3">Panel de Informes Gerenciales</h2>
@@ -202,46 +203,38 @@
                         <div><h3 class="text-gray-500">Canceladas</h3><p id="kpiCancelled" class="text-2xl font-bold text-red-600">-</p></div>
                     </div>
                     
-                    <!-- CAMBIOS APLICADOS AQUÍ ABAJO -->
                     <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 pt-8">
-                        
                         <div class="col-span-2 lg:col-span-1 bg-white p-6 rounded-xl shadow-lg border border-gray-200">
                             <h3 class="text-xl font-semibold text-gray-800 mb-4 text-center">Estado de Solicitudes</h3>
                             <div class="relative h-80">
                                 <canvas id="statusChart"></canvas>
                             </div>
                         </div>
-
                         <div class="col-span-2 lg:col-span-1 bg-white p-6 rounded-xl shadow-lg border border-gray-200">
                             <h3 class="text-xl font-semibold text-gray-800 mb-4 text-center">Top 5 Productos Más Solicitados</h3>
                             <div class="relative h-80">
                                 <canvas id="topProductsChart"></canvas>
                             </div>
                         </div>
-
                         <div class="col-span-2 lg:col-span-1 bg-white p-6 rounded-xl shadow-lg border border-gray-200">
                             <h3 class="text-xl font-semibold text-gray-800 mb-4 text-center">Volumen por Bodega Destino</h3>
                             <div class="relative h-80">
                                 <canvas id="warehouseChart"></canvas>
                             </div>
                         </div>
-
                         <div class="col-span-2 lg:col-span-1 bg-white p-6 rounded-xl shadow-lg border border-gray-200">
                             <h3 class="text-xl font-semibold text-gray-800 mb-4 text-center">Tasa de Cumplimiento (Unidades Recibidas)</h3>
                             <div class="relative h-80">
                                 <canvas id="fulfillmentChart"></canvas>
                             </div>
                         </div>
-
                         <div class="col-span-2 lg:col-span-1 bg-white p-6 rounded-xl shadow-lg border border-gray-200">
                             <h3 class="text-xl font-semibold text-gray-800 mb-4 text-center">Unidades Solicitadas vs. Enviadas</h3>
                             <div class="relative h-80">
                                 <canvas id="requestedVsSentChart"></canvas>
                             </div>
                         </div>
-
                     </div>
-                    <!-- FIN DE LOS CAMBIOS -->
                 </div>
                 <div class="mt-6 flex justify-end gap-4">
                     <button id="exportManagerReportBtn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg shadow-lg flex items-center space-x-2"><span>Exportar a Excel</span></button>
@@ -249,6 +242,7 @@
                 </div>
             </div>
         </div>
+    </div>
 <script>
     document.addEventListener('DOMContentLoaded', () => {
         // --- CONFIGURACIÓN DE FIREBASE (ORIGINAL) ---
@@ -261,13 +255,14 @@
             appId: "1:939654956238:web:454d07ae95f81bab267c9f",
             measurementId: "G-28PM922YL1"
         };
-    firebase.initializeApp(firebaseConfig);
-    const auth = firebase.auth();
-    const db = firebase.firestore();
-    const transfersCollection = db.collection("transferencias");
-    const productsCollection = db.collection("products");
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+        const transfersCollection = db.collection("transferencias");
+        const productsCollection = db.collection("products");
 
-    const USER_ROLES = {
+        // --- ROLES DE USUARIO (ORIGINALES) ---
+        const USER_ROLES = {
             'inventarios.parabarberos@gmail.com': ['Administrador', 'admin'],
             'parabarberossedecentro@gmail.com': ['Punto de venta Cali centro', 'requester'],
             'parabarberossedesur@gmail.com': ['Punto de venta Cali sur', 'requester'],
@@ -277,958 +272,958 @@
             'separador.parabarberos@gmail.com': ['Revisor Bodega', 'reviewer'],
             'gerencia.parabarberos@gmail.com': ['Gerencia', 'manager'],
         };
+        
+        // --- ESTADO GLOBAL DE LA APLICACIÓN ---
+        let allProducts = [], currentTransferItems = [], allTransferRequests = [], currentUserData = null;
+        let charts = {};
+        let lastFilteredRequests = []; // Para los informes
+        const expandedRequestsState = new Set();
+        const sectionDisplayCounts = {};
+        const INITIAL_DISPLAY_COUNT = 2;
+        const LOAD_MORE_COUNT = 10;
+        currentTransferItems = JSON.parse(localStorage.getItem('currentTransferDraft')) || [];
 
-    // --- ESTADO GLOBAL DE LA APLICACIÓN ---
-    let allProducts = [], currentTransferItems = [], allTransferRequests = [], currentUserData = null;
-    let charts = {};
-    let lastFilteredRequests = [];
-    const expandedRequestsState = new Set();
-    const sectionDisplayCounts = {};
-    const INITIAL_DISPLAY_COUNT = 2;
-    const LOAD_MORE_COUNT = 10;
-    currentTransferItems = JSON.parse(localStorage.getItem('currentTransferDraft')) || [];
-
-    // --- REFERENCIAS AL DOM ---
-    const dom = {
-        productList: document.getElementById('productList'),
-        currentTransferRequest: document.getElementById('currentTransferRequest'),
-        transferForm: document.getElementById('transferForm'),
-        toWarehouse: document.getElementById('toWarehouse'),
-        fromWarehouse: document.getElementById('fromWarehouse'),
-        requesterName: document.getElementById('requesterName'),
-        searchInput: document.getElementById('searchInput'),
-        requesterView: document.getElementById('requesterView'),
-        adminView: document.getElementById('adminView'),
-        myShippedRequests: document.getElementById('myShippedRequests'),
-        myPendingRequests: document.getElementById('myPendingRequests'),
-        myNoveltyRequests: document.getElementById('myNoveltyRequests'),
-        myCompletedRequests: document.getElementById('myCompletedRequests'),
-        myCancelledRequests: document.getElementById('myCancelledRequests'),
-        adminPendingRequests: document.getElementById('adminPendingRequests'),
-        adminPendingNtRequests: document.getElementById('adminPendingNtRequests'),
-        adminReadyToShipRequests: document.getElementById('adminReadyToShipRequests'),
-        adminShippingDetailsRequests: document.getElementById('adminShippingDetailsRequests'),
-        adminShippedRequests: document.getElementById('adminShippedRequests'),
-        adminCompletedRequests: document.getElementById('adminCompletedRequests'),
-        adminNoveltyRequests: document.getElementById('adminNoveltyRequests'),
-        adminCancelledRequests: document.getElementById('adminCancelledRequests'),
-        requesterSearchId: document.getElementById('requesterSearchId'),
-        requesterDateFrom: document.getElementById('requesterDateFrom'),
-        requesterDateTo: document.getElementById('requesterDateTo'),
-        adminActiveSearchId: document.getElementById('adminActiveSearchId'),
-        adminActiveDateFrom: document.getElementById('adminActiveDateFrom'),
-        adminActiveDateTo: document.getElementById('adminActiveDateTo'),
-        adminHistorySearchId: document.getElementById('adminHistorySearchId'),
-        adminHistoryDateFrom: document.getElementById('adminHistoryDateFrom'),
-        adminHistoryDateTo: document.getElementById('adminHistoryDateTo'),
-        exportExcelBtn: document.getElementById('exportExcelBtn'),
-        productManagementCard: document.getElementById('productManagementCard'),
-        productFile: document.getElementById('productFile'),
-        uploadProductsBtn: document.getElementById('uploadProductsBtn'),
-        uploadStatus: document.getElementById('uploadStatus'),
-        fileNameDisplay: document.getElementById('fileNameDisplay'),
-        userEmailDisplay: document.getElementById('userEmailDisplay'),
-        logoutBtn: document.getElementById('logoutBtn'),
-        userInfo: document.getElementById('userInfo'),
-        reviewerView: document.getElementById('reviewerView'),
-        reviewerPendingRequests: document.getElementById('reviewerPendingRequests'),
-        reviewerSearchId: document.getElementById('reviewerSearchId'),
-        reviewerDateFrom: document.getElementById('reviewerDateFrom'),
-        reviewerDateTo: document.getElementById('reviewerDateTo'),
-        managerView: document.getElementById('managerView'),
-        reportTimeRange: document.getElementById('reportTimeRange'),
-        customDateRange: document.getElementById('customDateRange'),
-        reportDateFrom: document.getElementById('reportDateFrom'),
-        reportDateTo: document.getElementById('reportDateTo'),
-        generateReportBtn: document.getElementById('generateReportBtn'),
-        reportContainer: document.getElementById('reportContainer'),
-        reportContent: document.getElementById('reportContent'),
-        reportDateSubtitle: document.getElementById('reportDateSubtitle'),
-        kpiTotalRequests: document.getElementById('kpiTotalRequests'),
-        kpiCompleted: document.getElementById('kpiCompleted'),
-        kpiWithNovelty: document.getElementById('kpiWithNovelty'),
-        kpiCancelled: document.getElementById('kpiCancelled'),
-        statusChart: document.getElementById('statusChart'),
-        topProductsChart: document.getElementById('topProductsChart'),
-        warehouseChart: document.getElementById('warehouseChart'),
-        fulfillmentChart: document.getElementById('fulfillmentChart'),
-        requestedVsSentChart: document.getElementById('requestedVsSentChart'),
-        exportManagerReportBtn: document.getElementById('exportManagerReportBtn'),
-        downloadPdfBtn: document.getElementById('downloadPdfBtn')
-    };
-
-    // --- FUNCIONES AUXILIARES ---
-    const getRequestStatusColor = (s, req) => {
-        if (s === 'pending' || s === 'processing_partial_items') return 'border-l-4 border-red-500 bg-red-50';
-        if (['pending_nt_start', 'pending_nt_active', 'ready_to_ship', 'shipping_details', 'shipped', 'completed_incomplete', 'novelty_review'].includes(s)) return 'border-l-4 border-yellow-500 bg-yellow-50';
-        if (s === 'completed') return 'border-l-4 border-green-500 bg-green-50';
-        if (s === 'cancelled') return 'border-l-4 border-red-800 bg-red-100';
-        return 'border-l-4 border-gray-300 bg-gray-50';
-    };
-
-    const translateStatus = (s, req) => {
-        const statusMap = {
-            'pending':'Pendiente', 'processing_partial_items':'En Revisión',
-            'pending_nt_start': 'Pendiente por NT', 'pending_nt_active': 'Preparando NT',
-            'ready_to_ship': 'Por Enviar', 'shipping_details': 'Pendiente de Guía',
-            'shipped': 'Enviado (Por Recibir)', 'completed':'Recibido Completo', 
-            'novelty_review': 'En Revisión de Novedad',
-            'cancelled':'Cancelado'
+        // --- REFERENCIAS AL DOM (UNIFICADAS Y CORREGIDAS) ---
+        const dom = {
+            // ... (todas las referencias existentes de solicitante, admin, revisor) ...
+            productList: document.getElementById('productList'),
+            currentTransferRequest: document.getElementById('currentTransferRequest'),
+            transferForm: document.getElementById('transferForm'),
+            toWarehouse: document.getElementById('toWarehouse'),
+            fromWarehouse: document.getElementById('fromWarehouse'),
+            requesterName: document.getElementById('requesterName'),
+            searchInput: document.getElementById('searchInput'),
+            requesterView: document.getElementById('requesterView'),
+            adminView: document.getElementById('adminView'),
+            myShippedRequests: document.getElementById('myShippedRequests'),
+            myPendingRequests: document.getElementById('myPendingRequests'),
+            myNoveltyRequests: document.getElementById('myNoveltyRequests'),
+            myCompletedRequests: document.getElementById('myCompletedRequests'),
+            myCancelledRequests: document.getElementById('myCancelledRequests'),
+            adminPendingRequests: document.getElementById('adminPendingRequests'),
+            adminPendingNtRequests: document.getElementById('adminPendingNtRequests'),
+            adminReadyToShipRequests: document.getElementById('adminReadyToShipRequests'),
+            adminShippingDetailsRequests: document.getElementById('adminShippingDetailsRequests'),
+            adminShippedRequests: document.getElementById('adminShippedRequests'),
+            adminCompletedRequests: document.getElementById('adminCompletedRequests'),
+            adminNoveltyRequests: document.getElementById('adminNoveltyRequests'),
+            adminCancelledRequests: document.getElementById('adminCancelledRequests'),
+            requesterSearchId: document.getElementById('requesterSearchId'),
+            requesterDateFrom: document.getElementById('requesterDateFrom'),
+            requesterDateTo: document.getElementById('requesterDateTo'),
+            adminActiveSearchId: document.getElementById('adminActiveSearchId'),
+            adminActiveDateFrom: document.getElementById('adminActiveDateFrom'),
+            adminActiveDateTo: document.getElementById('adminActiveDateTo'),
+            adminHistorySearchId: document.getElementById('adminHistorySearchId'),
+            adminHistoryDateFrom: document.getElementById('adminHistoryDateFrom'),
+            adminHistoryDateTo: document.getElementById('adminHistoryDateTo'),
+            exportExcelBtn: document.getElementById('exportExcelBtn'),
+            productManagementCard: document.getElementById('productManagementCard'),
+            productFile: document.getElementById('productFile'),
+            uploadProductsBtn: document.getElementById('uploadProductsBtn'),
+            uploadStatus: document.getElementById('uploadStatus'),
+            fileNameDisplay: document.getElementById('fileNameDisplay'),
+            userEmailDisplay: document.getElementById('userEmailDisplay'),
+            logoutBtn: document.getElementById('logoutBtn'),
+            userInfo: document.getElementById('userInfo'),
+            reviewerView: document.getElementById('reviewerView'),
+            reviewerPendingRequests: document.getElementById('reviewerPendingRequests'),
+            reviewerSearchId: document.getElementById('reviewerSearchId'),
+            reviewerDateFrom: document.getElementById('reviewerDateFrom'),
+            reviewerDateTo: document.getElementById('reviewerDateTo'),
+            // Referencias para la Vista Gerencial
+            managerView: document.getElementById('managerView'),
+            reportTimeRange: document.getElementById('reportTimeRange'),
+            customDateRange: document.getElementById('customDateRange'),
+            reportDateFrom: document.getElementById('reportDateFrom'),
+            reportDateTo: document.getElementById('reportDateTo'),
+            generateReportBtn: document.getElementById('generateReportBtn'),
+            reportContainer: document.getElementById('reportContainer'),
+            reportContent: document.getElementById('reportContent'),
+            reportDateSubtitle: document.getElementById('reportDateSubtitle'),
+            kpiTotalRequests: document.getElementById('kpiTotalRequests'),
+            kpiCompleted: document.getElementById('kpiCompleted'),
+            kpiWithNovelty: document.getElementById('kpiWithNovelty'),
+            kpiCancelled: document.getElementById('kpiCancelled'),
+            statusChart: document.getElementById('statusChart'),
+            topProductsChart: document.getElementById('topProductsChart'),
+            warehouseChart: document.getElementById('warehouseChart'),
+            fulfillmentChart: document.getElementById('fulfillmentChart'),
+            requestedVsSentChart: document.getElementById('requestedVsSentChart'),
+            exportManagerReportBtn: document.getElementById('exportManagerReportBtn'),
+            downloadPdfBtn: document.getElementById('downloadPdfBtn')
         };
-        if (s === 'completed_incomplete') return 'Recibido con Novedad';
-        if (s === 'completed' && req?.novelty) return 'Recibido con Novedad (Resuelto)';
-        return statusMap[s] || s;
-    };
-    
-    // --- AUTENTICACIÓN Y ARRANQUE ---
-    auth.onAuthStateChanged(user => {
-        if (user) {
-            const userDataFromMap = USER_ROLES[user.email];
-            if (!userDataFromMap) { alert("Tu usuario no está autorizado."); auth.signOut(); return; }
-            const [name, role] = userDataFromMap;
-            currentUserData = { user, name, role };
-            dom.userEmailDisplay.textContent = user.email;
-            dom.userInfo.style.display = 'flex';
-            initializeApp();
-        } else { window.location.href = 'index.html'; }
-    });
-
-    dom.logoutBtn.onclick = () => auth.signOut();
-    
-    function setupUIForUser() {
-        if (!currentUserData) return;
-        const { name, role } = currentUserData;
         
-        dom.requesterView.style.display = 'none';
-        dom.adminView.style.display = 'none';
-        dom.reviewerView.style.display = 'none';
-        dom.managerView.style.display = 'none';
-        if (dom.productManagementCard) dom.productManagementCard.style.display = 'none';
-        if (dom.reportContainer) dom.reportContainer.style.display = 'none';
-
-        if (role === 'admin') {
-            dom.adminView.style.display = 'block';
-            dom.managerView.style.display = 'block';
-            if (dom.productManagementCard) dom.productManagementCard.style.display = 'block';
-        } else if (role === 'reviewer') {
-            dom.reviewerView.style.display = 'block';
-        } else if (role === 'manager') {
-            dom.managerView.style.display = 'block';
-        } else { 
-            dom.requesterView.style.display = 'grid';
-            if (dom.requesterName) {
-                dom.requesterName.innerHTML = `<option value="${currentUserData.name}">${currentUserData.name}</option>`;
-                dom.requesterName.value = currentUserData.name;
-            }
-        }
-    }
-    
-    function applyFilters(requests, searchInput, dateFromInput, dateToInput) {
-         if (!requests || !searchInput || !dateFromInput || !dateToInput) return [];
-         const searchTerm = searchInput.value.toLowerCase().trim();
-         const dateFrom = dateFromInput.value;
-         const dateTo = dateToInput.value;
-         let filtered = requests;
-         if (searchTerm) filtered = filtered.filter(req => req.id.toLowerCase().includes(searchTerm) || (req.requesterName && req.requesterName.toLowerCase().includes(searchTerm)));
-         if (dateFrom) {
-             const from = new Date(dateFrom);
-             from.setHours(0, 0, 0, 0);
-             filtered = filtered.filter(req => req.timestamp && req.timestamp.toDate() >= from);
-         }
-         if (dateTo) {
-             const to = new Date(dateTo);
-             to.setHours(23, 59, 59, 999);
-             filtered = filtered.filter(req => req.timestamp && req.timestamp.toDate() <= to);
-         }
-         return filtered;
-    }
-    
-    function renderAllSections() {
-        if (!currentUserData) return;
-        const { name, role } = currentUserData;
-        const sortedRequests = allTransferRequests.sort((a, b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0));
-
-        if (role === 'requester') {
-            const allMyRequests = sortedRequests.filter(r => r.requesterName === name);
-            const myShipped = allMyRequests.filter(r => r.status === 'shipped');
-            const myActive = applyFilters(allMyRequests.filter(r => !['completed', 'completed_incomplete', 'novelty_review', 'cancelled', 'shipped'].includes(r.status)), dom.requesterSearchId, dom.requesterDateFrom, dom.requesterDateTo);
-            const myNovelty = applyFilters(allMyRequests.filter(r => ['completed_incomplete', 'novelty_review'].includes(r.status)), dom.requesterSearchId, dom.requesterDateFrom, dom.requesterDateTo);
-            const myCompleted = applyFilters(allMyRequests.filter(r => r.status === 'completed'), dom.requesterSearchId, dom.requesterDateFrom, dom.requesterDateTo);
-            const myCancelled = applyFilters(allMyRequests.filter(r => r.status === 'cancelled'), dom.requesterSearchId, dom.requesterDateFrom, dom.requesterDateTo);
-
-            renderSection('myShippedRequests', dom.myShippedRequests, myShipped, 'requester', "No tienes traslados para recibir.");
-            renderSection('myPendingRequests', dom.myPendingRequests, myActive, 'requester', "No tienes solicitudes activas.");
-            renderSection('myNoveltyRequests', dom.myNoveltyRequests, myNovelty, 'requester', "No tienes solicitudes con novedad.");
-            renderSection('myCompletedRequests', dom.myCompletedRequests, myCompleted, 'requester', "No tienes solicitudes completadas.");
-            renderSection('myCancelledRequests', dom.myCancelledRequests, myCancelled, 'requester', "No tienes solicitudes canceladas.");
-        } else if (role === 'reviewer') {
-            const pendingForReview = applyFilters(sortedRequests.filter(r => ['pending', 'processing_partial_items'].includes(r.status)), dom.reviewerSearchId, dom.reviewerDateFrom, dom.reviewerDateTo);
-            renderSection('reviewerPendingRequests', dom.reviewerPendingRequests, pendingForReview, 'admin', "No hay solicitudes pendientes de revisión.");
-        } else if (role === 'admin') {
-            const pendingForReview = applyFilters(sortedRequests.filter(r => ['pending', 'processing_partial_items'].includes(r.status)), dom.adminActiveSearchId, dom.adminActiveDateFrom, dom.adminActiveDateTo);
-            const pendingForNt = applyFilters(sortedRequests.filter(r => r.status.startsWith('pending_nt')), dom.adminActiveSearchId, dom.adminActiveDateFrom, dom.adminActiveDateTo);
-            const readyToShip = applyFilters(sortedRequests.filter(r => r.status === 'ready_to_ship'), dom.adminActiveSearchId, dom.adminActiveDateFrom, dom.adminActiveDateTo);
-            const shippingDetails = applyFilters(sortedRequests.filter(r => r.status === 'shipping_details'), dom.adminActiveSearchId, dom.adminActiveDateFrom, dom.adminActiveDateTo);
-            const pendingForReception = applyFilters(sortedRequests.filter(r => r.status === 'shipped'), dom.adminActiveSearchId, dom.adminActiveDateFrom, dom.adminActiveDateTo);
-            
-            renderSection('adminPendingRequests', dom.adminPendingRequests, pendingForReview, 'admin', "No hay solicitudes pendientes de revisión.");
-            renderSection('adminPendingNtRequests', dom.adminPendingNtRequests, pendingForNt, 'admin', "No hay solicitudes pendientes de NT.");
-            renderSection('adminReadyToShipRequests', dom.adminReadyToShipRequests, readyToShip, 'admin', "No hay solicitudes listas para enviar.");
-            renderSection('adminShippingDetailsRequests', dom.adminShippingDetailsRequests, shippingDetails, 'admin', "No hay envíos pendientes de detalles.");
-            renderSection('adminShippedRequests', dom.adminShippedRequests, pendingForReception, 'admin', "No hay solicitudes pendientes de recibir.");
-            
-            const completedReqs = applyFilters(sortedRequests.filter(r => r.status === 'completed'), dom.adminHistorySearchId, dom.adminHistoryDateFrom, dom.adminHistoryDateTo);
-            const noveltyReqs = applyFilters(sortedRequests.filter(r => ['completed_incomplete', 'novelty_review'].includes(r.status)), dom.adminHistorySearchId, dom.adminHistoryDateFrom, dom.adminHistoryDateTo);
-            const cancelledReqs = applyFilters(sortedRequests.filter(r => r.status === 'cancelled'), dom.adminHistorySearchId, dom.adminHistoryDateFrom, dom.adminHistoryDateTo);
-            
-            renderSection('adminCompletedRequests', dom.adminCompletedRequests, completedReqs, 'admin', "No hay solicitudes completadas.");
-            renderSection('adminNoveltyRequests', dom.adminNoveltyRequests, noveltyReqs, 'admin', "No hay solicitudes con novedad.");
-            renderSection('adminCancelledRequests', dom.adminCancelledRequests, cancelledReqs, 'admin', "No hay solicitudes canceladas.");
-        }
-    }
-    
-    function renderSection(sectionId, div, data, role, emptyMessage) {
-        if (!div) return;
-        div.innerHTML = '';
-        if (data.length === 0) {
-            div.innerHTML = `<p class="text-gray-500 italic text-center py-4">${emptyMessage}</p>`;
-            return;
-        }
-        if (!sectionDisplayCounts[sectionId]) sectionDisplayCounts[sectionId] = INITIAL_DISPLAY_COUNT;
-        const requestsToShow = data.slice(0, sectionDisplayCounts[sectionId]);
-        requestsToShow.forEach(req => div.appendChild(createRequestCard(req, role)));
-
-        if (data.length > sectionDisplayCounts[sectionId]) {
-            const remaining = data.length - sectionDisplayCounts[sectionId];
-            const loadAmount = Math.min(LOAD_MORE_COUNT, remaining);
-            const button = document.createElement('button');
-            button.textContent = `Ver ${loadAmount} más... (${remaining} restantes)`;
-            button.className = 'w-full mt-4 text-sm font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 py-2 px-4 rounded-lg';
-            button.onclick = () => { sectionDisplayCounts[sectionId] += LOAD_MORE_COUNT; renderAllSections(); };
-            div.appendChild(button);
-        }
-    }
-    
-    function createRequestCard(req, role) {
-        const isExpanded = expandedRequestsState.has(req.id);
-        const card = document.createElement('div');
-        card.className = `p-4 rounded-lg shadow-sm flex flex-col ${getRequestStatusColor(req.status, req)}`;
-        card.id = `card-${req.id}`;
-
-        const hasItems = req.items && req.items.length > 0;
-        const allNtItemsChecked = hasItems && req.status === 'pending_nt_active' && req.items.every(item => item.nt_checked);
-        const hasNtNumber = req.status === 'pending_nt_active' && req.ntNumber && req.ntNumber.trim() !== '';
-        const canProceedFromNt = allNtItemsChecked && hasNtNumber;
-        const allReviewItemsChecked = hasItems && req.status === 'processing_partial_items' && req.items.every(item => item.nt_checked === true);
-
-        const itemsHtml = hasItems ? (req.items || []).map((item, index) => {
-            let quantityDisplay;
-            if (req.status === 'pending_nt_active') {
-                quantityDisplay = `Cantidad a Enviar: <b>${item.sentQuantity ?? item.quantity}</b>`;
-            } else {
-                quantityDisplay = `Solicitado: <b>${item.quantity}</b>`;
-                if (item.sentQuantity !== undefined) {
-                     quantityDisplay += ` | Enviado: <b>${item.sentQuantity}</b>`;
-                }
-                if (item.receivedQuantity !== undefined) {
-                    const color = item.receivedQuantity !== item.sentQuantity ? 'text-red-600' : 'text-green-700';
-                    quantityDisplay += ` | Recibido: <b class="${color}">${item.receivedQuantity}</b>`;
-                }
-            }
-
-            const receptionInput = (role === 'requester' && req.status === 'shipped') ? `<div class="flex items-center"><label class="text-xs mr-2">Recibido:</label><input type="number" value="${item.sentQuantity}" data-request-id="${req.id}" data-item-index="${index}" class="reception-qty-input w-16 p-1 border rounded-md text-center text-sm"></div>` : '';
-            
-            let adminControls = '';
-            let itemBgColor = 'bg-white';
-            if (role === 'admin' || role === 'reviewer') {
-                if (req.status === 'processing_partial_items') {
-                    adminControls += `<input type="number" value="${item.sentQuantity ?? item.quantity}" data-request-id="${req.id}" data-item-index="${index}" class="admin-qty-input w-20 p-1 border rounded-md text-center">`;
-                    adminControls += `<input type="checkbox" ${item.nt_checked ? 'checked' : ''} data-request-id="${req.id}" data-item-index="${index}" class="nt-checkbox h-5 w-5 rounded border-gray-300 text-blue-600 cursor-pointer">`;
-                    itemBgColor = item.nt_checked ? 'bg-green-100' : 'bg-red-100'; 
-                } else if (req.status === 'pending_nt_active') {
-                    adminControls += `<input type="checkbox" ${item.nt_checked ? 'checked' : ''} data-request-id="${req.id}" data-item-index="${index}" class="nt-checkbox h-5 w-5 rounded border-gray-300 text-blue-600 cursor-pointer">`;
-                    itemBgColor = item.nt_checked ? 'bg-green-100' : 'bg-red-100';
-                }
-            }
-            
-            return `<li class="p-2 rounded-md border ${itemBgColor} flex justify-between items-center text-sm" data-item-row-id="${req.id}-${index}"><div><span class="font-medium text-gray-800">${item.productName}</span><div class="text-xs text-gray-600">${quantityDisplay}</div></div><div class="flex items-center gap-2">${receptionInput}${adminControls}</div></li>`;
-        }).join('') : '<p class="text-sm text-gray-500 italic">No hay artículos.</p>';
-
-        let contentHtml = '';
-        if (role === 'admin' || role === 'reviewer') {
-            let actionButtonsHtml = '';
-
-            if (req.status === 'pending') {
-                actionButtonsHtml += `<button data-request-id="${req.id}" data-action="start_processing" class="action-btn flex-1 bg-gray-800 hover:bg-black text-white font-bold py-2 px-3 rounded-md">Iniciar Revisión</button>`;
-            }
-            if (req.status.startsWith('processing')) {
-                contentHtml += `<div class="mt-4"><label for="adminNotes-${req.id}" class="text-sm font-medium">Nota de Revisión:</label><textarea id="adminNotes-${req.id}" rows="2" class="w-full mt-1 border rounded-md p-2">${req.adminNotes || ''}</textarea><button data-request-id="${req.id}" data-action="save_admin_note" class="action-btn mt-1 text-xs bg-gray-700 px-3 py-1.5 rounded-md text-white">Guardar Nota</button></div>`;
-                actionButtonsHtml += `<button data-request-id="${req.id}" data-action="finalize_processing" class="action-btn bg-teal-600 hover:bg-teal-700 text-white font-bold py-2 px-3 rounded-md disabled:bg-gray-400 disabled:cursor-not-allowed" ${!allReviewItemsChecked ? 'disabled' : ''}>Finalizar Revisión</button>`;
-            }
-            if (role === 'admin') {
-                if (req.status === 'pending_nt_start') {
-                    actionButtonsHtml += `<button data-request-id="${req.id}" data-action="start_nt_preparation" class="action-btn bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-3 rounded-md">Iniciar Preparación NT</button>`;
-                }
-                if (req.status === 'pending_nt_active') {
-                    contentHtml += `<div class="mt-4 space-y-2"><label for="ntNumber-${req.id}" class="text-sm font-medium">Nº Nota de Traslado (Obligatorio):</label><input type="text" id="ntNumber-${req.id}" data-request-id="${req.id}" value="${req.ntNumber || ''}" class="nt-number-input w-full mt-1 border rounded-md p-2"></div>`;
-                    actionButtonsHtml += `<button data-request-id="${req.id}" data-action="return_to_pending" class="action-btn bg-yellow-600 hover:bg-yellow-700 text-white text-xs font-semibold py-2 px-3 rounded-md">Devolver</button>`;
-                    actionButtonsHtml += `<button data-request-id="${req.id}" data-action="ready_to_ship" class="action-btn bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold py-2 px-3 rounded-md disabled:bg-gray-400" ${!canProceedFromNt ? 'disabled' : ''}>Listo para Enviar</button>`;
-                }
-            }
-
-            if (['pending', 'processing_partial_items', 'pending_nt_start', 'pending_nt_active'].includes(req.status)) {
-                actionButtonsHtml += `<button data-request-id="${req.id}" data-action="cancel" class="action-btn bg-red-700 hover:bg-red-800 text-white font-bold py-2 px-3 rounded-md">Cancelar</button>`;
-            }
-
-            if (actionButtonsHtml) {
-                contentHtml += `<div class="mt-4 border-t pt-4 flex justify-end gap-2 flex-wrap">${actionButtonsHtml}</div>`;
-            }
-
-            if (role === 'admin') {
-                if (req.status === 'ready_to_ship') {
-                    contentHtml += `<div class="mt-4 space-y-2"><label for="shippingNotes-${req.id}" class="text-sm font-medium">Obs. de Envío (Opcional):</label><textarea id="shippingNotes-${req.id}" rows="2" class="w-full mt-1 border rounded-md p-2">${req.shippingNotes || ''}</textarea><button data-request-id="${req.id}" data-action="save_shipping_note" class="action-btn mt-1 text-xs bg-gray-700 px-3 py-1.5 rounded-md text-white">Guardar Nota</button></div>`;
-                    contentHtml += `<div class="mt-4"><button data-request-id="${req.id}" data-action="proceed_to_shipping" class="action-btn w-full bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-2 px-3 rounded-md">Proceder a Envío</button></div>`;
-                }
-                if (req.status === 'shipping_details') {
-                    contentHtml += `<div class="mt-4 space-y-3 p-3 bg-gray-100 rounded-lg border"><p class="font-semibold">¿Tiene guía?</p><div class="flex items-center gap-x-4"><label><input type="radio" name="hasTracking-${req.id}" value="yes" class="tracking-option"> Sí</label><label><input type="radio" name="hasTracking-${req.id}" value="no" class="tracking-option" checked> No</label></div><div id="trackingNumberDiv-${req.id}" class="hidden mt-2"><label for="trackingNumber-${req.id}" class="block text-sm font-medium">Nº de Guía:</label><input type="text" id="trackingNumber-${req.id}" class="w-full mt-1 border rounded-md p-2"></div></div>`;
-                    contentHtml += `<div class="mt-4"><button data-request-id="${req.id}" data-action="finalize_shipment" class="action-btn w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-3 rounded-md">Marcar como Enviado</button></div>`;
-                }
-                if (req.status === 'completed_incomplete') {
-                    contentHtml += `<div class="mt-4"><button data-request-id="${req.id}" data-action="start_novelty_review" class="action-btn w-full bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2 px-3 rounded-md">Iniciar Revisión de Novedad</button></div>`;
-                }
-                if (req.status === 'novelty_review') {
-                    contentHtml += `<div id="noveltyForm-${req.id}" class="mt-4 p-4 bg-gray-100 border-t-2 space-y-4"><h5 class="font-bold text-lg">Gestionar Novedad</h5><div><label class="block text-sm font-medium">Causa:</label><select id="noveltyReason-${req.id}" data-request-id="${req.id}" class="novelty-input mt-1 block w-full p-2 border rounded-md"><option value="" selected disabled>-- Seleccione --</option><option value="Error de empaque">Error de empaque</option><option value="Perdida en transporte">Pérdida en transporte</option><option value="Otro">Otro</option></select></div><div id="noveltyOtherDiv-${req.id}" class="hidden"><label for="noveltyOtherReason-${req.id}" class="block text-sm font-medium">Especifique:</label><input type="text" id="noveltyOtherReason-${req.id}" data-request-id="${req.id}" class="novelty-input mt-1 block w-full p-2 border rounded-md"></div><div><label for="noveltySolution-${req.id}" class="block text-sm font-medium">Solución:</label><textarea id="noveltySolution-${req.id}" data-request-id="${req.id}" rows="3" class="novelty-input mt-1 block w-full p-2 border rounded-md"></textarea></div><button data-request-id="${req.id}" data-action="finalize_novelty" class="action-btn w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-3 rounded-md disabled:bg-gray-400" disabled>Finalizar Novedad</button></div>`;
-                }
-            }
-        }
-
-        if (role === 'requester' && req.status === 'shipped') {
-            contentHtml += `<div class="mt-4 border-t-2 pt-4 space-y-3"><h5 class="font-bold text-md">Confirmar recepción</h5><div><label class="block text-sm font-medium">Obs. de recepción:</label><textarea id="receptionNotes-${req.id}" rows="2" class="w-full mt-1 border rounded-md p-2"></textarea></div><button data-request-id="${req.id}" data-action="finalize_reception" class="action-btn w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-3 rounded-md">Finalizar Recepción</button></div>`;
-        }
-
-        const reqDate = req.deliveryDate ? new Date(req.deliveryDate + 'T00:00:00').toLocaleDateString('es-CO', { year: 'numeric', month: 'long', day: 'numeric' }) : 'No especificada';
-        const creationDate = req.timestamp ? new Date(req.timestamp.seconds * 1000).toLocaleString('es-CO', { dateStyle: 'short', timeStyle: 'short' }) : '';
+        // --- El resto del código JavaScript es el mismo, aquí se incluye completo ---
         
-        const requesterButtons = (role === 'requester' && req.status === 'pending') 
-            ? `<div class="flex flex-col gap-1">
-                   <button data-request-id="${req.id}" data-action="edit_my_request" class="action-btn bg-blue-600 text-white text-xs px-2 py-1 rounded-md">Editar</button>
-                   <button data-request-id="${req.id}" data-action="cancel" class="action-btn bg-red-600 text-white text-xs px-2 py-1 rounded-md">Cancelar</button>
-               </div>` 
-            : '';
+        // --- FUNCIONES AUXILIARES ---
+        const getRequestStatusColor = (s, req) => {
+            if (s === 'pending' || s === 'processing_partial_items') return 'border-l-4 border-red-500 bg-red-50';
+            if (['pending_nt_start', 'pending_nt_active', 'ready_to_ship', 'shipping_details', 'shipped', 'completed_incomplete', 'novelty_review'].includes(s)) return 'border-l-4 border-yellow-500 bg-yellow-50';
+            if (s === 'completed') return 'border-l-4 border-green-500 bg-green-50';
+            if (s === 'cancelled') return 'border-l-4 border-red-800 bg-red-100';
+            return 'border-l-4 border-gray-300 bg-gray-50';
+        };
 
-        const infoBoxesHtml = `
-            <div class="space-y-1 mt-2">
-                ${req.requesterNotes ? `<div class="p-2 bg-white rounded-md border text-xs"><p class="font-semibold text-gray-700">Nota Solicitante:</p><p class="italic text-gray-800">"${req.requesterNotes}"</p></div>` : ''}
-                ${req.adminNotes ? `<div class="p-2 bg-white rounded-md border text-xs"><p class="font-semibold text-gray-700">Nota Admin (Revisión):</p><p class="italic text-gray-800">"${req.adminNotes}"</p></div>` : ''}
-                ${req.ntNumber ? `<div class="p-2 bg-white rounded-md border text-xs"><p class="font-semibold text-gray-700">Nº Nota de Traslado:</p><p class="font-bold text-gray-900">${req.ntNumber}</p></div>` : ''}
-                ${req.shippingNotes ? `<div class="p-2 bg-white rounded-md border text-xs"><p class="font-semibold text-gray-700">Obs. de Envío:</p><p class="italic text-gray-800">"${req.shippingNotes}"</p></div>` : ''}
-                ${req.shippingInfo ? `<div class="p-2 bg-white rounded-md border text-xs"><p class="font-semibold text-gray-700">Guía de Envío:</p><p class="font-bold text-gray-900">${req.shippingInfo.hasTracking ? req.shippingInfo.trackingNumber : 'Sin guía'}</p></div>` : ''}
-                ${(req.reception && req.reception.notes) ? `<div class="p-2 bg-white rounded-md border text-xs"><p class="font-semibold text-gray-700">Obs. de Recepción:</p><p class="italic text-gray-800">"${req.reception.notes}"</p></div>` : ''}
-                ${req.novelty ? `<div class="p-2 bg-yellow-100 rounded-md border border-yellow-300 text-xs"><p class="font-semibold text-yellow-800">Detalle de Novedad:</p><p class="text-gray-800"><b>Causa:</b> ${req.novelty.reason}</p><p class="italic text-gray-800"><b>Solución:</b> "${req.novelty.solution}"</p></div>` : ''}
-            </div>`;
-        
-        card.innerHTML = `
-            <div class="flex justify-between items-start">
-                <div>
-                    <h4 class="font-semibold text-lg">${req.requesterName}</h4>
-                    <p class="text-sm text-gray-600">Para: <strong>${req.toWarehouse}</strong></p>
-                    <p class="text-xs text-gray-400">ID: ${req.id} | Creada: ${creationDate}</p>
-                    <p class="text-sm mt-1">Fecha: <b>${reqDate}</b></p>
-                    <span class="inline-block mt-2 px-2 py-1 text-xs font-bold rounded-full bg-gray-200 text-gray-800">${translateStatus(req.status, req)}</span>
-                </div>
-                ${requesterButtons}
-            </div>
-            <div id="details-${req.id}" class="flex-grow ${isExpanded ? '' : 'hidden'} mt-4 pt-4 border-t">
-                ${infoBoxesHtml}
-                <h5 class="font-bold text-gray-700 mt-4 mb-2">Items:</h5>
-                <ul class="space-y-2">${itemsHtml}</ul> 
-                ${contentHtml}
-            </div>
-            <div class="text-center mt-2"><button data-request-id="${req.id}" class="toggle-details-btn text-sm font-semibold text-blue-600 hover:text-blue-800">Ver ${isExpanded ? 'menos' : 'más'}</button></div>
-        `;
-        
-        card.querySelectorAll('.action-btn').forEach(b => b.onclick = handleAdminAction);
-        card.querySelectorAll('.toggle-details-btn').forEach(b => b.onclick = handleToggleDetails);
-        card.querySelectorAll('.admin-qty-input').forEach(i => i.onchange = handleAdminQuantityChange);
-        card.querySelectorAll('.reception-qty-input').forEach(i => i.onchange = () => {});
-        card.querySelectorAll('.tracking-option').forEach(r => r.onchange = handleTrackingOptionChange);
-        
-        card.querySelectorAll('.nt-checkbox').forEach(c => {
-            c.oninput = () => {
-                const reqStatus = allTransferRequests.find(r => r.id === c.dataset.requestId)?.status;
-                if (reqStatus === 'pending_nt_active') {
-                    validateNtForm(c.dataset.requestId);
-                } else if (reqStatus === 'processing_partial_items') {
-                    const allChecked = Array.from(document.querySelectorAll(`#card-${c.dataset.requestId} .nt-checkbox`)).every(cb => cb.checked);
-                    const finalizeBtn = document.querySelector(`#card-${c.dataset.requestId} button[data-action="finalize_processing"]`);
-                    if(finalizeBtn) finalizeBtn.disabled = !allChecked;
-                }
+        const translateStatus = (s, req) => {
+            const statusMap = {
+                'pending':'Pendiente', 'processing_partial_items':'En Revisión',
+                'pending_nt_start': 'Pendiente por NT', 'pending_nt_active': 'Preparando NT',
+                'ready_to_ship': 'Por Enviar', 'shipping_details': 'Pendiente de Guía',
+                'shipped': 'Enviado (Por Recibir)', 'completed':'Recibido Completo', 
+                'novelty_review': 'En Revisión de Novedad',
+                'cancelled':'Cancelado'
             };
-            c.onchange = handleNtCheckboxChange;
-        });
-        card.querySelectorAll('.nt-number-input').forEach(i => {
-            i.oninput = () => validateNtForm(i.dataset.requestId);
-            i.onchange = handleNtNumberInput;
-        });
-
-        card.querySelectorAll('.novelty-input').forEach(i => {
-            i.oninput = () => validateNoveltyForm(i.dataset.requestId);
-        });
-        
-        return card;
-    }
-
-    async function handleAdminAction(event) {
-        const button = event.currentTarget;
-        const { requestId, action } = button.dataset;
-        const reqRef = transfersCollection.doc(requestId);
-        let updateData = {};
-
-        const actions = {
-            start_processing: async () => {
-                const doc = await reqRef.get();
-                if(doc.exists) {
-                    const itemsToProcess = doc.data().items.map(item => ({ ...item, sentQuantity: item.quantity, nt_checked: false }));
-                    updateData = { status: 'processing_partial_items', items: itemsToProcess };
-                    expandedRequestsState.add(requestId);
-                }
-            },
-            save_admin_note: async () => {
-                await reqRef.update({ adminNotes: document.getElementById(`adminNotes-${requestId}`).value });
-                alert('Nota guardada');
-            },
-            finalize_processing: () => {
-                if (confirm("¿Finalizar revisión?")) updateData = { status: 'pending_nt_start' };
-            },
-            start_nt_preparation: async () => {
-                const doc = await reqRef.get();
-                if (doc.exists) {
-                    const itemsForNt = doc.data().items.map(item => ({ ...item, nt_checked: false }));
-                    updateData = { 
-                        status: 'pending_nt_active',
-                        items: itemsForNt
-                    };
-                    expandedRequestsState.add(requestId);
-                }
-            },
-            return_to_pending: async () => {
-                if (confirm("¿Devolver a revisión? Se borrarán los datos de los pasos posteriores.")) {
-                    const docToReset = await reqRef.get();
-                    if (docToReset.exists) {
-                        const resetItems = docToReset.data().items.map(({ productId, productName, quantity }) => ({ productId, productName, quantity }));
-                        updateData = { status: 'pending', items: resetItems, adminNotes: firebase.firestore.FieldValue.delete(), ntNumber: firebase.firestore.FieldValue.delete(), shippingNotes: firebase.firestore.FieldValue.delete(), shippingInfo: firebase.firestore.FieldValue.delete(), reception: firebase.firestore.FieldValue.delete(), novelty: firebase.firestore.FieldValue.delete() };
-                    }
-                }
-            },
-            ready_to_ship: () => {
-                if (confirm("¿Marcar como listo para enviar?")) updateData = { status: 'ready_to_ship' };
-            },
-            save_shipping_note: async () => {
-                await reqRef.update({ shippingNotes: document.getElementById(`shippingNotes-${requestId}`).value });
-                alert('Nota de envío guardada');
-            },
-            proceed_to_shipping: () => {
-                updateData = { status: 'shipping_details' };
-            },
-            finalize_shipment: () => {
-                const hasTracking = document.querySelector(`input[name="hasTracking-${requestId}"]:checked`).value === 'yes';
-                const trackingNumber = hasTracking ? document.getElementById(`trackingNumber-${requestId}`).value : null;
-                if (hasTracking && !trackingNumber) {
-                    alert("Por favor, ingresa el número de guía.");
-                    return 'stop';
-                }
-                updateData = { status: 'shipped', shippingInfo: { hasTracking, trackingNumber } };
-            },
-            start_novelty_review: () => {
-                updateData = { status: 'novelty_review' };
-                expandedRequestsState.add(requestId);
-            },
-            finalize_novelty: () => {
-                const reasonSelect = document.getElementById(`noveltyReason-${requestId}`);
-                let reason = reasonSelect.value === 'Otro' ? document.getElementById(`noveltyOtherReason-${requestId}`).value.trim() : reasonSelect.value;
-                const solution = document.getElementById(`noveltySolution-${requestId}`).value.trim();
-                updateData = { status: 'completed', novelty: { reason, solution, resolvedBy: currentUserData.user.email, timestamp: firebase.firestore.FieldValue.serverTimestamp() } };
-            },
-            finalize_reception: () => { handleFinalizeReception(event); return 'stop'; },
-            edit_my_request: () => { handleStartEdit(event); return 'stop'; },
-            cancel: () => {
-                if (confirm("¿Está seguro de que desea cancelar esta solicitud?")) {
-                    updateData = { status: 'cancelled' };
-                }
-            }
+            if (s === 'completed_incomplete') return 'Recibido con Novedad';
+            if (s === 'completed' && req?.novelty) return 'Recibido con Novedad (Resuelto)';
+            return statusMap[s] || s;
         };
         
-        const result = await actions[action]?.();
-        if (result === 'stop') return;
+        // --- AUTENTICACIÓN Y ARRANQUE ---
+        auth.onAuthStateChanged(user => {
+            if (user) {
+                const userDataFromMap = USER_ROLES[user.email];
+                if (!userDataFromMap) { alert("Tu usuario no está autorizado."); auth.signOut(); return; }
+                const [name, role] = userDataFromMap;
+                currentUserData = { user, name, role };
+                dom.userEmailDisplay.textContent = user.email;
+                dom.userInfo.style.display = 'flex';
+                initializeApp();
+            } else { window.location.href = 'index.html'; }
+        });
 
-        if (Object.keys(updateData).length > 0) {
-            await reqRef.update(updateData);
-        }
-    }
-    
-    function handleToggleDetails(evento) {
-        const requestId = evento.currentTarget.dataset.requestId;
-        expandedRequestsState.has(requestId) ? expandedRequestsState.delete(requestId) : expandedRequestsState.add(requestId);
-        renderAllSections();
-    }
-
-    async function handleNtCheckboxChange(event) {
-        const checkbox = event.currentTarget;
-        const { requestId, itemIndex } = checkbox.dataset;
-        const isChecked = checkbox.checked;
-        const reqRef = transfersCollection.doc(requestId);
+        dom.logoutBtn.onclick = () => auth.signOut();
         
-        try {
-            await db.runTransaction(async (transaction) => {
-                const doc = await transaction.get(reqRef);
-                if (!doc.exists) throw "El documento no existe!";
+        function setupUIForUser() {
+            if (!currentUserData) return;
+            const { role } = currentUserData;
+            
+            dom.requesterView.style.display = 'none';
+            dom.adminView.style.display = 'none';
+            dom.reviewerView.style.display = 'none';
+            dom.managerView.style.display = 'none';
+            
+            if (dom.productManagementCard) dom.productManagementCard.style.display = 'none';
+            if (dom.reportContainer) dom.reportContainer.style.display = 'none';
+
+            if (role === 'admin') {
+                dom.adminView.style.display = 'block';
+                if (dom.productManagementCard) dom.productManagementCard.style.display = 'block';
+            } else if (role === 'reviewer') {
+                dom.reviewerView.style.display = 'block';
+            } else if (role === 'manager') {
+                dom.managerView.style.display = 'block';
+            } else { 
+                dom.requesterView.style.display = 'grid';
+                if (dom.requesterName) {
+                    dom.requesterName.innerHTML = `<option value="${currentUserData.name}">${currentUserData.name}</option>`;
+                    dom.requesterName.value = currentUserData.name;
+                }
+            }
+        }
+        
+        function applyFilters(requests, searchInput, dateFromInput, dateToInput) {
+             if (!requests || !searchInput || !dateFromInput || !dateToInput) return [];
+             const searchTerm = searchInput.value.toLowerCase().trim();
+             const dateFrom = dateFromInput.value;
+             const dateTo = dateToInput.value;
+             let filtered = requests;
+             if (searchTerm) filtered = filtered.filter(req => req.id.toLowerCase().includes(searchTerm) || (req.requesterName && req.requesterName.toLowerCase().includes(searchTerm)));
+             if (dateFrom) {
+                 const from = new Date(dateFrom);
+                 from.setHours(0, 0, 0, 0);
+                 filtered = filtered.filter(req => req.timestamp && req.timestamp.toDate() >= from);
+             }
+             if (dateTo) {
+                 const to = new Date(dateTo);
+                 to.setHours(23, 59, 59, 999);
+                 filtered = filtered.filter(req => req.timestamp && req.timestamp.toDate() <= to);
+             }
+             return filtered;
+        }
+        
+        function renderAllSections() {
+            if (!currentUserData) return;
+            const { name, role } = currentUserData;
+            const sortedRequests = allTransferRequests.sort((a, b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0));
+
+            if (role === 'requester') {
+                const allMyRequests = sortedRequests.filter(r => r.requesterName === name);
+                const myShipped = allMyRequests.filter(r => r.status === 'shipped');
+                const myActive = applyFilters(allMyRequests.filter(r => !['completed', 'completed_incomplete', 'novelty_review', 'cancelled', 'shipped'].includes(r.status)), dom.requesterSearchId, dom.requesterDateFrom, dom.requesterDateTo);
+                const myNovelty = applyFilters(allMyRequests.filter(r => ['completed_incomplete', 'novelty_review'].includes(r.status)), dom.requesterSearchId, dom.requesterDateFrom, dom.requesterDateTo);
+                const myCompleted = applyFilters(allMyRequests.filter(r => r.status === 'completed'), dom.requesterSearchId, dom.requesterDateFrom, dom.requesterDateTo);
+                const myCancelled = applyFilters(allMyRequests.filter(r => r.status === 'cancelled'), dom.requesterSearchId, dom.requesterDateFrom, dom.requesterDateTo);
+
+                renderSection('myShippedRequests', dom.myShippedRequests, myShipped, 'requester', "No tienes traslados para recibir.");
+                renderSection('myPendingRequests', dom.myPendingRequests, myActive, 'requester', "No tienes solicitudes activas.");
+                renderSection('myNoveltyRequests', dom.myNoveltyRequests, myNovelty, 'requester', "No tienes solicitudes con novedad.");
+                renderSection('myCompletedRequests', dom.myCompletedRequests, myCompleted, 'requester', "No tienes solicitudes completadas.");
+                renderSection('myCancelledRequests', dom.myCancelledRequests, myCancelled, 'requester', "No tienes solicitudes canceladas.");
+            } else if (role === 'reviewer') {
+                const pendingForReview = applyFilters(sortedRequests.filter(r => ['pending', 'processing_partial_items'].includes(r.status)), dom.reviewerSearchId, dom.reviewerDateFrom, dom.reviewerDateTo);
+                renderSection('reviewerPendingRequests', dom.reviewerPendingRequests, pendingForReview, 'admin', "No hay solicitudes pendientes de revisión.");
+            } else if (role === 'admin') {
+                const pendingForReview = applyFilters(sortedRequests.filter(r => ['pending', 'processing_partial_items'].includes(r.status)), dom.adminActiveSearchId, dom.adminActiveDateFrom, dom.adminActiveDateTo);
+                const pendingForNt = applyFilters(sortedRequests.filter(r => r.status.startsWith('pending_nt')), dom.adminActiveSearchId, dom.adminActiveDateFrom, dom.adminActiveDateTo);
+                const readyToShip = applyFilters(sortedRequests.filter(r => r.status === 'ready_to_ship'), dom.adminActiveSearchId, dom.adminActiveDateFrom, dom.adminActiveDateTo);
+                const shippingDetails = applyFilters(sortedRequests.filter(r => r.status === 'shipping_details'), dom.adminActiveSearchId, dom.adminActiveDateFrom, dom.adminActiveDateTo);
+                const pendingForReception = applyFilters(sortedRequests.filter(r => r.status === 'shipped'), dom.adminActiveSearchId, dom.adminActiveDateFrom, dom.adminActiveDateTo);
                 
-                let items = doc.data().items;
-                if (items[itemIndex]) {
-                    items[itemIndex].nt_checked = isChecked;
-                    transaction.update(reqRef, { items: items });
-                }
-            });
-        } catch (e) {
-            console.error("Fallo la transacción del checkbox:", e);
-            checkbox.checked = !isChecked; 
-            alert("No se pudo guardar el cambio. Inténtalo de nuevo.");
-        }
-    }
-    
-    async function handleAdminQuantityChange(event) {
-        const input = event.currentTarget;
-        const { requestId, itemIndex } = input.dataset;
-        const newSentQuantity = parseInt(input.value, 10);
-        const reqRef = transfersCollection.doc(requestId);
-        
-        try {
-            await db.runTransaction(async (transaction) => {
-                const doc = await transaction.get(reqRef);
-                if (!doc.exists) throw "El documento no existe!";
+                renderSection('adminPendingRequests', dom.adminPendingRequests, pendingForReview, 'admin', "No hay solicitudes pendientes de revisión.");
+                renderSection('adminPendingNtRequests', dom.adminPendingNtRequests, pendingForNt, 'admin', "No hay solicitudes pendientes de NT.");
+                renderSection('adminReadyToShipRequests', dom.adminReadyToShipRequests, readyToShip, 'admin', "No hay solicitudes listas para enviar.");
+                renderSection('adminShippingDetailsRequests', dom.adminShippingDetailsRequests, shippingDetails, 'admin', "No hay envíos pendientes de detalles.");
+                renderSection('adminShippedRequests', dom.adminShippedRequests, pendingForReception, 'admin', "No hay solicitudes pendientes de recibir.");
                 
-                const items = doc.data().items;
-                if (items[itemIndex]) {
-                    items[itemIndex].sentQuantity = newSentQuantity;
-                    transaction.update(reqRef, { items: items });
-                }
-            });
-        } catch (e) {
-            console.error("Fallo la transacción de cantidad:", e);
-            alert("No se pudo guardar la cantidad. Inténtalo de nuevo.");
-            renderAllSections();
-        }
-    }
-
-    async function handleNtNumberInput(event) {
-        const { requestId } = event.currentTarget.dataset;
-        const ntNumber = event.currentTarget.value;
-        await transfersCollection.doc(requestId).update({ ntNumber });
-    }
-
-    function validateNtForm(requestId) {
-        const ntInput = document.getElementById(`ntNumber-${requestId}`);
-        const checkboxes = document.querySelectorAll(`#card-${requestId} .nt-checkbox`);
-        const readyBtn = document.querySelector(`button[data-action="ready_to_ship"][data-request-id="${requestId}"]`);
-
-        if (!ntInput || !readyBtn) return;
-
-        const allChecked = checkboxes.length > 0 && Array.from(checkboxes).every(cb => cb.checked);
-        const hasText = ntInput.value.trim() !== '';
-
-        readyBtn.disabled = !(allChecked && hasText);
-    }
-
-    function handleTrackingOptionChange(event) {
-        const requestId = event.currentTarget.name.split('-')[1];
-        document.getElementById(`trackingNumberDiv-${requestId}`).classList.toggle('hidden', event.currentTarget.value !== 'yes');
-    }
-
-    function validateNoveltyForm(requestId) {
-        const reasonSelect = document.getElementById(`noveltyReason-${requestId}`);
-        const otherDiv = document.getElementById(`noveltyOtherDiv-${requestId}`);
-        const otherReasonInput = document.getElementById(`noveltyOtherReason-${requestId}`);
-        const solutionTextarea = document.getElementById(`noveltySolution-${requestId}`);
-        const finalizeBtn = document.querySelector(`button[data-action="finalize_novelty"][data-request-id="${requestId}"]`);
-
-        if (!reasonSelect || !otherDiv || !otherReasonInput || !solutionTextarea || !finalizeBtn) return;
-        otherDiv.classList.toggle('hidden', reasonSelect.value !== 'Otro');
-        const isReasonValid = reasonSelect.value && (reasonSelect.value !== 'Otro' || otherReasonInput.value.trim() !== '');
-        const isSolutionValid = solutionTextarea.value.trim() !== '';
-        finalizeBtn.disabled = !(isReasonValid && isSolutionValid);
-    }
-    
-    function handleAddToTransfer(event) {
-        const product = allProducts.find(p => p.id === event.currentTarget.dataset.productId);
-        if (!product) return;
-        const qtyInput = document.getElementById(`qty-${product.id.replace(/[^a-zA-Z0-9-_]/g, '')}`);
-        const quantity = parseInt(qtyInput.value, 10);
-        if(quantity < 1 || isNaN(quantity)) return;
-        const existingItem = currentTransferItems.find(i => i.productId === product.id);
-        if (existingItem) existingItem.quantity += quantity;
-        else currentTransferItems.push({ productId: product.id, productName: product.name, quantity });
-        qtyInput.value = "1";
-        localStorage.setItem('currentTransferDraft', JSON.stringify(currentTransferItems));
-        renderCurrentTransfer();
-    }
-
-    async function handleSubmitTransferForm(event) {
-        event.preventDefault();
-        const editingId = document.getElementById('editingRequestId').value;
-        if (!dom.fromWarehouse.value || !dom.toWarehouse.value || !dom.requesterName.value || currentTransferItems.length === 0 || !document.getElementById('deliveryDate').value) {
-            return alert("Por favor, completa todos los campos requeridos.");
-        }
-        const transferData = {
-            items: currentTransferItems.map(item => ({ ...item, sentQuantity: 0, receivedQuantity: 0 })),
-            fromWarehouse: dom.fromWarehouse.value,
-            toWarehouse: dom.toWarehouse.value,
-            requesterName: dom.requesterName.value,
-            deliveryDate: document.getElementById('deliveryDate').value,
-            requesterNotes: document.getElementById('requesterNotes').value,
-        };
-        if (editingId) {
-            await transfersCollection.doc(editingId).update(transferData);
-            alert(`Solicitud ${editingId} actualizada.`);
-        } else {
-            const customId = generateCustomId();
-            await transfersCollection.doc(customId).set({ ...transferData, id: customId, status: 'pending', timestamp: firebase.firestore.FieldValue.serverTimestamp() });
-            alert(`Solicitud enviada! ID: ${customId}`);
-        }
-        resetFormToCreateMode();
-    }
-
-    async function handleStartEdit(event) {
-        const requestToEdit = allTransferRequests.find(r => r.id === event.currentTarget.dataset.requestId);
-        if (!requestToEdit) return;
-        document.getElementById('editingRequestId').value = requestToEdit.id;
-        dom.fromWarehouse.value = requestToEdit.fromWarehouse;
-        dom.toWarehouse.value = requestToEdit.toWarehouse;
-        document.getElementById('deliveryDate').value = requestToEdit.deliveryDate;
-        document.getElementById('requesterNotes').value = requestToEdit.requesterNotes || '';
-        currentTransferItems = JSON.parse(JSON.stringify(requestToEdit.items));
-        renderCurrentTransfer();
-        const submitButton = dom.transferForm.querySelector('button[type="submit"]');
-        submitButton.textContent = 'GUARDAR CAMBIOS';
-        submitButton.classList.remove('bg-gray-500', 'hover:bg-gray-600');
-        submitButton.classList.add('bg-blue-600', 'hover:bg-blue-700');
-        dom.transferForm.scrollIntoView({ behavior: 'smooth' });
-    }
-
-    function resetFormToCreateMode() {
-        currentTransferItems = [];
-        localStorage.removeItem('currentTransferDraft');
-        renderCurrentTransfer();
-        dom.transferForm.reset();
-        document.getElementById('editingRequestId').value = '';
-        const submitButton = dom.transferForm.querySelector('button[type="submit"]');
-        submitButton.textContent = 'ENVIAR SOLICITUD DE TRASLADO';
-        submitButton.classList.remove('bg-blue-600', 'hover:bg-blue-700');
-        submitButton.classList.add('bg-gray-500', 'hover:bg-gray-600'); 
-        if (currentUserData) dom.requesterName.value = currentUserData.name;
-        document.getElementById('deliveryDate').valueAsDate = new Date();
-    }
-
-    async function handleFinalizeReception(event) {
-        const button = event.currentTarget;
-        const requestId = button.dataset.requestId;
-        button.disabled = true; button.textContent = 'Procesando...';
-        
-        const receptionNotes = document.getElementById(`receptionNotes-${requestId}`).value;
-        const qtyInputs = document.querySelectorAll(`.reception-qty-input[data-request-id="${requestId}"]`);
-        const reqRef = transfersCollection.doc(requestId);
-        
-        const doc = await reqRef.get();
-        if (!doc.exists) return;
-        let items = doc.data().items;
-        let isComplete = true;
-        
-        qtyInputs.forEach((input) => {
-            const index = parseInt(input.dataset.itemIndex, 10);
-            const receivedQty = parseInt(input.value, 10);
-            if (items[index]) {
-                items[index].receivedQuantity = receivedQty;
-                if (receivedQty !== items[index].sentQuantity) {
-                    isComplete = false;
-                }
+                const completedReqs = applyFilters(sortedRequests.filter(r => r.status === 'completed'), dom.adminHistorySearchId, dom.adminHistoryDateFrom, dom.adminHistoryDateTo);
+                const noveltyReqs = applyFilters(sortedRequests.filter(r => ['completed_incomplete', 'novelty_review'].includes(r.status)), dom.adminHistorySearchId, dom.adminHistoryDateFrom, dom.adminHistoryDateTo);
+                const cancelledReqs = applyFilters(sortedRequests.filter(r => r.status === 'cancelled'), dom.adminHistorySearchId, dom.adminHistoryDateFrom, dom.adminHistoryDateTo);
+                
+                renderSection('adminCompletedRequests', dom.adminCompletedRequests, completedReqs, 'admin', "No hay solicitudes completadas.");
+                renderSection('adminNoveltyRequests', dom.adminNoveltyRequests, noveltyReqs, 'admin', "No hay solicitudes con novedad.");
+                renderSection('adminCancelledRequests', dom.adminCancelledRequests, cancelledReqs, 'admin', "No hay solicitudes canceladas.");
             }
-        });
+        }
         
-        const newStatus = isComplete ? 'completed' : 'completed_incomplete';
-        await reqRef.update({ 
-            status: newStatus, 
-            items, 
-            reception: { 
-                notes: receptionNotes, 
-                timestamp: firebase.firestore.FieldValue.serverTimestamp(), 
-                finalizedBy: currentUserData.user.email 
-            } 
-        });
-    }
-    
-    function generateCustomId() {
-        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-        let result = '';
-        for (let i = 0; i < 7; i++) result += chars.charAt(Math.floor(Math.random() * chars.length));
-        return result;
-    }
-    
-    function renderCurrentTransfer() {
-        if (!dom.currentTransferRequest) return;
-        dom.currentTransferRequest.innerHTML = currentTransferItems.length === 0 ? '<p class="text-gray-500 italic text-center py-4">Añade productos.</p>' : '';
-        if (currentTransferItems.length > 0) {
-            const ul = document.createElement('ul');
-            ul.className = 'space-y-2';
-            currentTransferItems.forEach((item, index) => {
-                const li = document.createElement('li');
-                li.className = 'flex justify-between items-center p-3 bg-white rounded-lg shadow-sm';
-                li.innerHTML = `<div><span class="font-medium">${item.productName}</span><span class="text-xs text-gray-500 block">ID: ${item.productId}</span></div><div class="flex items-center space-x-2"><input type="number" min="1" value="${item.quantity}" data-index="${index}" class="w-16 p-1 border rounded item-quantity-input text-center"><button data-index="${index}" class="remove-item-btn text-red-500 font-bold p-1">✕</button></div>`;
-                ul.appendChild(li);
-            });
-            dom.currentTransferRequest.appendChild(ul);
-            ul.querySelectorAll('.item-quantity-input').forEach(i => i.onchange = (e) => {
-                const index = e.target.dataset.index;
-                currentTransferItems[index].quantity = parseInt(e.target.value, 10);
-                localStorage.setItem('currentTransferDraft', JSON.stringify(currentTransferItems));
-            });
-            ul.querySelectorAll('.remove-item-btn').forEach(b => b.onclick = (e) => {
-                const index = e.target.dataset.index;
-                currentTransferItems.splice(index, 1);
-                localStorage.setItem('currentTransferDraft', JSON.stringify(currentTransferItems));
-                renderCurrentTransfer();
-            });
-        }
-    }
-
-    async function loadAndTransformProducts() {
-        try {
-            const snapshot = await productsCollection.orderBy("name").get();
-            if (snapshot.empty) { console.warn("La colección 'products' está vacía."); return []; }
-            return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        } catch (error) {
-            console.error("Error al cargar productos: ", error);
-            alert("No se pudo cargar la lista de productos.");
-            return [];
-        }
-    }
-    
-    async function handleProductUpload() {
-        const fileInput = dom.productFile;
-        if (fileInput.files.length === 0) { alert("Por favor, selecciona un archivo primero."); return; }
-        const file = fileInput.files[0];
-        const reader = new FileReader();
-        reader.onload = async (event) => {
-            const statusEl = dom.uploadStatus;
-            let newProducts;
-            try {
-                const rawData = JSON.parse(event.target.result);
-                newProducts = transformRawJsonToProducts(rawData);
-                if (!newProducts || newProducts.length === 0) throw new Error("No se pudieron procesar productos válidos.");
-            } catch (e) {
-                statusEl.textContent = `Error: ${e.message}`; statusEl.className = 'mt-3 text-sm font-medium text-red-600'; return;
-            }
-            statusEl.textContent = 'Actualizando...'; statusEl.className = 'mt-3 text-sm font-medium text-blue-600';
-            try {
-                const batch = db.batch();
-                const oldDocsSnapshot = await productsCollection.get();
-                oldDocsSnapshot.forEach(doc => batch.delete(doc.ref));
-                newProducts.forEach(product => {
-                    const docRef = productsCollection.doc(product.id);
-                    batch.set(docRef, { name: product.name, description: product.description || '' });
-                });
-                await batch.commit();
-                statusEl.textContent = `¡Éxito! Se actualizaron ${newProducts.length} productos.`; statusEl.className = 'mt-3 text-sm font-medium text-green-600';
-                allProducts = await loadAndTransformProducts();
-                renderProducts(allProducts);
-            } catch (error) {
-                console.error("Error al actualizar productos:", error); statusEl.textContent = 'Error al subir a la DB.'; statusEl.className = 'mt-3 text-sm font-medium text-red-600';
-            }
-        };
-        reader.readAsText(file);
-    }
-
-    function transformRawJsonToProducts(rawData) {
-        const uniqueProductStrings = new Set();
-        if (Array.isArray(rawData)) {
-            rawData.forEach(item => {
-                Object.keys(item).forEach(key => key && uniqueProductStrings.add(key.trim()));
-                Object.values(item).forEach(val => val && uniqueProductStrings.add(val.trim()));
-            });
-        }
-        if (uniqueProductStrings.size === 0) return [];
-        const productsMap = new Map();
-        let genericCounter = 1;
-        uniqueProductStrings.forEach(fullProductName => {
-            const parts = String(fullProductName).split(' - ');
-            let idPart, namePart;
-            if (parts.length > 1 && (/\d/.test(parts[0].trim()) || /^[a-zA-Z]{2,}/.test(parts[0].trim()))) {
-                idPart = parts[0].trim().replace(/\s+/g, '-');
-                namePart = parts.slice(1).join(' - ').trim();
-            } else {
-                idPart = `prod-gen-${genericCounter++}`;
-                namePart = fullProductName;
-            }
-            let finalId = idPart, idCounter = 1;
-            while (productsMap.has(finalId)) finalId = `${idPart}_${idCounter++}`;
-            productsMap.set(finalId, { id: finalId, name: namePart, description: fullProductName });
-        });
-        return Array.from(productsMap.values()).sort((a, b) => a.name.localeCompare(b.name));
-    }
-
-    function renderProducts(productsToRender) {
-        if(!dom.productList) return;
-        dom.productList.innerHTML = '';
-        if (!productsToRender || productsToRender.length === 0) {
-            dom.productList.innerHTML = '<p class="text-gray-500 col-span-full text-center">No se encontraron productos.</p>';
-            return;
-        }
-        productsToRender.forEach(product => {
-            const card = document.createElement('div');
-            card.className = 'border p-3 rounded-lg shadow-sm hover:shadow-md transition bg-white';
-            const safeId = product.id.replace(/[^a-zA-Z0-9-_]/g, '');
-            card.innerHTML = `<h3 class="text-sm font-semibold text-gray-900" title="${product.description}">${product.name.length > 50 ? product.name.substring(0, 47) + '...' : product.name}</h3><p class="text-xs text-gray-400 mb-2">ID: ${product.id}</p><div class="flex items-center space-x-2 mt-auto"><input type="number" min="1" value="1" id="qty-${safeId}" class="w-16 border-gray-300 rounded-md text-center p-1"><button data-product-id="${product.id}" class="add-to-transfer-btn w-full bg-gray-800 hover:bg-black text-white text-xs font-bold py-2 px-2 rounded-md transition">Añadir</button></div>`;
-            dom.productList.appendChild(card);
-        });
-        dom.productList.querySelectorAll('.add-to-transfer-btn').forEach(b => b.onclick = handleAddToTransfer);
-    }
-    
-    // ==================================================================
-    // INICIO DE LÓGICA PARA INFORMES GERENCIALES
-    // ==================================================================
-    function destroyCharts() {
-        Object.values(charts).forEach(chart => chart.destroy());
-        charts = {};
-    }
-
-    function handleReportGeneration() {
-        const timeRange = dom.reportTimeRange.value;
-        let endDate = new Date();
-        endDate.setHours(23, 59, 59, 999);
-        let startDate = new Date();
-        startDate.setHours(0, 0, 0, 0);
-
-        if (timeRange === 'all_time') {
-            startDate = new Date(0);
-        } else if (timeRange === 'today') {
-            // Ya está configurado
-        } else if (timeRange === 'this_week') {
-            const day = startDate.getDay() || 7; 
-            if( day !== 1 ) startDate.setHours(-24 * (day - 1));
-            startDate.setHours(0, 0, 0, 0);
-        } else if (timeRange === 'this_month') {
-            startDate = new Date(endDate.getFullYear(), endDate.getMonth(), 1);
-        } else if (timeRange === 'last_3_months') {
-            startDate = new Date();
-            startDate.setMonth(startDate.getMonth() - 3);
-        } else if (timeRange === 'custom') {
-            if (!dom.reportDateFrom.value || !dom.reportDateTo.value) {
-                alert("Por favor, selecciona un rango de fechas personalizado.");
+        function renderSection(sectionId, div, data, role, emptyMessage) {
+            if (!div) return;
+            div.innerHTML = '';
+            if (data.length === 0) {
+                div.innerHTML = `<p class="text-gray-500 italic text-center py-4">${emptyMessage}</p>`;
                 return;
             }
-            startDate = new Date(dom.reportDateFrom.value + 'T00:00:00');
-            endDate = new Date(dom.reportDateTo.value + 'T23:59:59');
+            if (!sectionDisplayCounts[sectionId]) sectionDisplayCounts[sectionId] = INITIAL_DISPLAY_COUNT;
+            const requestsToShow = data.slice(0, sectionDisplayCounts[sectionId]);
+            requestsToShow.forEach(req => div.appendChild(createRequestCard(req, role)));
+
+            if (data.length > sectionDisplayCounts[sectionId]) {
+                const remaining = data.length - sectionDisplayCounts[sectionId];
+                const loadAmount = Math.min(LOAD_MORE_COUNT, remaining);
+                const button = document.createElement('button');
+                button.textContent = `Ver ${loadAmount} más... (${remaining} restantes)`;
+                button.className = 'w-full mt-4 text-sm font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 py-2 px-4 rounded-lg';
+                button.onclick = () => { sectionDisplayCounts[sectionId] += LOAD_MORE_COUNT; renderAllSections(); };
+                div.appendChild(button);
+            }
+        }
+        
+        function createRequestCard(req, role) {
+            const isExpanded = expandedRequestsState.has(req.id);
+            const card = document.createElement('div');
+            card.className = `p-4 rounded-lg shadow-sm flex flex-col ${getRequestStatusColor(req.status, req)}`;
+            card.id = `card-${req.id}`;
+
+            const hasItems = req.items && req.items.length > 0;
+            const allNtItemsChecked = hasItems && req.status === 'pending_nt_active' && req.items.every(item => item.nt_checked);
+            const hasNtNumber = req.status === 'pending_nt_active' && req.ntNumber && req.ntNumber.trim() !== '';
+            const canProceedFromNt = allNtItemsChecked && hasNtNumber;
+            const allReviewItemsChecked = hasItems && req.status === 'processing_partial_items' && req.items.every(item => item.nt_checked === true);
+
+            const itemsHtml = hasItems ? (req.items || []).map((item, index) => {
+                let quantityDisplay;
+                if (req.status === 'pending_nt_active') {
+                    quantityDisplay = `Cantidad a Enviar: <b>${item.sentQuantity ?? item.quantity}</b>`;
+                } else {
+                    quantityDisplay = `Solicitado: <b>${item.quantity}</b>`;
+                    if (item.sentQuantity !== undefined) {
+                         quantityDisplay += ` | Enviado: <b>${item.sentQuantity}</b>`;
+                    }
+                    if (item.receivedQuantity !== undefined) {
+                        const color = item.receivedQuantity !== item.sentQuantity ? 'text-red-600' : 'text-green-700';
+                        quantityDisplay += ` | Recibido: <b class="${color}">${item.receivedQuantity}</b>`;
+                    }
+                }
+
+                const receptionInput = (role === 'requester' && req.status === 'shipped') ? `<div class="flex items-center"><label class="text-xs mr-2">Recibido:</label><input type="number" value="${item.sentQuantity}" data-request-id="${req.id}" data-item-index="${index}" class="reception-qty-input w-16 p-1 border rounded-md text-center text-sm"></div>` : '';
+                
+                let adminControls = '';
+                let itemBgColor = 'bg-white';
+                if (role === 'admin' || role === 'reviewer') {
+                    if (req.status === 'processing_partial_items') {
+                        adminControls += `<input type="number" value="${item.sentQuantity ?? item.quantity}" data-request-id="${req.id}" data-item-index="${index}" class="admin-qty-input w-20 p-1 border rounded-md text-center">`;
+                        adminControls += `<input type="checkbox" ${item.nt_checked ? 'checked' : ''} data-request-id="${req.id}" data-item-index="${index}" class="nt-checkbox h-5 w-5 rounded border-gray-300 text-blue-600 cursor-pointer">`;
+                        itemBgColor = item.nt_checked ? 'bg-green-100' : 'bg-red-100'; 
+                    } else if (req.status === 'pending_nt_active') {
+                        adminControls += `<input type="checkbox" ${item.nt_checked ? 'checked' : ''} data-request-id="${req.id}" data-item-index="${index}" class="nt-checkbox h-5 w-5 rounded border-gray-300 text-blue-600 cursor-pointer">`;
+                        itemBgColor = item.nt_checked ? 'bg-green-100' : 'bg-red-100';
+                    }
+                }
+                
+                return `<li class="p-2 rounded-md border ${itemBgColor} flex justify-between items-center text-sm" data-item-row-id="${req.id}-${index}"><div><span class="font-medium text-gray-800">${item.productName}</span><div class="text-xs text-gray-600">${quantityDisplay}</div></div><div class="flex items-center gap-2">${receptionInput}${adminControls}</div></li>`;
+            }).join('') : '<p class="text-sm text-gray-500 italic">No hay artículos.</p>';
+
+            let contentHtml = '';
+            if (role === 'admin' || role === 'reviewer') {
+                let actionButtonsHtml = '';
+
+                if (req.status === 'pending') {
+                    actionButtonsHtml += `<button data-request-id="${req.id}" data-action="start_processing" class="action-btn flex-1 bg-gray-800 hover:bg-black text-white font-bold py-2 px-3 rounded-md">Iniciar Revisión</button>`;
+                }
+                if (req.status.startsWith('processing')) {
+                    contentHtml += `<div class="mt-4"><label for="adminNotes-${req.id}" class="text-sm font-medium">Nota de Revisión:</label><textarea id="adminNotes-${req.id}" rows="2" class="w-full mt-1 border rounded-md p-2">${req.adminNotes || ''}</textarea><button data-request-id="${req.id}" data-action="save_admin_note" class="action-btn mt-1 text-xs bg-gray-700 px-3 py-1.5 rounded-md text-white">Guardar Nota</button></div>`;
+                    actionButtonsHtml += `<button data-request-id="${req.id}" data-action="finalize_processing" class="action-btn bg-teal-600 hover:bg-teal-700 text-white font-bold py-2 px-3 rounded-md disabled:bg-gray-400 disabled:cursor-not-allowed" ${!allReviewItemsChecked ? 'disabled' : ''}>Finalizar Revisión</button>`;
+                }
+                if (role === 'admin') {
+                    if (req.status === 'pending_nt_start') {
+                        actionButtonsHtml += `<button data-request-id="${req.id}" data-action="start_nt_preparation" class="action-btn bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-3 rounded-md">Iniciar Preparación NT</button>`;
+                    }
+                    if (req.status === 'pending_nt_active') {
+                        contentHtml += `<div class="mt-4 space-y-2"><label for="ntNumber-${req.id}" class="text-sm font-medium">Nº Nota de Traslado (Obligatorio):</label><input type="text" id="ntNumber-${req.id}" data-request-id="${req.id}" value="${req.ntNumber || ''}" class="nt-number-input w-full mt-1 border rounded-md p-2"></div>`;
+                        actionButtonsHtml += `<button data-request-id="${req.id}" data-action="return_to_pending" class="action-btn bg-yellow-600 hover:bg-yellow-700 text-white text-xs font-semibold py-2 px-3 rounded-md">Devolver</button>`;
+                        actionButtonsHtml += `<button data-request-id="${req.id}" data-action="ready_to_ship" class="action-btn bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold py-2 px-3 rounded-md disabled:bg-gray-400" ${!canProceedFromNt ? 'disabled' : ''}>Listo para Enviar</button>`;
+                    }
+                }
+
+                if (['pending', 'processing_partial_items', 'pending_nt_start', 'pending_nt_active'].includes(req.status)) {
+                    actionButtonsHtml += `<button data-request-id="${req.id}" data-action="cancel" class="action-btn bg-red-700 hover:bg-red-800 text-white font-bold py-2 px-3 rounded-md">Cancelar</button>`;
+                }
+
+                if (actionButtonsHtml) {
+                    contentHtml += `<div class="mt-4 border-t pt-4 flex justify-end gap-2 flex-wrap">${actionButtonsHtml}</div>`;
+                }
+
+                if (role === 'admin') {
+                    if (req.status === 'ready_to_ship') {
+                        contentHtml += `<div class="mt-4 space-y-2"><label for="shippingNotes-${req.id}" class="text-sm font-medium">Obs. de Envío (Opcional):</label><textarea id="shippingNotes-${req.id}" rows="2" class="w-full mt-1 border rounded-md p-2">${req.shippingNotes || ''}</textarea><button data-request-id="${req.id}" data-action="save_shipping_note" class="action-btn mt-1 text-xs bg-gray-700 px-3 py-1.5 rounded-md text-white">Guardar Nota</button></div>`;
+                        contentHtml += `<div class="mt-4"><button data-request-id="${req.id}" data-action="proceed_to_shipping" class="action-btn w-full bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-2 px-3 rounded-md">Proceder a Envío</button></div>`;
+                    }
+                    if (req.status === 'shipping_details') {
+                        contentHtml += `<div class="mt-4 space-y-3 p-3 bg-gray-100 rounded-lg border"><p class="font-semibold">¿Tiene guía?</p><div class="flex items-center gap-x-4"><label><input type="radio" name="hasTracking-${req.id}" value="yes" class="tracking-option"> Sí</label><label><input type="radio" name="hasTracking-${req.id}" value="no" class="tracking-option" checked> No</label></div><div id="trackingNumberDiv-${req.id}" class="hidden mt-2"><label for="trackingNumber-${req.id}" class="block text-sm font-medium">Nº de Guía:</label><input type="text" id="trackingNumber-${req.id}" class="w-full mt-1 border rounded-md p-2"></div></div>`;
+                        contentHtml += `<div class="mt-4"><button data-request-id="${req.id}" data-action="finalize_shipment" class="action-btn w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-3 rounded-md">Marcar como Enviado</button></div>`;
+                    }
+                    if (req.status === 'completed_incomplete') {
+                        contentHtml += `<div class="mt-4"><button data-request-id="${req.id}" data-action="start_novelty_review" class="action-btn w-full bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2 px-3 rounded-md">Iniciar Revisión de Novedad</button></div>`;
+                    }
+                    if (req.status === 'novelty_review') {
+                        contentHtml += `<div id="noveltyForm-${req.id}" class="mt-4 p-4 bg-gray-100 border-t-2 space-y-4"><h5 class="font-bold text-lg">Gestionar Novedad</h5><div><label class="block text-sm font-medium">Causa:</label><select id="noveltyReason-${req.id}" data-request-id="${req.id}" class="novelty-input mt-1 block w-full p-2 border rounded-md"><option value="" selected disabled>-- Seleccione --</option><option value="Error de empaque">Error de empaque</option><option value="Perdida en transporte">Pérdida en transporte</option><option value="Otro">Otro</option></select></div><div id="noveltyOtherDiv-${req.id}" class="hidden"><label for="noveltyOtherReason-${req.id}" class="block text-sm font-medium">Especifique:</label><input type="text" id="noveltyOtherReason-${req.id}" data-request-id="${req.id}" class="novelty-input mt-1 block w-full p-2 border rounded-md"></div><div><label for="noveltySolution-${req.id}" class="block text-sm font-medium">Solución:</label><textarea id="noveltySolution-${req.id}" data-request-id="${req.id}" rows="3" class="novelty-input mt-1 block w-full p-2 border rounded-md"></textarea></div><button data-request-id="${req.id}" data-action="finalize_novelty" class="action-btn w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-3 rounded-md disabled:bg-gray-400" disabled>Finalizar Novedad</button></div>`;
+                    }
+                }
+            }
+
+            if (role === 'requester' && req.status === 'shipped') {
+                contentHtml += `<div class="mt-4 border-t-2 pt-4 space-y-3"><h5 class="font-bold text-md">Confirmar recepción</h5><div><label class="block text-sm font-medium">Obs. de recepción:</label><textarea id="receptionNotes-${req.id}" rows="2" class="w-full mt-1 border rounded-md p-2"></textarea></div><button data-request-id="${req.id}" data-action="finalize_reception" class="action-btn w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-3 rounded-md">Finalizar Recepción</button></div>`;
+            }
+
+            const reqDate = req.deliveryDate ? new Date(req.deliveryDate + 'T00:00:00').toLocaleDateString('es-CO', { year: 'numeric', month: 'long', day: 'numeric' }) : 'No especificada';
+            const creationDate = req.timestamp ? new Date(req.timestamp.seconds * 1000).toLocaleString('es-CO', { dateStyle: 'short', timeStyle: 'short' }) : '';
+            
+            const requesterButtons = (role === 'requester' && req.status === 'pending') 
+                ? `<div class="flex flex-col gap-1">
+                       <button data-request-id="${req.id}" data-action="edit_my_request" class="action-btn bg-blue-600 text-white text-xs px-2 py-1 rounded-md">Editar</button>
+                       <button data-request-id="${req.id}" data-action="cancel" class="action-btn bg-red-600 text-white text-xs px-2 py-1 rounded-md">Cancelar</button>
+                   </div>` 
+                : '';
+
+            const infoBoxesHtml = `
+                <div class="space-y-1 mt-2">
+                    ${req.requesterNotes ? `<div class="p-2 bg-white rounded-md border text-xs"><p class="font-semibold text-gray-700">Nota Solicitante:</p><p class="italic text-gray-800">"${req.requesterNotes}"</p></div>` : ''}
+                    ${req.adminNotes ? `<div class="p-2 bg-white rounded-md border text-xs"><p class="font-semibold text-gray-700">Nota Admin (Revisión):</p><p class="italic text-gray-800">"${req.adminNotes}"</p></div>` : ''}
+                    ${req.ntNumber ? `<div class="p-2 bg-white rounded-md border text-xs"><p class="font-semibold text-gray-700">Nº Nota de Traslado:</p><p class="font-bold text-gray-900">${req.ntNumber}</p></div>` : ''}
+                    ${req.shippingNotes ? `<div class="p-2 bg-white rounded-md border text-xs"><p class="font-semibold text-gray-700">Obs. de Envío:</p><p class="italic text-gray-800">"${req.shippingNotes}"</p></div>` : ''}
+                    ${req.shippingInfo ? `<div class="p-2 bg-white rounded-md border text-xs"><p class="font-semibold text-gray-700">Guía de Envío:</p><p class="font-bold text-gray-900">${req.shippingInfo.hasTracking ? req.shippingInfo.trackingNumber : 'Sin guía'}</p></div>` : ''}
+                    ${(req.reception && req.reception.notes) ? `<div class="p-2 bg-white rounded-md border text-xs"><p class="font-semibold text-gray-700">Obs. de Recepción:</p><p class="italic text-gray-800">"${req.reception.notes}"</p></div>` : ''}
+                    ${req.novelty ? `<div class="p-2 bg-yellow-100 rounded-md border border-yellow-300 text-xs"><p class="font-semibold text-yellow-800">Detalle de Novedad:</p><p class="text-gray-800"><b>Causa:</b> ${req.novelty.reason}</p><p class="italic text-gray-800"><b>Solución:</b> "${req.novelty.solution}"</p></div>` : ''}
+                </div>`;
+            
+            card.innerHTML = `
+                <div class="flex justify-between items-start">
+                    <div>
+                        <h4 class="font-semibold text-lg">${req.requesterName}</h4>
+                        <p class="text-sm text-gray-600">Para: <strong>${req.toWarehouse}</strong></p>
+                        <p class="text-xs text-gray-400">ID: ${req.id} | Creada: ${creationDate}</p>
+                        <p class="text-sm mt-1">Fecha: <b>${reqDate}</b></p>
+                        <span class="inline-block mt-2 px-2 py-1 text-xs font-bold rounded-full bg-gray-200 text-gray-800">${translateStatus(req.status, req)}</span>
+                    </div>
+                    ${requesterButtons}
+                </div>
+                <div id="details-${req.id}" class="flex-grow ${isExpanded ? '' : 'hidden'} mt-4 pt-4 border-t">
+                    ${infoBoxesHtml}
+                    <h5 class="font-bold text-gray-700 mt-4 mb-2">Items:</h5>
+                    <ul class="space-y-2">${itemsHtml}</ul> 
+                    ${contentHtml}
+                </div>
+                <div class="text-center mt-2"><button data-request-id="${req.id}" class="toggle-details-btn text-sm font-semibold text-blue-600 hover:text-blue-800">Ver ${isExpanded ? 'menos' : 'más'}</button></div>
+            `;
+            
+            card.querySelectorAll('.action-btn').forEach(b => b.onclick = handleAdminAction);
+            card.querySelectorAll('.toggle-details-btn').forEach(b => b.onclick = handleToggleDetails);
+            card.querySelectorAll('.admin-qty-input').forEach(i => i.onchange = handleAdminQuantityChange);
+            card.querySelectorAll('.reception-qty-input').forEach(i => i.onchange = () => {});
+            card.querySelectorAll('.tracking-option').forEach(r => r.onchange = handleTrackingOptionChange);
+            
+            card.querySelectorAll('.nt-checkbox').forEach(c => {
+                c.oninput = () => {
+                    const reqStatus = allTransferRequests.find(r => r.id === c.dataset.requestId)?.status;
+                    if (reqStatus === 'pending_nt_active') {
+                        validateNtForm(c.dataset.requestId);
+                    } else if (reqStatus === 'processing_partial_items') {
+                        const allChecked = Array.from(document.querySelectorAll(`#card-${c.dataset.requestId} .nt-checkbox`)).every(cb => cb.checked);
+                        const finalizeBtn = document.querySelector(`#card-${c.dataset.requestId} button[data-action="finalize_processing"]`);
+                        if(finalizeBtn) finalizeBtn.disabled = !allChecked;
+                    }
+                };
+                c.onchange = handleNtCheckboxChange;
+            });
+            card.querySelectorAll('.nt-number-input').forEach(i => {
+                i.oninput = () => validateNtForm(i.dataset.requestId);
+                i.onchange = handleNtNumberInput;
+            });
+
+            card.querySelectorAll('.novelty-input').forEach(i => {
+                i.oninput = () => validateNoveltyForm(i.dataset.requestId);
+            });
+            
+            return card;
         }
 
-        lastFilteredRequests = allTransferRequests.filter(req => {
-            if (!req.timestamp?.toDate) return false;
-            const reqDate = req.timestamp.toDate();
-            return reqDate >= startDate && reqDate <= endDate;
-        });
+        async function handleAdminAction(event) {
+            const button = event.currentTarget;
+            const { requestId, action } = button.dataset;
+            const reqRef = transfersCollection.doc(requestId);
+            let updateData = {};
 
-        if (lastFilteredRequests.length === 0) {
-            alert("No se encontraron datos para el rango de fechas seleccionado.");
-            if (dom.reportContainer) dom.reportContainer.style.display = 'none';
-            return;
+            const actions = {
+                start_processing: async () => {
+                    const doc = await reqRef.get();
+                    if(doc.exists) {
+                        const itemsToProcess = doc.data().items.map(item => ({ ...item, sentQuantity: item.quantity, nt_checked: false }));
+                        updateData = { status: 'processing_partial_items', items: itemsToProcess };
+                        expandedRequestsState.add(requestId);
+                    }
+                },
+                save_admin_note: async () => {
+                    await reqRef.update({ adminNotes: document.getElementById(`adminNotes-${requestId}`).value });
+                    alert('Nota guardada');
+                },
+                finalize_processing: () => {
+                    if (confirm("¿Finalizar revisión?")) updateData = { status: 'pending_nt_start' };
+                },
+                start_nt_preparation: async () => {
+                    const doc = await reqRef.get();
+                    if (doc.exists) {
+                        const itemsForNt = doc.data().items.map(item => ({ ...item, nt_checked: false }));
+                        updateData = { 
+                            status: 'pending_nt_active',
+                            items: itemsForNt
+                        };
+                        expandedRequestsState.add(requestId);
+                    }
+                },
+                return_to_pending: async () => {
+                    if (confirm("¿Devolver a revisión? Se borrarán los datos de los pasos posteriores.")) {
+                        const docToReset = await reqRef.get();
+                        if (docToReset.exists) {
+                            const resetItems = docToReset.data().items.map(({ productId, productName, quantity }) => ({ productId, productName, quantity }));
+                            updateData = { status: 'pending', items: resetItems, adminNotes: firebase.firestore.FieldValue.delete(), ntNumber: firebase.firestore.FieldValue.delete(), shippingNotes: firebase.firestore.FieldValue.delete(), shippingInfo: firebase.firestore.FieldValue.delete(), reception: firebase.firestore.FieldValue.delete(), novelty: firebase.firestore.FieldValue.delete() };
+                        }
+                    }
+                },
+                ready_to_ship: () => {
+                    if (confirm("¿Marcar como listo para enviar?")) updateData = { status: 'ready_to_ship' };
+                },
+                save_shipping_note: async () => {
+                    await reqRef.update({ shippingNotes: document.getElementById(`shippingNotes-${requestId}`).value });
+                    alert('Nota de envío guardada');
+                },
+                proceed_to_shipping: () => {
+                    updateData = { status: 'shipping_details' };
+                },
+                finalize_shipment: () => {
+                    const hasTracking = document.querySelector(`input[name="hasTracking-${requestId}"]:checked`).value === 'yes';
+                    const trackingNumber = hasTracking ? document.getElementById(`trackingNumber-${requestId}`).value : null;
+                    if (hasTracking && !trackingNumber) {
+                        alert("Por favor, ingresa el número de guía.");
+                        return 'stop';
+                    }
+                    updateData = { status: 'shipped', shippingInfo: { hasTracking, trackingNumber } };
+                },
+                start_novelty_review: () => {
+                    updateData = { status: 'novelty_review' };
+                    expandedRequestsState.add(requestId);
+                },
+                finalize_novelty: () => {
+                    const reasonSelect = document.getElementById(`noveltyReason-${requestId}`);
+                    let reason = reasonSelect.value === 'Otro' ? document.getElementById(`noveltyOtherReason-${requestId}`).value.trim() : reasonSelect.value;
+                    const solution = document.getElementById(`noveltySolution-${requestId}`).value.trim();
+                    updateData = { status: 'completed', novelty: { reason, solution, resolvedBy: currentUserData.user.email, timestamp: firebase.firestore.FieldValue.serverTimestamp() } };
+                },
+                finalize_reception: () => { handleFinalizeReception(event); return 'stop'; },
+                edit_my_request: () => { handleStartEdit(event); return 'stop'; },
+                cancel: () => {
+                    if (confirm("¿Está seguro de que desea cancelar esta solicitud?")) {
+                        updateData = { status: 'cancelled' };
+                    }
+                }
+            };
+            
+            const result = await actions[action]?.();
+            if (result === 'stop') return;
+
+            if (Object.keys(updateData).length > 0) {
+                await reqRef.update(updateData);
+            }
+        }
+        
+        function handleToggleDetails(evento) {
+            const requestId = evento.currentTarget.dataset.requestId;
+            expandedRequestsState.has(requestId) ? expandedRequestsState.delete(requestId) : expandedRequestsState.add(requestId);
+            renderAllSections();
         }
 
-        if (dom.reportContainer) dom.reportContainer.style.display = 'block';
-        destroyCharts();
-        generateAllReports(lastFilteredRequests);
-    }
-
-    function generateAllReports(data) {
-        const today = new Date().toLocaleDateString('es-CO', { year: 'numeric', month: 'long', day: 'numeric' });
-        dom.reportDateSubtitle.textContent = `Generado el: ${today}`;
+        async function handleNtCheckboxChange(event) {
+            const checkbox = event.currentTarget;
+            const { requestId, itemIndex } = checkbox.dataset;
+            const isChecked = checkbox.checked;
+            const reqRef = transfersCollection.doc(requestId);
+            
+            try {
+                await db.runTransaction(async (transaction) => {
+                    const doc = await transaction.get(reqRef);
+                    if (!doc.exists) throw "El documento no existe!";
+                    
+                    let items = doc.data().items;
+                    if (items[itemIndex]) {
+                        items[itemIndex].nt_checked = isChecked;
+                        transaction.update(reqRef, { items: items });
+                    }
+                });
+            } catch (e) {
+                console.error("Fallo la transacción del checkbox:", e);
+                checkbox.checked = !isChecked; 
+                alert("No se pudo guardar el cambio. Inténtalo de nuevo.");
+            }
+        }
         
-        dom.kpiTotalRequests.textContent = data.length;
-        dom.kpiCompleted.textContent = data.filter(r => r.status.startsWith('completed')).length;
-        dom.kpiWithNovelty.textContent = data.filter(r => r.status === 'completed_incomplete' || r.status === 'novelty_review').length;
-        dom.kpiCancelled.textContent = data.filter(r => r.status === 'cancelled').length;
+        async function handleAdminQuantityChange(event) {
+            const input = event.currentTarget;
+            const { requestId, itemIndex } = input.dataset;
+            const newSentQuantity = parseInt(input.value, 10);
+            const reqRef = transfersCollection.doc(requestId);
+            
+            try {
+                await db.runTransaction(async (transaction) => {
+                    const doc = await transaction.get(reqRef);
+                    if (!doc.exists) throw "El documento no existe!";
+                    
+                    const items = doc.data().items;
+                    if (items[itemIndex]) {
+                        items[itemIndex].sentQuantity = newSentQuantity;
+                        transaction.update(reqRef, { items: items });
+                    }
+                });
+            } catch (e) {
+                console.error("Fallo la transacción de cantidad:", e);
+                alert("No se pudo guardar la cantidad. Inténtalo de nuevo.");
+                renderAllSections();
+            }
+        }
 
-        const chartOptions = { responsive: true, maintainAspectRatio: false, animation: false };
+        async function handleNtNumberInput(event) {
+            const { requestId } = event.currentTarget.dataset;
+            const ntNumber = event.currentTarget.value;
+            await transfersCollection.doc(requestId).update({ ntNumber });
+        }
 
-        const statusCounts = data.reduce((acc, req) => {
-            const status = translateStatus(req.status, req);
-            acc[status] = (acc[status] || 0) + 1;
-            return acc;
-        }, {});
-        charts.statusChart = new Chart(dom.statusChart, {
-            type: 'doughnut', data: { labels: Object.keys(statusCounts), datasets: [{ data: Object.values(statusCounts), backgroundColor: ['#22c55e', '#ef4444', '#f59e0b', '#3b82f6', '#6b7280', '#8b5cf6', '#f97316', '#06b6d4'] }] },
-            options: chartOptions
-        });
+        function validateNtForm(requestId) {
+            const ntInput = document.getElementById(`ntNumber-${requestId}`);
+            const checkboxes = document.querySelectorAll(`#card-${requestId} .nt-checkbox`);
+            const readyBtn = document.querySelector(`button[data-action="ready_to_ship"][data-request-id="${requestId}"]`);
 
-        const productCounts = data.reduce((acc, req) => {
-            if(req.items) req.items.forEach(item => { acc[item.productName] = (acc[item.productName] || 0) + item.quantity; });
-            return acc;
-        }, {});
-        const sortedProducts = Object.entries(productCounts).sort((a, b) => b[1] - a[1]).slice(0, 5);
-        charts.topProductsChart = new Chart(dom.topProductsChart, {
-            type: 'bar', data: { labels: sortedProducts.map(p => p[0].slice(0, 20) + '...'), datasets: [{ label: 'Unidades Solicitadas', data: sortedProducts.map(p => p[1]), backgroundColor: '#1f2937' }] },
-            options: { ...chartOptions, indexAxis: 'y', plugins: { legend: { display: false } } }
-        });
+            if (!ntInput || !readyBtn) return;
 
-        const warehouseCounts = data.reduce((acc, req) => {
-            if (req.toWarehouse) acc[req.toWarehouse] = (acc[req.toWarehouse] || 0) + 1;
-            return acc;
-        }, {});
-        charts.warehouseChart = new Chart(dom.warehouseChart, {
-            type: 'pie', data: { labels: Object.keys(warehouseCounts), datasets: [{ data: Object.values(warehouseCounts), backgroundColor: ['#1d4ed8', '#059669', '#d97706', '#dc2626', '#6d28d9', '#db2777'] }] },
-            options: chartOptions
-        });
+            const allChecked = checkboxes.length > 0 && Array.from(checkboxes).every(cb => cb.checked);
+            const hasText = ntInput.value.trim() !== '';
+
+            readyBtn.disabled = !(allChecked && hasText);
+        }
+
+        function handleTrackingOptionChange(event) {
+            const requestId = event.currentTarget.name.split('-')[1];
+            document.getElementById(`trackingNumberDiv-${requestId}`).classList.toggle('hidden', event.currentTarget.value !== 'yes');
+        }
+
+        function validateNoveltyForm(requestId) {
+            const reasonSelect = document.getElementById(`noveltyReason-${requestId}`);
+            const otherDiv = document.getElementById(`noveltyOtherDiv-${requestId}`);
+            const otherReasonInput = document.getElementById(`noveltyOtherReason-${requestId}`);
+            const solutionTextarea = document.getElementById(`noveltySolution-${requestId}`);
+            const finalizeBtn = document.querySelector(`button[data-action="finalize_novelty"][data-request-id="${requestId}"]`);
+
+            if (!reasonSelect || !otherDiv || !otherReasonInput || !solutionTextarea || !finalizeBtn) return;
+            otherDiv.classList.toggle('hidden', reasonSelect.value !== 'Otro');
+            const isReasonValid = reasonSelect.value && (reasonSelect.value !== 'Otro' || otherReasonInput.value.trim() !== '');
+            const isSolutionValid = solutionTextarea.value.trim() !== '';
+            finalizeBtn.disabled = !(isReasonValid && isSolutionValid);
+        }
         
-        const fulfillmentData = data.filter(r => r.status.startsWith('completed')).reduce((acc, req) => {
-            if(req.items) req.items.forEach(item => {
-                acc.sent += (item.sentQuantity || 0);
-                acc.received += (item.receivedQuantity || 0);
-            });
-            return acc;
-        }, { sent: 0, received: 0 });
-        charts.fulfillmentChart = new Chart(dom.fulfillmentChart, {
-            type: 'bar', data: { labels: ['Cumplimiento'], datasets: [
-                { label: 'Unidades Enviadas', data: [fulfillmentData.sent], backgroundColor: '#a8a29e' },
-                { label: 'Unidades Recibidas', data: [fulfillmentData.received], backgroundColor: '#16a34a' }
-            ]},
-            options: chartOptions
-        });
+        function handleAddToTransfer(event) {
+            const product = allProducts.find(p => p.id === event.currentTarget.dataset.productId);
+            if (!product) return;
+            const qtyInput = document.getElementById(`qty-${product.id.replace(/[^a-zA-Z0-9-_]/g, '')}`);
+            const quantity = parseInt(qtyInput.value, 10);
+            if(quantity < 1 || isNaN(quantity)) return;
+            const existingItem = currentTransferItems.find(i => i.productId === product.id);
+            if (existingItem) existingItem.quantity += quantity;
+            else currentTransferItems.push({ productId: product.id, productName: product.name, quantity });
+            qtyInput.value = "1";
+            localStorage.setItem('currentTransferDraft', JSON.stringify(currentTransferItems));
+            renderCurrentTransfer();
+        }
 
-        const requestedVsSentData = data.reduce((acc, req) => {
-            if(req.items) req.items.forEach(item => {
-                acc.requested += (item.quantity || 0);
-                acc.sent += (item.sentQuantity || 0);
+        async function handleSubmitTransferForm(event) {
+            event.preventDefault();
+            const editingId = document.getElementById('editingRequestId').value;
+            if (!dom.fromWarehouse.value || !dom.toWarehouse.value || !dom.requesterName.value || currentTransferItems.length === 0 || !document.getElementById('deliveryDate').value) {
+                return alert("Por favor, completa todos los campos requeridos.");
+            }
+            const transferData = {
+                items: currentTransferItems.map(item => ({ ...item, sentQuantity: 0, receivedQuantity: 0 })),
+                fromWarehouse: dom.fromWarehouse.value,
+                toWarehouse: dom.toWarehouse.value,
+                requesterName: dom.requesterName.value,
+                deliveryDate: document.getElementById('deliveryDate').value,
+                requesterNotes: document.getElementById('requesterNotes').value,
+            };
+            if (editingId) {
+                await transfersCollection.doc(editingId).update(transferData);
+                alert(`Solicitud ${editingId} actualizada.`);
+            } else {
+                const customId = generateCustomId();
+                await transfersCollection.doc(customId).set({ ...transferData, id: customId, status: 'pending', timestamp: firebase.firestore.FieldValue.serverTimestamp() });
+                alert(`Solicitud enviada! ID: ${customId}`);
+            }
+            resetFormToCreateMode();
+        }
+
+        async function handleStartEdit(event) {
+            const requestToEdit = allTransferRequests.find(r => r.id === event.currentTarget.dataset.requestId);
+            if (!requestToEdit) return;
+            document.getElementById('editingRequestId').value = requestToEdit.id;
+            dom.fromWarehouse.value = requestToEdit.fromWarehouse;
+            dom.toWarehouse.value = requestToEdit.toWarehouse;
+            document.getElementById('deliveryDate').value = requestToEdit.deliveryDate;
+            document.getElementById('requesterNotes').value = requestToEdit.requesterNotes || '';
+            currentTransferItems = JSON.parse(JSON.stringify(requestToEdit.items));
+            renderCurrentTransfer();
+            const submitButton = dom.transferForm.querySelector('button[type="submit"]');
+            submitButton.textContent = 'GUARDAR CAMBIOS';
+            submitButton.classList.remove('bg-gray-500', 'hover:bg-gray-600');
+            submitButton.classList.add('bg-blue-600', 'hover:bg-blue-700');
+            dom.transferForm.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function resetFormToCreateMode() {
+            currentTransferItems = [];
+            localStorage.removeItem('currentTransferDraft');
+            renderCurrentTransfer();
+            dom.transferForm.reset();
+            document.getElementById('editingRequestId').value = '';
+            const submitButton = dom.transferForm.querySelector('button[type="submit"]');
+            submitButton.textContent = 'ENVIAR SOLICITUD DE TRASLADO';
+            submitButton.classList.remove('bg-blue-600', 'hover:bg-blue-700');
+            submitButton.classList.add('bg-gray-500', 'hover:bg-gray-600'); 
+            if (currentUserData) dom.requesterName.value = currentUserData.name;
+            document.getElementById('deliveryDate').valueAsDate = new Date();
+        }
+
+        async function handleFinalizeReception(event) {
+            const button = event.currentTarget;
+            const requestId = button.dataset.requestId;
+            button.disabled = true; button.textContent = 'Procesando...';
+            
+            const receptionNotes = document.getElementById(`receptionNotes-${requestId}`).value;
+            const qtyInputs = document.querySelectorAll(`.reception-qty-input[data-request-id="${requestId}"]`);
+            const reqRef = transfersCollection.doc(requestId);
+            
+            const doc = await reqRef.get();
+            if (!doc.exists) return;
+            let items = doc.data().items;
+            let isComplete = true;
+            
+            qtyInputs.forEach((input) => {
+                const index = parseInt(input.dataset.itemIndex, 10);
+                const receivedQty = parseInt(input.value, 10);
+                if (items[index]) {
+                    items[index].receivedQuantity = receivedQty;
+                    if (receivedQty !== items[index].sentQuantity) {
+                        isComplete = false;
+                    }
+                }
             });
-            return acc;
-        }, { requested: 0, sent: 0 });
-        charts.requestedVsSentChart = new Chart(dom.requestedVsSentChart, {
-            type: 'bar', data: { labels: ['Comparativo Global'], datasets: [
-                { label: 'Unidades Solicitadas', data: [requestedVsSentData.requested], backgroundColor: '#3b82f6' },
-                { label: 'Unidades Enviadas', data: [requestedVsSentData.sent], backgroundColor: '#f97316' }
-            ]},
-            options: chartOptions
-        });
-    }
-                async function downloadPdfReport() {
+            
+            const newStatus = isComplete ? 'completed' : 'completed_incomplete';
+            await reqRef.update({ 
+                status: newStatus, 
+                items, 
+                reception: { 
+                    notes: receptionNotes, 
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp(), 
+                    finalizedBy: currentUserData.user.email 
+                } 
+            });
+        }
+        
+        function generateCustomId() {
+            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+            let result = '';
+            for (let i = 0; i < 7; i++) result += chars.charAt(Math.floor(Math.random() * chars.length));
+            return result;
+        }
+        
+        function renderCurrentTransfer() {
+            if (!dom.currentTransferRequest) return;
+            dom.currentTransferRequest.innerHTML = currentTransferItems.length === 0 ? '<p class="text-gray-500 italic text-center py-4">Añade productos.</p>' : '';
+            if (currentTransferItems.length > 0) {
+                const ul = document.createElement('ul');
+                ul.className = 'space-y-2';
+                currentTransferItems.forEach((item, index) => {
+                    const li = document.createElement('li');
+                    li.className = 'flex justify-between items-center p-3 bg-white rounded-lg shadow-sm';
+                    li.innerHTML = `<div><span class="font-medium">${item.productName}</span><span class="text-xs text-gray-500 block">ID: ${item.productId}</span></div><div class="flex items-center space-x-2"><input type="number" min="1" value="${item.quantity}" data-index="${index}" class="w-16 p-1 border rounded item-quantity-input text-center"><button data-index="${index}" class="remove-item-btn text-red-500 font-bold p-1">✕</button></div>`;
+                    ul.appendChild(li);
+                });
+                dom.currentTransferRequest.appendChild(ul);
+                ul.querySelectorAll('.item-quantity-input').forEach(i => i.onchange = (e) => {
+                    const index = e.target.dataset.index;
+                    currentTransferItems[index].quantity = parseInt(e.target.value, 10);
+                    localStorage.setItem('currentTransferDraft', JSON.stringify(currentTransferItems));
+                });
+                ul.querySelectorAll('.remove-item-btn').forEach(b => b.onclick = (e) => {
+                    const index = e.target.dataset.index;
+                    currentTransferItems.splice(index, 1);
+                    localStorage.setItem('currentTransferDraft', JSON.stringify(currentTransferItems));
+                    renderCurrentTransfer();
+                });
+            }
+        }
+
+        async function loadAndTransformProducts() {
+            try {
+                const snapshot = await productsCollection.orderBy("name").get();
+                if (snapshot.empty) { console.warn("La colección 'products' está vacía."); return []; }
+                return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            } catch (error) {
+                console.error("Error al cargar productos: ", error);
+                alert("No se pudo cargar la lista de productos.");
+                return [];
+            }
+        }
+        
+        async function handleProductUpload() {
+            const fileInput = dom.productFile;
+            if (fileInput.files.length === 0) { alert("Por favor, selecciona un archivo primero."); return; }
+            const file = fileInput.files[0];
+            const reader = new FileReader();
+            reader.onload = async (event) => {
+                const statusEl = dom.uploadStatus;
+                let newProducts;
+                try {
+                    const rawData = JSON.parse(event.target.result);
+                    newProducts = transformRawJsonToProducts(rawData);
+                    if (!newProducts || newProducts.length === 0) throw new Error("No se pudieron procesar productos válidos.");
+                } catch (e) {
+                    statusEl.textContent = `Error: ${e.message}`; statusEl.className = 'mt-3 text-sm font-medium text-red-600'; return;
+                }
+                statusEl.textContent = 'Actualizando...'; statusEl.className = 'mt-3 text-sm font-medium text-blue-600';
+                try {
+                    const batch = db.batch();
+                    const oldDocsSnapshot = await productsCollection.get();
+                    oldDocsSnapshot.forEach(doc => batch.delete(doc.ref));
+                    newProducts.forEach(product => {
+                        const docRef = productsCollection.doc(product.id);
+                        batch.set(docRef, { name: product.name, description: product.description || '' });
+                    });
+                    await batch.commit();
+                    statusEl.textContent = `¡Éxito! Se actualizaron ${newProducts.length} productos.`; statusEl.className = 'mt-3 text-sm font-medium text-green-600';
+                    allProducts = await loadAndTransformProducts();
+                    renderProducts(allProducts);
+                } catch (error) {
+                    console.error("Error al actualizar productos:", error); statusEl.textContent = 'Error al subir a la DB.'; statusEl.className = 'mt-3 text-sm font-medium text-red-600';
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        function transformRawJsonToProducts(rawData) {
+            const uniqueProductStrings = new Set();
+            if (Array.isArray(rawData)) {
+                rawData.forEach(item => {
+                    Object.keys(item).forEach(key => key && uniqueProductStrings.add(key.trim()));
+                    Object.values(item).forEach(val => val && uniqueProductStrings.add(val.trim()));
+                });
+            }
+            if (uniqueProductStrings.size === 0) return [];
+            const productsMap = new Map();
+            let genericCounter = 1;
+            uniqueProductStrings.forEach(fullProductName => {
+                const parts = String(fullProductName).split(' - ');
+                let idPart, namePart;
+                if (parts.length > 1 && (/\d/.test(parts[0].trim()) || /^[a-zA-Z]{2,}/.test(parts[0].trim()))) {
+                    idPart = parts[0].trim().replace(/\s+/g, '-');
+                    namePart = parts.slice(1).join(' - ').trim();
+                } else {
+                    idPart = `prod-gen-${genericCounter++}`;
+                    namePart = fullProductName;
+                }
+                let finalId = idPart, idCounter = 1;
+                while (productsMap.has(finalId)) finalId = `${idPart}_${idCounter++}`;
+                productsMap.set(finalId, { id: finalId, name: namePart, description: fullProductName });
+            });
+            return Array.from(productsMap.values()).sort((a, b) => a.name.localeCompare(b.name));
+        }
+        
+        function renderProducts(productsToRender) {
+            if(!dom.productList) return;
+            dom.productList.innerHTML = '';
+            if (!productsToRender || productsToRender.length === 0) {
+                dom.productList.innerHTML = '<p class="text-gray-500 col-span-full text-center">No se encontraron productos.</p>';
+                return;
+            }
+            productsToRender.forEach(product => {
+                const card = document.createElement('div');
+                card.className = 'border p-3 rounded-lg shadow-sm hover:shadow-md transition bg-white';
+                const safeId = product.id.replace(/[^a-zA-Z0-9-_]/g, '');
+                card.innerHTML = `<h3 class="text-sm font-semibold text-gray-900" title="${product.description}">${product.name.length > 50 ? product.name.substring(0, 47) + '...' : product.name}</h3><p class="text-xs text-gray-400 mb-2">ID: ${product.id}</p><div class="flex items-center space-x-2 mt-auto"><input type="number" min="1" value="1" id="qty-${safeId}" class="w-16 border-gray-300 rounded-md text-center p-1"><button data-product-id="${product.id}" class="add-to-transfer-btn w-full bg-gray-800 hover:bg-black text-white text-xs font-bold py-2 px-2 rounded-md transition">Añadir</button></div>`;
+                dom.productList.appendChild(card);
+            });
+            dom.productList.querySelectorAll('.add-to-transfer-btn').forEach(b => b.onclick = handleAddToTransfer);
+        }
+
+        // ==================================================================
+        // INICIO DE LÓGICA PARA INFORMES GERENCIALES
+        // ==================================================================
+        function destroyCharts() {
+            Object.values(charts).forEach(chart => chart.destroy());
+            charts = {};
+        }
+
+        function handleReportGeneration() {
+            const timeRange = dom.reportTimeRange.value;
+            let endDate = new Date();
+            endDate.setHours(23, 59, 59, 999);
+            let startDate = new Date();
+            startDate.setHours(0, 0, 0, 0);
+
+            if (timeRange === 'all_time') {
+                startDate = new Date(0);
+            } else if (timeRange === 'today') {
+                // Ya está configurado
+            } else if (timeRange === 'this_week') {
+                const day = startDate.getDay() || 7; 
+                if( day !== 1 ) startDate.setHours(-24 * (day - 1));
+                startDate.setHours(0, 0, 0, 0);
+            } else if (timeRange === 'this_month') {
+                startDate = new Date(endDate.getFullYear(), endDate.getMonth(), 1);
+            } else if (timeRange === 'last_3_months') {
+                startDate = new Date();
+                startDate.setMonth(startDate.getMonth() - 3);
+            } else if (timeRange === 'custom') {
+                if (!dom.reportDateFrom.value || !dom.reportDateTo.value) {
+                    alert("Por favor, selecciona un rango de fechas personalizado.");
+                    return;
+                }
+                startDate = new Date(dom.reportDateFrom.value + 'T00:00:00');
+                endDate = new Date(dom.reportDateTo.value + 'T23:59:59');
+            }
+
+            lastFilteredRequests = allTransferRequests.filter(req => {
+                if (!req.timestamp?.toDate) return false;
+                const reqDate = req.timestamp.toDate();
+                return reqDate >= startDate && reqDate <= endDate;
+            });
+
+            if (lastFilteredRequests.length === 0) {
+                alert("No se encontraron datos para el rango de fechas seleccionado.");
+                if (dom.reportContainer) dom.reportContainer.style.display = 'none';
+                return;
+            }
+
+            if (dom.reportContainer) dom.reportContainer.style.display = 'block';
+            destroyCharts();
+            generateAllReports(lastFilteredRequests);
+        }
+
+        function generateAllReports(data) {
+            const today = new Date().toLocaleDateString('es-CO', { year: 'numeric', month: 'long', day: 'numeric' });
+            dom.reportDateSubtitle.textContent = `Generado el: ${today}`;
+            
+            dom.kpiTotalRequests.textContent = data.length;
+            dom.kpiCompleted.textContent = data.filter(r => r.status.startsWith('completed')).length;
+            dom.kpiWithNovelty.textContent = data.filter(r => r.status === 'completed_incomplete' || r.status === 'novelty_review').length;
+            dom.kpiCancelled.textContent = data.filter(r => r.status === 'cancelled').length;
+
+            const chartOptions = { responsive: true, maintainAspectRatio: false, animation: false };
+
+            const statusCounts = data.reduce((acc, req) => {
+                const status = translateStatus(req.status, req);
+                acc[status] = (acc[status] || 0) + 1;
+                return acc;
+            }, {});
+            charts.statusChart = new Chart(dom.statusChart, {
+                type: 'doughnut', data: { labels: Object.keys(statusCounts), datasets: [{ data: Object.values(statusCounts), backgroundColor: ['#22c55e', '#ef4444', '#f59e0b', '#3b82f6', '#6b7280', '#8b5cf6', '#f97316', '#06b6d4'] }] },
+                options: chartOptions
+            });
+
+            const productCounts = data.reduce((acc, req) => {
+                if(req.items) req.items.forEach(item => { acc[item.productName] = (acc[item.productName] || 0) + item.quantity; });
+                return acc;
+            }, {});
+            const sortedProducts = Object.entries(productCounts).sort((a, b) => b[1] - a[1]).slice(0, 5);
+            charts.topProductsChart = new Chart(dom.topProductsChart, {
+                type: 'bar', data: { labels: sortedProducts.map(p => p[0].slice(0, 20) + '...'), datasets: [{ label: 'Unidades Solicitadas', data: sortedProducts.map(p => p[1]), backgroundColor: '#1f2937' }] },
+                options: { ...chartOptions, indexAxis: 'y', plugins: { legend: { display: false } } }
+            });
+
+            const warehouseCounts = data.reduce((acc, req) => {
+                if (req.toWarehouse) acc[req.toWarehouse] = (acc[req.toWarehouse] || 0) + 1;
+                return acc;
+            }, {});
+            charts.warehouseChart = new Chart(dom.warehouseChart, {
+                type: 'pie', data: { labels: Object.keys(warehouseCounts), datasets: [{ data: Object.values(warehouseCounts), backgroundColor: ['#1d4ed8', '#059669', '#d97706', '#dc2626', '#6d28d9', '#db2777'] }] },
+                options: chartOptions
+            });
+            
+            const fulfillmentData = data.filter(r => r.status.startsWith('completed')).reduce((acc, req) => {
+                if(req.items) req.items.forEach(item => {
+                    acc.sent += (item.sentQuantity || 0);
+                    acc.received += (item.receivedQuantity || 0);
+                });
+                return acc;
+            }, { sent: 0, received: 0 });
+            charts.fulfillmentChart = new Chart(dom.fulfillmentChart, {
+                type: 'bar', data: { labels: ['Cumplimiento'], datasets: [
+                    { label: 'Unidades Enviadas', data: [fulfillmentData.sent], backgroundColor: '#a8a29e' },
+                    { label: 'Unidades Recibidas', data: [fulfillmentData.received], backgroundColor: '#16a34a' }
+                ]},
+                options: chartOptions
+            });
+
+            const requestedVsSentData = data.reduce((acc, req) => {
+                if(req.items) req.items.forEach(item => {
+                    acc.requested += (item.quantity || 0);
+                    acc.sent += (item.sentQuantity || 0);
+                });
+                return acc;
+            }, { requested: 0, sent: 0 });
+            charts.requestedVsSentChart = new Chart(dom.requestedVsSentChart, {
+                type: 'bar', data: { labels: ['Comparativo Global'], datasets: [
+                    { label: 'Unidades Solicitadas', data: [requestedVsSentData.requested], backgroundColor: '#3b82f6' },
+                    { label: 'Unidades Enviadas', data: [requestedVsSentData.sent], backgroundColor: '#f97316' }
+                ]},
+                options: chartOptions
+            });
+        }
+        
+        async function downloadPdfReport() {
             const reportElement = dom.reportContent;
-
-            // 1. Clonar el elemento
             const clone = reportElement.cloneNode(true);
 
-            // 2. ¡IMPORTANTE! Limpiar los estilos de los cuadros del CLON para que el PDF salga limpio
             const styledChartWrappers = clone.querySelectorAll('.bg-white.p-6.rounded-xl.shadow-lg.border');
             styledChartWrappers.forEach(wrapper => {
-                // Quitar todas las clases que crean el efecto de "cuadro"
                 wrapper.classList.remove('bg-white', 'p-6', 'rounded-xl', 'shadow-lg', 'border', 'border-gray-200');
             });
 
-            // 3. Convertir los canvas a imágenes estáticas en el clon (esto ya funciona)
             for (const id in charts) {
                 const originalCanvas = document.getElementById(id);
                 const clonedCanvas = clone.querySelector(`#${id}`);
@@ -1242,30 +1237,22 @@
                 }
             }
 
-            // 4. Aplicar estilos de paginación y diseño final al clon
             const chartsGrid = clone.querySelector('.grid.lg\\:grid-cols-2'); 
             if (chartsGrid) {
-                // Forzar al contenedor principal de los gráficos a ser un bloque simple
                 chartsGrid.style.display = 'block';
-
                 const chartWrappers = chartsGrid.querySelectorAll(':scope > div');
-
                 chartWrappers.forEach((wrapper, index) => {
-                    // Forzar a que los wrappers se apilen verticalmente en el PDF
                     wrapper.style.display = 'block'; 
                     wrapper.style.width = 'auto'; 
                     wrapper.style.boxSizing = 'border-box';
-                    wrapper.style.padding = '10mm'; // Añadir un buen espacio entre gráficos
-                    wrapper.style.pageBreakInside = 'avoid'; // Evitar cortes feos
-
-                    // Lógica de paginación: Salto de página ANTES del TERCER gráfico (índice 2)
+                    wrapper.style.padding = '10mm';
+                    wrapper.style.pageBreakInside = 'avoid';
                     if (index >= 2) {
                         wrapper.style.pageBreakBefore = 'always';
                     }
                 });
             }
 
-            // 5. Preparar el contenedor invisible para el clon
             const pdfContainer = document.createElement('div');
             pdfContainer.style.position = 'fixed';
             pdfContainer.style.top = '0';
@@ -1273,14 +1260,13 @@
             pdfContainer.style.width = '210mm';
 
             clone.style.backgroundColor = 'white';
-            clone.style.padding = '0'; // Quitar padding extra
+            clone.style.padding = '0';
             pdfContainer.appendChild(clone);
             document.body.appendChild(pdfContainer);
 
-            // 6. Configurar y generar el PDF
             const today = new Date().toISOString().slice(0, 10);
             const opt = {
-                margin: 10, // Margen general de 1cm
+                margin: 10,
                 filename: `Informe_Gerencial_${today}.pdf`,
                 image: { type: 'jpeg', quality: 0.98 },
                 html2canvas: { scale: 2, useCORS: true },
@@ -1293,103 +1279,103 @@
                 console.error("Error al generar el PDF:", error);
                 alert("Ocurrió un error al generar el PDF.");
             } finally {
-                // 7. Limpieza final
                 document.body.removeChild(pdfContainer);
             }
         }
-    function exportManagerReport() {
-        if (lastFilteredRequests.length === 0) {
-            alert("Primero genera un resumen para poder exportar los datos.");
-            return;
-        }
-        
-        let excelData = [];
-        lastFilteredRequests.forEach(req => {
-            const creationDate = req.timestamp ? new Date(req.timestamp.seconds * 1000).toLocaleString('es-CO') : 'N/A';
-            if (req.items && req.items.length > 0) {
-                req.items.forEach(item => {
+
+        function exportManagerReport() {
+            if (lastFilteredRequests.length === 0) {
+                alert("Primero genera un resumen para poder exportar los datos.");
+                return;
+            }
+            
+            let excelData = [];
+            lastFilteredRequests.forEach(req => {
+                const creationDate = req.timestamp ? new Date(req.timestamp.seconds * 1000).toLocaleString('es-CO') : 'N/A';
+                if (req.items && req.items.length > 0) {
+                    req.items.forEach(item => {
+                        excelData.push({ 
+                            'ID Traslado': req.id, 'Estado': translateStatus(req.status, req), 'Fecha Creación': creationDate, 
+                            'Solicitante': req.requesterName, 'Bodega Origen': req.fromWarehouse, 'Bodega Destino': req.toWarehouse, 
+                            'ID Producto': item.productId, 'Nombre Producto': item.productName, 
+                            'U. Solicitadas': item.quantity, 'U. Enviadas': item.sentQuantity, 'U. Recibidas': item.receivedQuantity, 
+                            'Diferencia': (item.receivedQuantity ?? 0) - (item.sentQuantity ?? 0),
+                            'Nota Solicitante': req.requesterNotes || '', 'Nota Admin': req.adminNotes || '', 'Nº NT': req.ntNumber || ''
+                        });
+                    });
+                } else {
                     excelData.push({ 
                         'ID Traslado': req.id, 'Estado': translateStatus(req.status, req), 'Fecha Creación': creationDate, 
                         'Solicitante': req.requesterName, 'Bodega Origen': req.fromWarehouse, 'Bodega Destino': req.toWarehouse, 
-                        'ID Producto': item.productId, 'Nombre Producto': item.productName, 
-                        'U. Solicitadas': item.quantity, 'U. Enviadas': item.sentQuantity, 'U. Recibidas': item.receivedQuantity, 
-                        'Diferencia': (item.receivedQuantity ?? 0) - (item.sentQuantity ?? 0),
+                        'ID Producto': 'N/A', 'Nombre Producto': 'Sin items', 
+                        'U. Solicitadas': 0, 'U. Enviadas': 0, 'U. Recibidas': 0, 'Diferencia': 0,
                         'Nota Solicitante': req.requesterNotes || '', 'Nota Admin': req.adminNotes || '', 'Nº NT': req.ntNumber || ''
                     });
-                });
-            } else {
-                excelData.push({ 
-                    'ID Traslado': req.id, 'Estado': translateStatus(req.status, req), 'Fecha Creación': creationDate, 
-                    'Solicitante': req.requesterName, 'Bodega Origen': req.fromWarehouse, 'Bodega Destino': req.toWarehouse, 
-                    'ID Producto': 'N/A', 'Nombre Producto': 'Sin items', 
-                    'U. Solicitadas': 0, 'U. Enviadas': 0, 'U. Recibidas': 0, 'Diferencia': 0,
-                    'Nota Solicitante': req.requesterNotes || '', 'Nota Admin': req.adminNotes || '', 'Nº NT': req.ntNumber || ''
-                });
-            }
-        });
-
-        const worksheet = XLSX.utils.json_to_sheet(excelData);
-        const workbook = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(workbook, worksheet, "InformeGerencial");
-        worksheet['!cols'] = [ { wch: 15 }, { wch: 30 }, { wch: 20 }, { wch: 25 }, { wch: 25 }, { wch: 25 }, { wch: 20 }, { wch: 40 }, { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 12 }, { wch: 50 }, { wch: 50 }, { wch: 20 }];
-        
-        const today = new Date().toISOString().slice(0, 10);
-        XLSX.writeFile(workbook, `Informe_Gerencial_Traslados_${today}.xlsx`);
-    }
-    
-    async function initializeApp() {
-        setupUIForUser();
-        allProducts = await loadAndTransformProducts();
-        
-        if(currentUserData.role === 'requester'){
-            renderProducts(allProducts);
-            renderCurrentTransfer();
-        }
-        
-        if(document.getElementById('deliveryDate')) {
-            document.getElementById('deliveryDate').valueAsDate = new Date();
-        }
-        
-        const warehouseOptions = ['Bodega Cali Centro', 'Bodega Cali Sur', 'Bodega Pasto', 'Bodega Tulua', 'Bodega Medellín'];
-        const originWarehouseOptions = ['Bodega Principal', ...warehouseOptions];
-        
-        if(dom.fromWarehouse) dom.fromWarehouse.innerHTML = '<option value="" selected disabled>-- Seleccione una bodega --</option>' + 
-                                      originWarehouseOptions.map(w => `<option value="${w}">${w}</option>`).join('');
-        if(dom.toWarehouse) dom.toWarehouse.innerHTML = '<option value="" selected disabled>-- Seleccione una bodega --</option>' + 
-                                    warehouseOptions.map(w => `<option value="${w}">${w}</option>`).join('');
-        
-        if (dom.exportExcelBtn) dom.exportExcelBtn.addEventListener('click', exportManagerReport);
-        if (dom.uploadProductsBtn) dom.uploadProductsBtn.addEventListener('click', handleProductUpload);
-        if (dom.transferForm) dom.transferForm.addEventListener('submit', handleSubmitTransferForm);
-        if (dom.searchInput) dom.searchInput.addEventListener('input', () => renderProducts(allProducts.filter(p => p.name.toLowerCase().includes(dom.searchInput.value.toLowerCase()))));
-        if (dom.productFile) dom.productFile.addEventListener('change', () => { dom.fileNameDisplay.textContent = dom.productFile.files.length > 0 ? dom.productFile.files[0].name : 'Ningún archivo seleccionado.'; dom.uploadStatus.textContent = ''; });
-        
-        ['requesterSearchId', 'requesterDateFrom', 'requesterDateTo', 'adminActiveSearchId', 'adminActiveDateFrom', 'adminActiveDateTo', 'adminHistorySearchId', 'adminHistoryDateFrom', 'adminHistoryDateTo', 'reviewerSearchId', 'reviewerDateFrom', 'reviewerDateTo'].forEach(id => {
-            const element = dom[id];
-            if (element) {
-                element.addEventListener('input', renderAllSections);
-            }
-        });
-
-        if (dom.reportTimeRange) {
-            dom.reportTimeRange.addEventListener('change', () => {
-                dom.customDateRange.classList.toggle('hidden', dom.reportTimeRange.value !== 'custom');
+                }
             });
-        }
-        if (dom.generateReportBtn) dom.generateReportBtn.addEventListener('click', handleReportGeneration);
-        if (dom.exportManagerReportBtn) dom.exportManagerReportBtn.addEventListener('click', exportManagerReport);
-        if (dom.downloadPdfBtn) dom.downloadPdfBtn.addEventListener('click', downloadPdfReport);
 
-        transfersCollection.orderBy("timestamp", "desc").onSnapshot(snapshot => {
-            allTransferRequests = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            renderAllSections();
-             if (currentUserData.role === 'manager' || currentUserData.role === 'admin') {
-                if (dom.reportContainer && dom.reportContainer.style.display === 'block') {
+            const worksheet = XLSX.utils.json_to_sheet(excelData);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "InformeGerencial");
+            worksheet['!cols'] = [ { wch: 15 }, { wch: 30 }, { wch: 20 }, { wch: 25 }, { wch: 25 }, { wch: 25 }, { wch: 20 }, { wch: 40 }, { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 12 }, { wch: 50 }, { wch: 50 }, { wch: 20 }];
+            
+            const today = new Date().toISOString().slice(0, 10);
+            XLSX.writeFile(workbook, `Informe_Gerencial_Traslados_${today}.xlsx`);
+        }
+        
+        async function initializeApp() {
+            setupUIForUser();
+            allProducts = await loadAndTransformProducts();
+            
+            if(currentUserData.role === 'requester'){
+                renderProducts(allProducts);
+                renderCurrentTransfer();
+            }
+            
+            if(document.getElementById('deliveryDate')) {
+                document.getElementById('deliveryDate').valueAsDate = new Date();
+            }
+            
+            const warehouseOptions = ['Bodega Cali Centro', 'Bodega Cali Sur', 'Bodega Pasto', 'Bodega Tulua', 'Bodega Medellín'];
+            const originWarehouseOptions = ['Bodega Principal', ...warehouseOptions];
+            
+            if(dom.fromWarehouse) dom.fromWarehouse.innerHTML = '<option value="" selected disabled>-- Seleccione una bodega --</option>' + 
+                                          originWarehouseOptions.map(w => `<option value="${w}">${w}</option>`).join('');
+            if(dom.toWarehouse) dom.toWarehouse.innerHTML = '<option value="" selected disabled>-- Seleccione una bodega --</option>' + 
+                                        warehouseOptions.map(w => `<option value="${w}">${w}</option>`).join('');
+            
+            if (dom.exportExcelBtn) dom.exportExcelBtn.addEventListener('click', exportManagerReport);
+            if (dom.uploadProductsBtn) dom.uploadProductsBtn.addEventListener('click', handleProductUpload);
+            if (dom.transferForm) dom.transferForm.addEventListener('submit', handleSubmitTransferForm);
+            if (dom.searchInput) dom.searchInput.addEventListener('input', () => renderProducts(allProducts.filter(p => p.name.toLowerCase().includes(dom.searchInput.value.toLowerCase()))));
+            if (dom.productFile) dom.productFile.addEventListener('change', () => { dom.fileNameDisplay.textContent = dom.productFile.files.length > 0 ? dom.productFile.files[0].name : 'Ningún archivo seleccionado.'; dom.uploadStatus.textContent = ''; });
+            
+            ['requesterSearchId', 'requesterDateFrom', 'requesterDateTo', 'adminActiveSearchId', 'adminActiveDateFrom', 'adminActiveDateTo', 'adminHistorySearchId', 'adminHistoryDateFrom', 'adminHistoryDateTo', 'reviewerSearchId', 'reviewerDateFrom', 'reviewerDateTo'].forEach(id => {
+                const element = dom[id];
+                if (element) {
+                    element.addEventListener('input', renderAllSections);
+                }
+            });
+
+            if (dom.reportTimeRange) {
+                dom.reportTimeRange.addEventListener('change', () => {
+                    dom.customDateRange.classList.toggle('hidden', dom.reportTimeRange.value !== 'custom');
+                });
+            }
+            if (dom.generateReportBtn) dom.generateReportBtn.addEventListener('click', handleReportGeneration);
+            if (dom.exportManagerReportBtn) dom.exportManagerReportBtn.addEventListener('click', exportManagerReport);
+            if (dom.downloadPdfBtn) dom.downloadPdfBtn.addEventListener('click', downloadPdfReport);
+
+            transfersCollection.orderBy("timestamp", "desc").onSnapshot(snapshot => {
+                allTransferRequests = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                renderAllSections();
+                 if ((currentUserData.role === 'manager' || currentUserData.role === 'admin') && dom.reportContainer && dom.reportContainer.style.display === 'block') {
                     handleReportGeneration();
                 }
-            }
-        }, error => console.error("Error al conectar: ", error));
-    }
-}); // FIN DEL DOMContentLoaded
+            }, error => console.error("Error al conectar: ", error));
+        }
+
+    });
 </script>
+</body>
 </html>
