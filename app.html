@@ -1139,8 +1139,7 @@
             destroyCharts();
             generateAllReports(lastFilteredRequests);
         }
-
-        function generateAllReports(data) {
+                function generateAllReports(data) {
             const today = new Date().toLocaleDateString('es-CO', { year: 'numeric', month: 'long', day: 'numeric' });
             dom.reportDateSubtitle.textContent = `Generado el: ${today}`;
             
@@ -1151,6 +1150,7 @@
 
             const chartOptions = { responsive: true, maintainAspectRatio: false, animation: false };
 
+            // Cálculo del gráfico de estados (este es robusto)
             const statusCounts = data.reduce((acc, req) => {
                 const status = translateStatus(req.status, req);
                 acc[status] = (acc[status] || 0) + 1;
@@ -1161,8 +1161,18 @@
                 options: chartOptions
             });
 
+            // --- INICIO DE CORRECCIONES ---
+
+            // Cálculo de productos con verificación de datos
             const productCounts = data.reduce((acc, req) => {
-                if(req.items) req.items.forEach(item => { acc[item.productName] = (acc[item.productName] || 0) + item.quantity; });
+                if (req.items && Array.isArray(req.items)) { // VERIFICA si 'items' existe y es un array
+                    req.items.forEach(item => {
+                        // VERIFICA si 'item' y sus propiedades necesarias existen
+                        if (item && item.productName && typeof item.quantity === 'number') {
+                            acc[item.productName] = (acc[item.productName] || 0) + item.quantity;
+                        }
+                    });
+                }
                 return acc;
             }, {});
             const sortedProducts = Object.entries(productCounts).sort((a, b) => b[1] - a[1]).slice(0, 5);
@@ -1171,8 +1181,11 @@
                 options: { ...chartOptions, indexAxis: 'y', plugins: { legend: { display: false } } }
             });
 
+            // Cálculo de bodegas con verificación de datos
             const warehouseCounts = data.reduce((acc, req) => {
-                if (req.toWarehouse) acc[req.toWarehouse] = (acc[req.toWarehouse] || 0) + 1;
+                if (req.toWarehouse) { // VERIFICA si 'toWarehouse' existe
+                    acc[req.toWarehouse] = (acc[req.toWarehouse] || 0) + 1;
+                }
                 return acc;
             }, {});
             charts.warehouseChart = new Chart(dom.warehouseChart, {
@@ -1180,11 +1193,16 @@
                 options: chartOptions
             });
             
+            // Cálculo de cumplimiento con verificación de datos
             const fulfillmentData = data.filter(r => r.status.startsWith('completed')).reduce((acc, req) => {
-                if(req.items) req.items.forEach(item => {
-                    acc.sent += (item.sentQuantity || 0);
-                    acc.received += (item.receivedQuantity || 0);
-                });
+                if(req.items && Array.isArray(req.items)) { // VERIFICA
+                    req.items.forEach(item => {
+                        if (item) { // VERIFICA
+                            acc.sent += (item.sentQuantity || 0);
+                            acc.received += (item.receivedQuantity || 0);
+                        }
+                    });
+                }
                 return acc;
             }, { sent: 0, received: 0 });
             charts.fulfillmentChart = new Chart(dom.fulfillmentChart, {
@@ -1195,11 +1213,16 @@
                 options: chartOptions
             });
 
+            // Cálculo de solicitadas vs enviadas con verificación de datos
             const requestedVsSentData = data.reduce((acc, req) => {
-                if(req.items) req.items.forEach(item => {
-                    acc.requested += (item.quantity || 0);
-                    acc.sent += (item.sentQuantity || 0);
-                });
+                if(req.items && Array.isArray(req.items)) { // VERIFICA
+                    req.items.forEach(item => {
+                        if(item) { // VERIFICA
+                            acc.requested += (item.quantity || 0);
+                            acc.sent += (item.sentQuantity || 0);
+                        }
+                    });
+                }
                 return acc;
             }, { requested: 0, sent: 0 });
             charts.requestedVsSentChart = new Chart(dom.requestedVsSentChart, {
@@ -1209,6 +1232,8 @@
                 ]},
                 options: chartOptions
             });
+            
+            // --- FIN DE CORRECCIONES ---
         }
         
         async function downloadPdfReport() {
