@@ -1257,7 +1257,7 @@
                 options: chartOptions
             });
         }
-                async function downloadPdfReport() {
+                        async function downloadPdfReport() {
             // 1. Recopilar todos los datos necesarios para el informe
             const reportTitle = "Informe Gerencial de Traslados";
             const reportSubtitle = document.getElementById('reportDateSubtitle').textContent;
@@ -1272,7 +1272,6 @@
                 "Con Novedad": '#f59e0b',
                 "Canceladas": '#ef4444'
             };
-            // Se toman los datos completos para el PDF, independientemente de la vista en la UI
             const productCounts = lastFilteredRequests.reduce((acc, req) => {
                 if (req.items && Array.isArray(req.items)) {
                     req.items.forEach(item => {
@@ -1313,14 +1312,14 @@
                 }
             };
             
-            // 2. Construir el HTML del PDF con un diseño profesional y paginación correcta
+            // 2. Construir el HTML del PDF con la lógica de paginación corregida
             let pdfHtml = `
                 <html>
                 <head>
                     <style>
                         body { font-family: Arial, sans-serif; color: #374151; }
                         .pdf-page {
-                            /* Se elimina la altura fija y page-break-after */
+                            /* Se elimina la altura fija para que el contenido fluya naturalmente */
                             width: 100%;
                             padding: 20mm 15mm;
                             box-sizing: border-box;
@@ -1329,12 +1328,13 @@
                             align-items: center;
                             justify-content: flex-start; /* Alinea contenido arriba */
                         }
-                        /* --- CAMBIO CLAVE: Lógica de paginación corregida --- */
+                        /* --- LA SOLUCIÓN CLAVE ESTÁ AQUÍ --- */
+                        /* Cada .pdf-page, EXCEPTO la primera, comenzará en una página nueva. */
                         .pdf-page:not(:first-child) {
                             page-break-before: always;
                         }
-                        /* La portada necesita una altura fija para poder centrarse verticalmente */
                         .cover-page {
+                            /* La portada sí necesita altura para centrarse verticalmente */
                             height: 277mm;
                             justify-content: center;
                         }
@@ -1353,7 +1353,7 @@
                     </style>
                 </head>
                 <body>
-                    <!-- Página 1: Portada (No tiene page-break-before porque es el :first-child) -->
+                    <!-- Página 1: Portada (Como es el :first-child, no tendrá un salto de página antes) -->
                     <div class="pdf-page cover-page">
                         <div class="pdf-header">
                             <h1>${reportTitle}</h1>
