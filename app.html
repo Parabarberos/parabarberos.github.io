@@ -1278,7 +1278,6 @@
                 "Canceladas": '#ef4444'
             };
             
-            // Se toman los datos completos para el PDF, independientemente de la vista en la UI
             const productCounts = lastFilteredRequests.reduce((acc, req) => {
                 if (req.items && Array.isArray(req.items)) {
                     req.items.forEach(item => {
@@ -1319,137 +1318,112 @@
                 }
             };
             
-            // Contenedor invisible para construir los elementos del PDF
-            const pdfBuilder = document.createElement('div');
-            pdfBuilder.style.position = 'absolute';
-            pdfBuilder.style.left = '-9999px';
-            pdfBuilder.style.top = '0';
-            document.body.appendChild(pdfBuilder);
-
-            // 2. Crear un array de elementos HTML, donde cada elemento es una página
-            const pages = [];
-
-            // Página 1: Portada
-            const coverPage = document.createElement('div');
-            coverPage.className = 'pdf-page cover-page';
-            coverPage.innerHTML = `
-                <div class="pdf-header">
-                    <h1>${reportTitle}</h1>
-                    <p>${reportSubtitle}</p>
-                </div>
-                <div class="kpi-grid">
-                    ${Object.entries(kpis).map(([key, value]) => `
-                        <div class="kpi-item">
-                            <h3>${key}</h3>
-                            <p style="color: ${kpiColors[key] || '#111827'};">${value}</p>
+            // 2. Construir el HTML del PDF con un diseño profesional
+            let pdfHtml = `
+                <html>
+                <head>
+                    <style>
+                        body { font-family: Arial, sans-serif; color: #374151; }
+                        /* Se elimina CUALQUIER regla de page-break de aquí */
+                        .pdf-page {
+                            width: 100%;
+                            padding: 20mm 15mm;
+                            box-sizing: border-box;
+                            display: flex;
+                            flex-direction: column;
+                            align-items: center;
+                            justify-content: flex-start;
+                        }
+                        .cover-page { height: 277mm; justify-content: center; }
+                        .pdf-header { text-align: center; margin-bottom: 50px; width: 100%; }
+                        .pdf-header h1 { font-size: 28px; margin-bottom: 8px; color: #111827; }
+                        .pdf-header p { font-size: 14px; color: #6B7280; }
+                        .kpi-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 25px 50px; text-align: center; }
+                        .kpi-item h3 { font-size: 14px; color: #6B7280; font-weight: normal; margin-bottom: 5px; text-transform: uppercase; }
+                        .kpi-item p { font-size: 32px; font-weight: bold; margin: 0; }
+                        .chart-title { font-size: 22px; font-weight: 600; text-align: center; margin-bottom: 25px; color: #111827; }
+                        .chart-image { max-width: 180mm; max-height: 220mm; display: block; margin: auto; }
+                        .data-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+                        .data-table th, .data-table td { border: 1px solid #DEE2E6; padding: 10px; text-align: left; }
+                        .data-table th { background-color: #F8F9FA; font-weight: bold; }
+                        .data-table tr:nth-child(even) { background-color: #F8F9FA; }
+                    </style>
+                </head>
+                <body>
+                    <!-- Portada (sin clase de salto de página) -->
+                    <div class="pdf-page cover-page">
+                        <div class="pdf-header">
+                            <h1>${reportTitle}</h1>
+                            <p>${reportSubtitle}</p>
                         </div>
-                    `).join('')}
-                </div>`;
-            pages.push(coverPage);
+                        <div class="kpi-grid">
+                            ${Object.entries(kpis).map(([key, value]) => `
+                                <div class="kpi-item">
+                                    <h3>${key}</h3>
+                                    <p style="color: ${kpiColors[key] || '#111827'};">${value}</p>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>`;
 
-            // Crear el resto de páginas
+            // 3. Crear el resto de páginas, añadiendo la clase especial para el salto
             for (const chartId in chartDataForPdf) {
                 const item = chartDataForPdf[chartId];
                 
-                // Página del Gráfico
-                const chartPage = document.createElement('div');
-                chartPage.className = 'pdf-page';
-                chartPage.innerHTML = `
-                    <h2 class="chart-title">${item.title}</h2>
-                    <img src="${charts[chartId].toBase64Image()}" class="chart-image">`;
-                pages.push(chartPage);
+                // Página del Gráfico con la clase para el salto
+                pdfHtml += `
+                    <div class="pdf-page pdf-section-break">
+                        <h2 class="chart-title">${item.title}</h2>
+                        <img src="${charts[chartId].toBase64Image()}" class="chart-image">
+                    </div>`;
 
-                // --- LÓGICA PARA DIVIDIR TABLAS GRANDES ---
-                if (chartId === 'topProductsChart') {
-                    const fullData = item.data;
-                    const chunkSize = 25; // Máximo de filas por página para esta tabla
-                    const numChunks = Math.ceil(fullData.length / chunkSize);
+                // Página de la Tabla con la clase para el salto
+                const chunkSize = 25; // Dividir tablas largas en trozos de 25 filas
+                const dataChunks = [];
+                for (let i = 0; i < item.data.length; i += chunkSize) {
+                    dataChunks.push(item.data.slice(i, i + chunkSize));
+                }
 
-                    for (let i = 0; i < numChunks; i++) {
-                        const chunkData = fullData.slice(i * chunkSize, (i + 1) * chunkSize);
-                        const chunkTitle = `${item.title} - Datos Detallados (Página ${i + 1} de ${numChunks})`;
-                        const tablePage = document.createElement('div');
-                        tablePage.className = 'pdf-page';
-                        tablePage.innerHTML = `
-                            <h2 class="chart-title">${chunkTitle}</h2>
+                dataChunks.forEach((chunk, index) => {
+                    const pageTitle = dataChunks.length > 1 
+                        ? `${item.title} - Datos Detallados (Página ${index + 1})` 
+                        : `${item.title} - Datos Detallados`;
+                    
+                    pdfHtml += `
+                        <div class="pdf-page pdf-section-break">
+                            <h2 class="chart-title">${pageTitle}</h2>
                             <table class="data-table">
                                 <thead><tr>${item.headers.map(h => `<th>${h}</th>`).join('')}</tr></thead>
-                                <tbody>${chunkData.map(row => `<tr>${row.map(cell => `<td>${cell}</td>`).join('')}</tr>`).join('')}</tbody>
-                            </table>`;
-                        pages.push(tablePage);
-                    }
-                } else {
-                    // Página de la Tabla (para tablas normales y cortas)
-                    const tablePage = document.createElement('div');
-                    tablePage.className = 'pdf-page';
-                    tablePage.innerHTML = `
-                        <h2 class="chart-title">${item.title} - Datos Detallados</h2>
-                        <table class="data-table">
-                            <thead><tr>${item.headers.map(h => `<th>${h}</th>`).join('')}</tr></thead>
-                            <tbody>${item.data.map(row => `<tr>${row.map(cell => `<td>${cell}</td>`).join('')}</tr>`).join('')}</tbody>
-                        </table>`;
-                    pages.push(tablePage);
-                }
+                                <tbody>${chunk.map(row => `<tr>${row.map(cell => `<td>${cell}</td>`).join('')}</tr>`).join('')}</tbody>
+                            </table>
+                        </div>`;
+                });
             }
 
-            // Añadir estilos globales
-            const style = document.createElement('style');
-            style.innerHTML = `
-                .pdf-page {
-                    width: 210mm;
-                    min-height: 297mm;
-                    padding: 20mm 15mm;
-                    box-sizing: border-box;
-                    display: flex;
-                    flex-direction: column;
-                    align-items: center;
-                    justify-content: flex-start;
-                    font-family: Arial, sans-serif; 
-                    color: #374151;
-                }
-                .cover-page { justify-content: center; }
-                .pdf-header { text-align: center; margin-bottom: 50px; width: 100%; }
-                .pdf-header h1 { font-size: 28px; margin-bottom: 8px; color: #111827; }
-                .pdf-header p { font-size: 14px; color: #6B7280; }
-                .kpi-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 25px 50px; text-align: center; }
-                .kpi-item h3 { font-size: 14px; color: #6B7280; font-weight: normal; margin-bottom: 5px; text-transform: uppercase; }
-                .kpi-item p { font-size: 32px; font-weight: bold; margin: 0; }
-                .chart-title { font-size: 22px; font-weight: 600; text-align: center; margin-bottom: 25px; color: #111827; }
-                .chart-image { max-width: 180mm; max-height: 220mm; display: block; margin: auto; }
-                .data-table { width: 100%; border-collapse: collapse; font-size: 12px; }
-                .data-table th, .data-table td { border: 1px solid #DEE2E6; padding: 10px; text-align: left; }
-                .data-table th { background-color: #F8F9FA; font-weight: bold; }
-                .data-table tr:nth-child(even) { background-color: #F8F9FA; }
-            `;
-            pdfBuilder.appendChild(style);
-
-            // 3. Usar el worker de html2pdf para procesar cada página secuencialmente
+            pdfHtml += `</body></html>`;
+            
+            const pdfElement = document.createElement('div');
+            pdfElement.innerHTML = pdfHtml;
             const today = new Date().toISOString().slice(0, 10);
+
+            // --- LA PARTE QUE REGULA TODO ---
             const opt = {
-                margin: 0,
+                margin: 0, // El padding ya está en el CSS
                 filename: `Informe_Gerencial_${today}.pdf`,
                 image: { type: 'jpeg', quality: 0.98 },
                 html2canvas: { scale: 2, useCORS: true },
-                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+                // Esta es la orden directa a la librería:
+                pagebreak: { mode: 'css', before: '.pdf-section-break' }
             };
-            
-            const worker = html2pdf().set(opt);
-
-            for (let i = 0; i < pages.length; i++) {
-                pdfBuilder.appendChild(pages[i]);
-                worker.from(pages[i]);
-                if (i < pages.length - 1) {
-                    worker.addPage();
-                }
-            }
 
             try {
-                await worker.save();
+                await html2pdf().from(pdfElement).set(opt).save();
             } catch (error) {
                 console.error("Error al generar el PDF:", error);
                 alert("Ocurrió un error al generar el PDF.");
             } finally {
-                document.body.removeChild(pdfBuilder);
+                // Restaurar el botón
                 dom.downloadPdfBtn.innerHTML = originalButtonText;
                 dom.downloadPdfBtn.disabled = false;
             }
