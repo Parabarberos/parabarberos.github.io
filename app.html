@@ -1259,18 +1259,18 @@
         }
         
         function createDataTable(title, headers, rows) {
-            let tableHTML = `<div style="margin-top: 20px; width: 100%;">
-                <h4 style="font-size: 14px; font-weight: 600; text-align: center; margin-bottom: 8px;">${title}</h4>
-                <table style="width: 100%; border-collapse: collapse; font-size: 10px;">
+            let tableHTML = `<div style="padding: 10mm; box-sizing: border-box; width: 100%;">
+                <h3 style="font-size: 18px; font-weight: 600; text-align: center; margin-bottom: 15px; font-family: Arial, sans-serif;">${title} - Datos</h3>
+                <table style="width: 100%; border-collapse: collapse; font-size: 10px; font-family: Arial, sans-serif;">
                     <thead>
                         <tr style="background-color: #F3F4F6;">
-                            ${headers.map(h => `<th style="border: 1px solid #E5E7EB; padding: 6px; text-align: left;">${h}</th>`).join('')}
+                            ${headers.map(h => `<th style="border: 1px solid #DEE2E6; padding: 8px; text-align: left; font-weight: 600;">${h}</th>`).join('')}
                         </tr>
                     </thead>
                     <tbody>
                         ${rows.map(row => `
                             <tr>
-                                ${row.map(cell => `<td style="border: 1px solid #E5E7EB; padding: 6px;">${cell}</td>`).join('')}
+                                ${row.map(cell => `<td style="border: 1px solid #DEE2E6; padding: 8px;">${cell}</td>`).join('')}
                             </tr>
                         `).join('')}
                     </tbody>
@@ -1286,47 +1286,53 @@
             const originalChartsGrid = clone.querySelector('.grid.lg\\:grid-cols-2');
             if(originalChartsGrid) originalChartsGrid.innerHTML = '';
 
-            // --- GENERACIÓN DE DATOS PARA LAS TABLAS ---
-            const statusData = Object.entries(charts.statusChart.data.datasets[0].data).map(([index, value]) => [charts.statusChart.data.labels[index], value]);
-            const productsData = Object.entries(charts.topProductsChart.data.datasets[0].data).map(([index, value]) => [charts.topProductsChart.data.labels[index].replace('...', ''), value]);
-            const warehouseData = Object.entries(charts.warehouseChart.data.datasets[0].data).map(([index, value]) => [charts.warehouseChart.data.labels[index], value]);
-            const fulfillmentData = [
-                ['Unidades Enviadas', charts.fulfillmentChart.data.datasets[0].data[0]],
-                ['Unidades Recibidas', charts.fulfillmentChart.data.datasets[1].data[0]]
-            ];
-            const reqVsSentData = [
-                ['Unidades Solicitadas', charts.requestedVsSentChart.data.datasets[0].data[0]],
-                ['Unidades Enviadas', charts.requestedVsSentChart.data.datasets[1].data[0]]
-            ];
-            
+            const kpisContainer = clone.querySelector('.grid.md\\:grid-cols-4');
+            if(kpisContainer) kpisContainer.style.pageBreakAfter = 'always';
+
+            const productCountsForPdf = Object.entries(charts.topProductsChart.data.datasets[0].data)
+                .map(([index, value]) => [charts.topProductsChart.data.labels[index].replace('...', ''), value]);
+
             const pages = [
-                { id: 'statusChart', title: 'Estado de Solicitudes', headers: ['Estado', 'Cantidad'], data: statusData },
-                { id: 'topProductsChart', title: 'Top 50 Productos Más Solicitados', headers: ['Producto', 'Unidades'], data: productsData },
-                { id: 'warehouseChart', title: 'Volumen por Bodega Destino', headers: ['Bodega', 'Solicitudes'], data: warehouseData },
-                { id: 'fulfillmentChart', title: 'Tasa de Cumplimiento', headers: ['Concepto', 'Unidades'], data: fulfillmentData },
-                { id: 'requestedVsSentChart', title: 'Unidades Solicitadas vs. Enviadas', headers: ['Concepto', 'Unidades'], data: reqVsSentData },
+                { id: 'statusChart', title: 'Estado de Solicitudes', headers: ['Estado', 'Cantidad'], data: Object.entries(charts.statusChart.data.datasets[0].data).map(([i, v]) => [charts.statusChart.data.labels[i], v]) },
+                { id: 'topProductsChart', title: 'Top 50 Productos Más Solicitados', headers: ['Producto', 'Unidades'], data: productCountsForPdf },
+                { id: 'warehouseChart', title: 'Volumen por Bodega Destino', headers: ['Bodega', 'Solicitudes'], data: Object.entries(charts.warehouseChart.data.datasets[0].data).map(([i, v]) => [charts.warehouseChart.data.labels[i], v]) },
+                { id: 'fulfillmentChart', title: 'Tasa de Cumplimiento', headers: ['Concepto', 'Unidades'], data: [['Unidades Enviadas', charts.fulfillmentChart.data.datasets[0].data[0]], ['Unidades Recibidas', charts.fulfillmentChart.data.datasets[1].data[0]]] },
+                { id: 'requestedVsSentChart', title: 'Unidades Solicitadas vs. Enviadas', headers: ['Concepto', 'Unidades'], data: [['Unidades Solicitadas', charts.requestedVsSentChart.data.datasets[0].data[0]], ['Unidades Enviadas', charts.requestedVsSentChart.data.datasets[1].data[0]]] },
             ];
 
-            pages.forEach((page, index) => {
-                const pageContainer = document.createElement('div');
-                pageContainer.style.width = '100%';
-                pageContainer.style.padding = '10mm';
-                pageContainer.style.boxSizing = 'border-box';
-                pageContainer.style.pageBreakBefore = index > 0 ? 'always' : 'auto';
+            pages.forEach((page) => {
+                // Página para el Gráfico
+                const chartPage = document.createElement('div');
+                chartPage.style.pageBreakBefore = 'always';
+                chartPage.style.width = '100%';
+                chartPage.style.height = '277mm'; // Altura aprox de A4 menos márgenes
+                chartPage.style.display = 'flex';
+                chartPage.style.flexDirection = 'column';
+                chartPage.style.justifyContent = 'center';
+                chartPage.style.alignItems = 'center';
+                
+                const chartTitle = document.createElement('h3');
+                chartTitle.textContent = page.title;
+                chartTitle.style.fontSize = '18px';
+                chartTitle.style.fontWeight = '600';
+                chartTitle.style.textAlign = 'center';
+                chartTitle.style.marginBottom = '15px';
+                chartTitle.style.fontFamily = 'Arial, sans-serif';
 
                 const chartImg = new Image();
                 chartImg.src = charts[page.id].toBase64Image();
-                chartImg.style.width = '100%';
-                chartImg.style.height = 'auto';
                 chartImg.style.maxWidth = '180mm';
-                chartImg.style.display = 'block';
-                chartImg.style.margin = '0 auto';
+                chartImg.style.maxHeight = '220mm';
                 
-                const tableHTML = createDataTable(page.title, page.headers, page.data);
-                
-                pageContainer.appendChild(chartImg);
-                pageContainer.innerHTML += tableHTML;
-                originalChartsGrid.appendChild(pageContainer);
+                chartPage.appendChild(chartTitle);
+                chartPage.appendChild(chartImg);
+                originalChartsGrid.appendChild(chartPage);
+
+                // Página para la Tabla
+                const tablePage = document.createElement('div');
+                tablePage.style.pageBreakBefore = 'always';
+                tablePage.innerHTML = createDataTable(page.title, page.headers, page.data);
+                originalChartsGrid.appendChild(tablePage);
             });
             
             const pdfContainer = document.createElement('div');
@@ -1334,7 +1340,6 @@
             pdfContainer.style.top = '-9999px';
             pdfContainer.style.left = '-9999px'; 
             pdfContainer.style.width = '210mm';
-            pdfContainer.style.fontFamily = 'Arial, sans-serif';
             clone.style.backgroundColor = 'white';
             clone.style.padding = '0';
             pdfContainer.appendChild(clone);
