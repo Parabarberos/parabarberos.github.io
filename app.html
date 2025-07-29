@@ -1259,7 +1259,7 @@
         }
                 async function downloadPdfReport() {
             const originalButtonText = dom.downloadPdfBtn.innerHTML;
-            dom.downloadPdfBtn.innerHTML = `<span>Generando...</span>`;
+            dom.downloadPdfBtn.innerHTML = `<span><svg class="animate-spin -ml-1 mr-3 h-5 w-5 inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>Generando...</span>`;
             dom.downloadPdfBtn.disabled = true;
 
             try {
@@ -1267,10 +1267,8 @@
                 const reportTitle = "Informe Gerencial de Traslados";
                 const reportSubtitle = document.getElementById('reportDateSubtitle').textContent;
                 const kpis = {
-                    "Total Solicitudes": dom.kpiTotalRequests.textContent,
-                    "Completadas": dom.kpiCompleted.textContent,
-                    "Con Novedad": dom.kpiWithNovelty.textContent,
-                    "Canceladas": dom.kpiCancelled.textContent,
+                    "Total Solicitudes": dom.kpiTotalRequests.textContent, "Completadas": dom.kpiCompleted.textContent,
+                    "Con Novedad": dom.kpiWithNovelty.textContent, "Canceladas": dom.kpiCancelled.textContent,
                 };
                 const kpiColors = { "Completadas": '#22c55e', "Con Novedad": '#f59e0b', "Canceladas": '#ef4444' };
                 const productCounts = lastFilteredRequests.reduce((acc, req) => {
@@ -1293,73 +1291,80 @@
                     requestedVsSentChart: { title: 'Unidades Solicitadas vs. Enviadas', headers: ['Concepto', 'Total Unidades'], data: [['Unidades Solicitadas', charts.requestedVsSentChart.data.datasets[0].data[0]], ['Unidades Enviadas', charts.requestedVsSentChart.data.datasets[1].data[0]]] }
                 };
                 
-                // 2. Crear un array con el HTML de cada página
-                const pagesHtml = [];
+                // 2. Crear un contenedor invisible para renderizar cada página individualmente
+                const pdfBuilder = document.createElement('div');
+                pdfBuilder.style.position = 'absolute';
+                pdfBuilder.style.left = '-9999px';
+                pdfBuilder.style.top = '0';
+                pdfBuilder.style.fontFamily = 'Arial, sans-serif';
+                pdfBuilder.style.color = '#374151';
+                document.body.appendChild(pdfBuilder);
+
+                const createPageElement = (content) => {
+                    const page = document.createElement('div');
+                    page.style.width = '210mm';
+                    page.style.minHeight = '297mm';
+                    page.style.padding = '20mm 15mm';
+                    page.style.boxSizing = 'border-box';
+                    page.style.display = 'flex';
+                    page.style.flexDirection = 'column';
+                    page.style.alignItems = 'center';
+                    page.style.justifyContent = 'flex-start';
+                    page.innerHTML = content;
+                    return page;
+                };
+
+                const pages = [];
 
                 // Página 1: Portada
-                pagesHtml.push(`
-                    <div class="pdf-page cover-page">
-                        <div class="pdf-header"><h1>${reportTitle}</h1><p>${reportSubtitle}</p></div>
-                        <div class="kpi-grid">${Object.entries(kpis).map(([key, value]) => `<div class="kpi-item"><h3>${key}</h3><p style="color: ${kpiColors[key] || '#111827'};">${value}</p></div>`).join('')}</div>
-                    </div>`);
+                pages.push(createPageElement(`
+                    <div style="display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100%;">
+                        <div style="text-align: center; margin-bottom: 50px;"><h1 style="font-size: 28px; margin-bottom: 8px; color: #111827;">${reportTitle}</h1><p style="font-size: 14px; color: #6B7280;">${reportSubtitle}</p></div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 25px 50px; text-align: center;">${Object.entries(kpis).map(([key, value]) => `<div class="kpi-item">
+                            <h3 style="font-size: 14px; color: #6B7280; font-weight: normal; margin-bottom: 5px; text-transform: uppercase;">${key}</h3>
+                            <p style="font-size: 32px; font-weight: bold; margin: 0; color: ${kpiColors[key] || '#111827'};">${value}</p>
+                        </div>`).join('')}</div>
+                    </div>`));
 
                 // Crear el resto de páginas
                 for (const chartId in chartDataForPdf) {
                     const item = chartDataForPdf[chartId];
                     // Página del Gráfico
-                    pagesHtml.push(`<div class="pdf-page"><h2 class="chart-title">${item.title}</h2><img src="${charts[chartId].toBase64Image()}" class="chart-image"></div>`);
+                    pages.push(createPageElement(`<h2 style="font-size: 22px; font-weight: 600; text-align: center; margin-bottom: 25px; color: #111827;">${item.title}</h2><img src="${charts[chartId].toBase64Image()}" style="max-width: 180mm; max-height: 220mm; display: block; margin: auto;">`));
                     
                     // Páginas de la Tabla (divididas si es necesario)
                     const chunkSize = 25;
                     for (let i = 0; i < item.data.length; i += chunkSize) {
                         const chunk = item.data.slice(i, i + chunkSize);
                         const pageTitle = item.data.length > chunkSize ? `${item.title} - Datos Detallados (pág. ${Math.floor(i / chunkSize) + 1})` : `${item.title} - Datos Detallados`;
-                        pagesHtml.push(`<div class="pdf-page"><h2 class="chart-title">${pageTitle}</h2><table class="data-table"><thead><tr>${item.headers.map(h => `<th>${h}</th>`).join('')}</tr></thead><tbody>${chunk.map(row => `<tr>${row.map(cell => `<td>${cell}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`);
+                        pages.push(createPageElement(`<h2 style="font-size: 22px; font-weight: 600; text-align: center; margin-bottom: 25px; color: #111827;">${pageTitle}</h2><table style="width: 100%; border-collapse: collapse; font-size: 12px;"><thead><tr>${item.headers.map(h => `<th style="border: 1px solid #DEE2E6; padding: 10px; text-align: left; background-color: #F8F9FA; font-weight: bold;">${h}</th>`).join('')}</tr></thead><tbody>${chunk.map(row => `<tr style="background-color: ${chunk.indexOf(row) % 2 === 0 ? '#FFFFFF' : '#F8F9FA'};">${row.map(cell => `<td style="border: 1px solid #DEE2E6; padding: 10px;">${cell}</td>`).join('')}</tr>`).join('')}</tbody></table>`));
                     }
                 }
-
-                // 3. Unir todo el HTML en un solo contenedor con estilos
-                const fullHtml = `
-                    <html>
-                    <head>
-                        <style>
-                            .pdf-page { page-break-after: always; } /* Regla simple para la paginación */
-                            body { font-family: Arial, sans-serif; color: #374151; }
-                            .pdf-page { width: 210mm; min-height: 297mm; padding: 20mm 15mm; box-sizing: border-box; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; }
-                            .cover-page { justify-content: center; }
-                            .pdf-header { text-align: center; margin-bottom: 50px; width: 100%; }
-                            .pdf-header h1 { font-size: 28px; margin-bottom: 8px; color: #111827; }
-                            .pdf-header p { font-size: 14px; color: #6B7280; }
-                            .kpi-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 25px 50px; text-align: center; }
-                            .kpi-item h3 { font-size: 14px; color: #6B7280; font-weight: normal; margin-bottom: 5px; text-transform: uppercase; }
-                            .kpi-item p { font-size: 32px; font-weight: bold; margin: 0; }
-                            .chart-title { font-size: 22px; font-weight: 600; text-align: center; margin-bottom: 25px; color: #111827; }
-                            .chart-image { max-width: 180mm; max-height: 220mm; display: block; margin: auto; }
-                            .data-table { width: 100%; border-collapse: collapse; font-size: 12px; }
-                            .data-table th, .data-table td { border: 1px solid #DEE2E6; padding: 10px; text-align: left; }
-                            .data-table th { background-color: #F8F9FA; font-weight: bold; }
-                            .data-table tr:nth-child(even) { background-color: #F8F9FA; }
-                        </style>
-                    </head>
-                    <body>${pagesHtml.join('')}</body>
-                    </html>`;
                 
-                // 4. Configurar y ejecutar html2pdf sobre el HTML completo
+                // 3. Configurar y ejecutar html2pdf secuencialmente
                 const today = new Date().toISOString().slice(0, 10);
                 const opt = {
-                    margin: 0,
-                    filename: `Informe_Gerencial_${today}.pdf`,
+                    margin: 0, filename: `Informe_Gerencial_${today}.pdf`,
                     image: { type: 'jpeg', quality: 0.98 },
                     html2canvas: { scale: 2, useCORS: true, logging: false },
                     jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
                 };
 
-                await html2pdf().from(fullHtml).set(opt).save();
+                let worker = html2pdf().set(opt).from(pages[0]);
+                for (let i = 1; i < pages.length; i++) {
+                    worker = worker.addPage().from(pages[i]);
+                }
+                await worker.save();
 
             } catch (error) {
                 console.error("Error detallado al generar el PDF:", error);
                 alert("Ocurrió un error al generar el PDF. Por favor, inténtelo de nuevo.");
             } finally {
+                // Limpiar siempre, incluso si hay un error
+                const pdfBuilder = document.querySelector('body > div[style*="left: -9999px"]');
+                if (pdfBuilder) {
+                    document.body.removeChild(pdfBuilder);
+                }
                 dom.downloadPdfBtn.innerHTML = originalButtonText;
                 dom.downloadPdfBtn.disabled = false;
             }
