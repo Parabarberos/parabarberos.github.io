@@ -1257,7 +1257,7 @@
                 options: chartOptions
             });
         }
-                                async function downloadPdfReport() {
+                async function downloadPdfReport() {
             // 1. Recopilar todos los datos necesarios para el informe
             const reportTitle = "Informe Gerencial de Traslados";
             const reportSubtitle = document.getElementById('reportDateSubtitle').textContent;
@@ -1272,7 +1272,6 @@
                 "Con Novedad": '#f59e0b',
                 "Canceladas": '#ef4444'
             };
-            // Se toman los datos completos para el PDF, independientemente de la vista en la UI
             const productCounts = lastFilteredRequests.reduce((acc, req) => {
                 if (req.items && Array.isArray(req.items)) {
                     req.items.forEach(item => {
@@ -1294,7 +1293,7 @@
                 topProductsChart: {
                     title: 'Top 50 Productos Más Solicitados',
                     headers: ['Producto', 'Unidades Solicitadas'],
-                    data: fullSortedProducts // Usar la lista completa para la tabla
+                    data: fullSortedProducts
                 },
                 warehouseChart: {
                     title: 'Volumen por Bodega Destino',
@@ -1313,16 +1312,16 @@
                 }
             };
             
-            // 2. Construir el HTML del PDF con un diseño profesional
+            // 2. Construir el HTML del PDF con un diseño profesional y paginación correcta
             let pdfHtml = `
                 <html>
                 <head>
                     <style>
                         body { font-family: Arial, sans-serif; color: #374151; }
-                        /* <-- CAMBIO CLAVE: Se elimina 'page-break-after' de la clase principal */
                         .pdf-page {
+                            /* CAMBIO CLAVE: Se elimina la altura fija. El generador de PDF la manejará. */
+                            /* La magia está en 'page-break-before'. */
                             width: 100%;
-                            height: 277mm; /* Altura de A4 menos márgenes */
                             padding: 20mm 15mm;
                             box-sizing: border-box;
                             display: flex;
@@ -1330,7 +1329,15 @@
                             align-items: center;
                             justify-content: flex-start; /* Alinea contenido arriba */
                         }
-                        .cover-page { justify-content: center; } /* Centra verticalmente solo la portada */
+                        /* Cada .pdf-page (excepto la primera) comenzará en una nueva hoja */
+                        .pdf-page:not(:first-child) {
+                            page-break-before: always;
+                        }
+                         /* Solo la portada debe estar centrada verticalmente */
+                        .cover-page {
+                            height: 277mm;
+                            justify-content: center;
+                        }
                         .pdf-header { text-align: center; margin-bottom: 50px; width: 100%; }
                         .pdf-header h1 { font-size: 28px; margin-bottom: 8px; color: #111827; }
                         .pdf-header p { font-size: 14px; color: #6B7280; }
@@ -1346,7 +1353,7 @@
                     </style>
                 </head>
                 <body>
-                    <!-- Página 1: Portada (sin salto de página antes) -->
+                    <!-- Página 1: Portada (No tiene page-break-before) -->
                     <div class="pdf-page cover-page">
                         <div class="pdf-header">
                             <h1>${reportTitle}</h1>
@@ -1362,22 +1369,20 @@
                         </div>
                     </div>`;
 
-            // 3. Crear una página para cada gráfico y otra para su tabla
+            // 3. Crear el resto de páginas. Cada una forzará un salto de página antes de ella.
             for (const chartId in chartDataForPdf) {
                 const item = chartDataForPdf[chartId];
                 
                 // Página del Gráfico
-                // <-- CAMBIO CLAVE: Se añade 'page-break-before: always;' para forzar una nueva página
                 pdfHtml += `
-                    <div class="pdf-page" style="page-break-before: always;">
+                    <div class="pdf-page">
                         <h2 class="chart-title">${item.title}</h2>
                         <img src="${charts[chartId].toBase64Image()}" class="chart-image">
                     </div>`;
 
                 // Página de la Tabla
-                // <-- CAMBIO CLAVE: Se añade 'page-break-before: always;' para forzar una nueva página
                 pdfHtml += `
-                    <div class="pdf-page" style="page-break-before: always;">
+                    <div class="pdf-page">
                         <h2 class="chart-title">${item.title} - Datos Detallados</h2>
                         <table class="data-table">
                             <thead><tr>${item.headers.map(h => `<th>${h}</th>`).join('')}</tr></thead>
@@ -1388,7 +1393,7 @@
 
             pdfHtml += `</body></html>`;
 
-            // 4. Renderizar el PDF con las opciones
+            // 4. Renderizar el PDF
             const pdfElement = document.createElement('div');
             pdfElement.innerHTML = pdfHtml;
 
@@ -1403,9 +1408,7 @@
 
             try {
                 // Se añade un pequeño retraso para asegurar que las imágenes de los gráficos se rendericen completamente
-                setTimeout(async () => {
-                    await html2pdf().from(pdfElement).set(opt).save();
-                }, 500);
+                 await html2pdf().from(pdfElement).set(opt).save();
             } catch (error) {
                 console.error("Error al generar el PDF:", error);
                 alert("Ocurrió un error al generar el PDF.");
