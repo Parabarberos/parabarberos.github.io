@@ -1272,6 +1272,7 @@
                 "Con Novedad": '#f59e0b',
                 "Canceladas": '#ef4444'
             };
+            // Se toman los datos completos para el PDF, independientemente de la vista en la UI
             const productCounts = lastFilteredRequests.reduce((acc, req) => {
                 if (req.items && Array.isArray(req.items)) {
                     req.items.forEach(item => {
@@ -1319,8 +1320,7 @@
                     <style>
                         body { font-family: Arial, sans-serif; color: #374151; }
                         .pdf-page {
-                            /* CAMBIO CLAVE: Se elimina la altura fija. El generador de PDF la manejará. */
-                            /* La magia está en 'page-break-before'. */
+                            /* Se elimina la altura fija y page-break-after */
                             width: 100%;
                             padding: 20mm 15mm;
                             box-sizing: border-box;
@@ -1329,11 +1329,11 @@
                             align-items: center;
                             justify-content: flex-start; /* Alinea contenido arriba */
                         }
-                        /* Cada .pdf-page (excepto la primera) comenzará en una nueva hoja */
+                        /* --- CAMBIO CLAVE: Lógica de paginación corregida --- */
                         .pdf-page:not(:first-child) {
                             page-break-before: always;
                         }
-                         /* Solo la portada debe estar centrada verticalmente */
+                        /* La portada necesita una altura fija para poder centrarse verticalmente */
                         .cover-page {
                             height: 277mm;
                             justify-content: center;
@@ -1353,7 +1353,7 @@
                     </style>
                 </head>
                 <body>
-                    <!-- Página 1: Portada (No tiene page-break-before) -->
+                    <!-- Página 1: Portada (No tiene page-break-before porque es el :first-child) -->
                     <div class="pdf-page cover-page">
                         <div class="pdf-header">
                             <h1>${reportTitle}</h1>
@@ -1407,8 +1407,7 @@
             };
 
             try {
-                // Se añade un pequeño retraso para asegurar que las imágenes de los gráficos se rendericen completamente
-                 await html2pdf().from(pdfElement).set(opt).save();
+                await html2pdf().from(pdfElement).set(opt).save();
             } catch (error) {
                 console.error("Error al generar el PDF:", error);
                 alert("Ocurrió un error al generar el PDF.");
