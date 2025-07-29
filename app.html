@@ -10,7 +10,6 @@
     <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-firestore-compat.js"></script>
     <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
-    <!-- LIBRERÍAS AÑADIDAS PARA REPORTES -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.9.3/html2pdf.bundle.min.js"></script>
 </head>
@@ -157,7 +156,7 @@
             </div>
         </div>
         
-        <!-- VISTA GERENCIAL (ACTUALIZADA Y MEJORADA) -->
+        <!-- VISTA GERENCIAL (TOTALMENTE ACTUALIZADA) -->
         <div id="managerView" class="space-y-8" style="display: none;">
             <div class="bg-white p-6 rounded-xl shadow-lg">
                 <h2 class="text-2xl font-semibold mb-4 text-gray-800 border-b pb-3">Panel de Informes Gerenciales</h2>
@@ -211,12 +210,11 @@
                             </div>
                         </div>
                         <div class="col-span-2 lg:col-span-1 bg-white p-6 rounded-xl shadow-lg border border-gray-200">
-                            <!-- CAMBIO HTML 1: Título del gráfico -->
                             <h3 class="text-xl font-semibold text-gray-800 mb-4 text-center">Top 50 Productos Más Solicitados</h3>
-                            <!-- CAMBIO HTML 2: Contenedor del gráfico con ID y sin altura fija -->
                             <div id="topProductsChartContainer" class="relative">
                                 <canvas id="topProductsChart"></canvas>
                             </div>
+                            <div id="topProductsToggleContainer" class="text-center mt-4"></div>
                         </div>
                         <div class="col-span-2 lg:col-span-1 bg-white p-6 rounded-xl shadow-lg border border-gray-200">
                             <h3 class="text-xl font-semibold text-gray-800 mb-4 text-center">Volumen por Bodega Destino</h3>
@@ -247,7 +245,7 @@
     </div>
 <script>
     document.addEventListener('DOMContentLoaded', () => {
-        // --- CONFIGURACIÓN DE FIREBASE (ORIGINAL) ---
+        // --- CONFIGURACIÓN DE FIREBASE (PRODUCCIÓN) ---
         const firebaseConfig = {
             apiKey: "AIzaSyDzJjtmK0XNo94KarKVJ5juuBnSoKqbtbo",
             authDomain: "parabarberos-traslados-v2.firebaseapp.com",
@@ -263,7 +261,7 @@
         const transfersCollection = db.collection("transferencias");
         const productsCollection = db.collection("products");
 
-        // --- ROLES DE USUARIO (ORIGINALES) ---
+        // --- ROLES DE USUARIO (PRODUCCIÓN) ---
         const USER_ROLES = {
             'inventarios.parabarberos@gmail.com': ['Administrador', 'admin'],
             'parabarberossedecentro@gmail.com': ['Punto de venta Cali centro', 'requester'],
@@ -280,13 +278,14 @@
         let allProducts = [], currentTransferItems = [], allTransferRequests = [], currentUserData = null;
         let charts = {};
         let lastFilteredRequests = [];
+        let isTopProductsChartExpanded = false; // Estado para el gráfico de productos
         const expandedRequestsState = new Set();
         const sectionDisplayCounts = {};
         const INITIAL_DISPLAY_COUNT = 2;
         const LOAD_MORE_COUNT = 10;
         currentTransferItems = JSON.parse(localStorage.getItem('currentTransferDraft')) || [];
 
-        // --- REFERENCIAS AL DOM (UNIFICADAS Y CORREGIDAS) ---
+        // --- REFERENCIAS AL DOM ---
         const dom = {
             productList: document.getElementById('productList'),
             currentTransferRequest: document.getElementById('currentTransferRequest'),
@@ -1143,6 +1142,11 @@
             generateAllReports(lastFilteredRequests);
         }
 
+        function toggleTopProductsView() {
+            isTopProductsChartExpanded = !isTopProductsChartExpanded;
+            handleReportGeneration(); // Vuelve a generar los informes con la nueva vista
+        }
+
         function generateAllReports(data) {
             const today = new Date().toLocaleDateString('es-CO', { year: 'numeric', month: 'long', day: 'numeric' });
             dom.reportDateSubtitle.textContent = `Generado el: ${today}`;
@@ -1152,8 +1156,9 @@
             dom.kpiWithNovelty.textContent = data.filter(r => r.status === 'completed_incomplete' || r.status === 'novelty_review').length;
             dom.kpiCancelled.textContent = data.filter(r => r.status === 'cancelled').length;
 
-            const chartOptions = { responsive: true, maintainAspectRatio: false, animation: false };
+            const chartOptions = { responsive: true, maintainAspectRatio: false, animation: { duration: 0 } };
 
+            // GRÁFICO 1: Estado de Solicitudes (Robusto)
             const statusCounts = data.reduce((acc, req) => {
                 const status = translateStatus(req.status, req);
                 acc[status] = (acc[status] || 0) + 1;
@@ -1164,7 +1169,7 @@
                 options: chartOptions
             });
 
-            // --- CAMBIO JAVASCRIPT 1: CÁLCULO DE PRODUCTOS ROBUSTO Y HASTA 50 ---
+            // GRÁFICO 2: Top Productos (Interactivo y Robusto)
             const productCounts = data.reduce((acc, req) => {
                 if (req.items && Array.isArray(req.items)) {
                     req.items.forEach(item => {
@@ -1176,20 +1181,31 @@
                 return acc;
             }, {});
             const sortedProducts = Object.entries(productCounts).sort((a, b) => b[1] - a[1]).slice(0, 50);
+            
+            const productsToShow = isTopProductsChartExpanded ? sortedProducts : sortedProducts.slice(0, 10);
 
-            // --- CAMBIO JAVASCRIPT 2: ALTURA DINÁMICA DEL GRÁFICO DE PRODUCTOS ---
             const topProductsContainer = document.getElementById('topProductsChartContainer');
             if (topProductsContainer) {
-                const dynamicHeight = Math.min(1200, Math.max(300, sortedProducts.length * 40));
+                const dynamicHeight = Math.max(300, productsToShow.length * 40);
                 topProductsContainer.style.height = `${dynamicHeight}px`;
             }
 
+            const toggleContainer = document.getElementById('topProductsToggleContainer');
+            toggleContainer.innerHTML = '';
+            if (sortedProducts.length > 10) {
+                const button = document.createElement('button');
+                button.textContent = isTopProductsChartExpanded ? 'Ver menos' : `Ver ${sortedProducts.length - 10} más...`;
+                button.className = 'text-sm font-semibold text-blue-600 hover:text-blue-800';
+                button.onclick = toggleTopProductsView;
+                toggleContainer.appendChild(button);
+            }
+            
             charts.topProductsChart = new Chart(dom.topProductsChart, {
-                type: 'bar', data: { labels: sortedProducts.map(p => p[0].slice(0, 25) + (p[0].length > 25 ? '...' : '')), datasets: [{ label: 'Unidades Solicitadas', data: sortedProducts.map(p => p[1]), backgroundColor: '#1f2937' }] },
+                type: 'bar', data: { labels: productsToShow.map(p => p[0].slice(0, 25) + (p[0].length > 25 ? '...' : '')), datasets: [{ label: 'Unidades Solicitadas', data: productsToShow.map(p => p[1]), backgroundColor: '#1f2937' }] },
                 options: { ...chartOptions, indexAxis: 'y', plugins: { legend: { display: false } } }
             });
 
-            // --- CÁLCULOS ROBUSTOS PARA OTROS GRÁFICOS ---
+            // GRÁFICO 3: Volumen por Bodega (Robusto)
             const warehouseCounts = data.reduce((acc, req) => {
                 if (req.toWarehouse) {
                     acc[req.toWarehouse] = (acc[req.toWarehouse] || 0) + 1;
@@ -1201,6 +1217,7 @@
                 options: chartOptions
             });
             
+            // GRÁFICO 4: Tasa de Cumplimiento (Robusto)
             const fulfillmentData = data.filter(r => r.status.startsWith('completed')).reduce((acc, req) => {
                 if(req.items && Array.isArray(req.items)) {
                     req.items.forEach(item => {
@@ -1220,6 +1237,7 @@
                 options: chartOptions
             });
 
+            // GRÁFICO 5: Solicitadas vs Enviadas (Robusto)
             const requestedVsSentData = data.reduce((acc, req) => {
                 if(req.items && Array.isArray(req.items)) {
                     req.items.forEach(item => {
@@ -1240,54 +1258,83 @@
             });
         }
         
+        function createDataTable(title, headers, rows) {
+            let tableHTML = `<div style="margin-top: 20px; width: 100%;">
+                <h4 style="font-size: 14px; font-weight: 600; text-align: center; margin-bottom: 8px;">${title}</h4>
+                <table style="width: 100%; border-collapse: collapse; font-size: 10px;">
+                    <thead>
+                        <tr style="background-color: #F3F4F6;">
+                            ${headers.map(h => `<th style="border: 1px solid #E5E7EB; padding: 6px; text-align: left;">${h}</th>`).join('')}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${rows.map(row => `
+                            <tr>
+                                ${row.map(cell => `<td style="border: 1px solid #E5E7EB; padding: 6px;">${cell}</td>`).join('')}
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>`;
+            return tableHTML;
+        }
+
         async function downloadPdfReport() {
-            const reportElement = dom.reportContent;
+            const reportElement = document.getElementById('reportContent');
             const clone = reportElement.cloneNode(true);
+            
+            const originalChartsGrid = clone.querySelector('.grid.lg\\:grid-cols-2');
+            if(originalChartsGrid) originalChartsGrid.innerHTML = '';
 
-            const styledChartWrappers = clone.querySelectorAll('.bg-white.p-6.rounded-xl.shadow-lg.border');
-            styledChartWrappers.forEach(wrapper => {
-                wrapper.classList.remove('bg-white', 'p-6', 'rounded-xl', 'shadow-lg', 'border', 'border-gray-200');
+            // --- GENERACIÓN DE DATOS PARA LAS TABLAS ---
+            const statusData = Object.entries(charts.statusChart.data.datasets[0].data).map(([index, value]) => [charts.statusChart.data.labels[index], value]);
+            const productsData = Object.entries(charts.topProductsChart.data.datasets[0].data).map(([index, value]) => [charts.topProductsChart.data.labels[index].replace('...', ''), value]);
+            const warehouseData = Object.entries(charts.warehouseChart.data.datasets[0].data).map(([index, value]) => [charts.warehouseChart.data.labels[index], value]);
+            const fulfillmentData = [
+                ['Unidades Enviadas', charts.fulfillmentChart.data.datasets[0].data[0]],
+                ['Unidades Recibidas', charts.fulfillmentChart.data.datasets[1].data[0]]
+            ];
+            const reqVsSentData = [
+                ['Unidades Solicitadas', charts.requestedVsSentChart.data.datasets[0].data[0]],
+                ['Unidades Enviadas', charts.requestedVsSentChart.data.datasets[1].data[0]]
+            ];
+            
+            const pages = [
+                { id: 'statusChart', title: 'Estado de Solicitudes', headers: ['Estado', 'Cantidad'], data: statusData },
+                { id: 'topProductsChart', title: 'Top 50 Productos Más Solicitados', headers: ['Producto', 'Unidades'], data: productsData },
+                { id: 'warehouseChart', title: 'Volumen por Bodega Destino', headers: ['Bodega', 'Solicitudes'], data: warehouseData },
+                { id: 'fulfillmentChart', title: 'Tasa de Cumplimiento', headers: ['Concepto', 'Unidades'], data: fulfillmentData },
+                { id: 'requestedVsSentChart', title: 'Unidades Solicitadas vs. Enviadas', headers: ['Concepto', 'Unidades'], data: reqVsSentData },
+            ];
+
+            pages.forEach((page, index) => {
+                const pageContainer = document.createElement('div');
+                pageContainer.style.width = '100%';
+                pageContainer.style.padding = '10mm';
+                pageContainer.style.boxSizing = 'border-box';
+                pageContainer.style.pageBreakBefore = index > 0 ? 'always' : 'auto';
+
+                const chartImg = new Image();
+                chartImg.src = charts[page.id].toBase64Image();
+                chartImg.style.width = '100%';
+                chartImg.style.height = 'auto';
+                chartImg.style.maxWidth = '180mm';
+                chartImg.style.display = 'block';
+                chartImg.style.margin = '0 auto';
+                
+                const tableHTML = createDataTable(page.title, page.headers, page.data);
+                
+                pageContainer.appendChild(chartImg);
+                pageContainer.innerHTML += tableHTML;
+                originalChartsGrid.appendChild(pageContainer);
             });
-
-            for (const id in charts) {
-                const originalCanvas = document.getElementById(id);
-                const clonedCanvas = clone.querySelector(`#${id}`);
-                if (originalCanvas && clonedCanvas && charts[id]) {
-                     // --- CAMBIO JAVASCRIPT 3: MEJORA DE CAPTURA DE IMAGEN PARA PDF ---
-                    const imageUrl = charts[id].toBase64Image();
-                    const img = new Image();
-                    img.src = imageUrl;
-                    img.style.width = '100%';
-                    img.style.height = 'auto';
-                    
-                    if (clonedCanvas.parentNode) {
-                       clonedCanvas.parentNode.replaceChild(img, clonedCanvas);
-                    }
-                }
-            }
-
-            const chartsGrid = clone.querySelector('.grid.lg\\:grid-cols-2'); 
-            if (chartsGrid) {
-                chartsGrid.style.display = 'block';
-                const chartWrappers = chartsGrid.querySelectorAll(':scope > div');
-                chartWrappers.forEach((wrapper, index) => {
-                    wrapper.style.display = 'block'; 
-                    wrapper.style.width = 'auto'; 
-                    wrapper.style.boxSizing = 'border-box';
-                    wrapper.style.padding = '10mm';
-                    wrapper.style.pageBreakInside = 'avoid';
-                    if (index >= 2) {
-                        wrapper.style.pageBreakBefore = 'always';
-                    }
-                });
-            }
-
+            
             const pdfContainer = document.createElement('div');
             pdfContainer.style.position = 'fixed';
-            pdfContainer.style.top = '0';
-            pdfContainer.style.left = '-9999px';
+            pdfContainer.style.top = '-9999px';
+            pdfContainer.style.left = '-9999px'; 
             pdfContainer.style.width = '210mm';
-
+            pdfContainer.style.fontFamily = 'Arial, sans-serif';
             clone.style.backgroundColor = 'white';
             clone.style.padding = '0';
             pdfContainer.appendChild(clone);
@@ -1366,7 +1413,7 @@
                 document.getElementById('deliveryDate').valueAsDate = new Date();
             }
             
-            const warehouseOptions = ['Bodega Cali Centro', 'Bodega Cali Sur', 'Bodega Pasto', 'Bodega Tulua', 'Bodega Medellín'];
+            const warehouseOptions = ['Punto de venta Cali centro', 'Punto de venta Cali sur', 'Punto de venta Pasto', 'Punto de venta Tulua', 'Punto de venta Medellin'];
             const originWarehouseOptions = ['Bodega Principal', ...warehouseOptions];
             
             if(dom.fromWarehouse) dom.fromWarehouse.innerHTML = '<option value="" selected disabled>-- Seleccione una bodega --</option>' + 
