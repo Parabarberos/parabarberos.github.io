@@ -1359,30 +1359,51 @@
                     <img src="${charts[chartId].toBase64Image()}" class="chart-image">`;
                 pages.push(chartPage);
 
-                // Página de la Tabla
-                const tablePage = document.createElement('div');
-                tablePage.className = 'pdf-page';
-                tablePage.innerHTML = `
-                    <h2 class="chart-title">${item.title} - Datos Detallados</h2>
-                    <table class="data-table">
-                        <thead><tr>${item.headers.map(h => `<th>${h}</th>`).join('')}</tr></thead>
-                        <tbody>${item.data.map(row => `<tr>${row.map(cell => `<td>${cell}</td>`).join('')}</tr>`).join('')}</tbody>
-                    </table>`;
-                pages.push(tablePage);
+                // --- LÓGICA PARA DIVIDIR TABLAS GRANDES ---
+                if (chartId === 'topProductsChart') {
+                    const fullData = item.data;
+                    const chunkSize = 25; // Máximo de filas por página para esta tabla
+                    const numChunks = Math.ceil(fullData.length / chunkSize);
+
+                    for (let i = 0; i < numChunks; i++) {
+                        const chunkData = fullData.slice(i * chunkSize, (i + 1) * chunkSize);
+                        const chunkTitle = `${item.title} - Datos Detallados (Página ${i + 1} de ${numChunks})`;
+                        const tablePage = document.createElement('div');
+                        tablePage.className = 'pdf-page';
+                        tablePage.innerHTML = `
+                            <h2 class="chart-title">${chunkTitle}</h2>
+                            <table class="data-table">
+                                <thead><tr>${item.headers.map(h => `<th>${h}</th>`).join('')}</tr></thead>
+                                <tbody>${chunkData.map(row => `<tr>${row.map(cell => `<td>${cell}</td>`).join('')}</tr>`).join('')}</tbody>
+                            </table>`;
+                        pages.push(tablePage);
+                    }
+                } else {
+                    // Página de la Tabla (para tablas normales y cortas)
+                    const tablePage = document.createElement('div');
+                    tablePage.className = 'pdf-page';
+                    tablePage.innerHTML = `
+                        <h2 class="chart-title">${item.title} - Datos Detallados</h2>
+                        <table class="data-table">
+                            <thead><tr>${item.headers.map(h => `<th>${h}</th>`).join('')}</tr></thead>
+                            <tbody>${item.data.map(row => `<tr>${row.map(cell => `<td>${cell}</td>`).join('')}</tr>`).join('')}</tbody>
+                        </table>`;
+                    pages.push(tablePage);
+                }
             }
 
             // Añadir estilos globales
             const style = document.createElement('style');
             style.innerHTML = `
                 .pdf-page {
-                    width: 210mm; /* Ancho de A4 */
-                    min-height: 297mm; /* Alto de A4 */
+                    width: 210mm;
+                    min-height: 297mm;
                     padding: 20mm 15mm;
                     box-sizing: border-box;
                     display: flex;
                     flex-direction: column;
                     align-items: center;
-                    justify-content: flex-start; /* Alinea contenido arriba */
+                    justify-content: flex-start;
                     font-family: Arial, sans-serif; 
                     color: #374151;
                 }
@@ -1405,7 +1426,7 @@
             // 3. Usar el worker de html2pdf para procesar cada página secuencialmente
             const today = new Date().toISOString().slice(0, 10);
             const opt = {
-                margin: 0, // El padding ya está en el CSS
+                margin: 0,
                 filename: `Informe_Gerencial_${today}.pdf`,
                 image: { type: 'jpeg', quality: 0.98 },
                 html2canvas: { scale: 2, useCORS: true },
@@ -1415,11 +1436,8 @@
             const worker = html2pdf().set(opt);
 
             for (let i = 0; i < pages.length; i++) {
-                // Añadir el elemento al DOM invisible para que la librería lo pueda leer
                 pdfBuilder.appendChild(pages[i]);
-                // Añadir la página al worker de PDF
                 worker.from(pages[i]);
-                // Si NO es la última página, añadir un salto de página después.
                 if (i < pages.length - 1) {
                     worker.addPage();
                 }
@@ -1431,7 +1449,6 @@
                 console.error("Error al generar el PDF:", error);
                 alert("Ocurrió un error al generar el PDF.");
             } finally {
-                // Limpiar el DOM y restaurar el botón
                 document.body.removeChild(pdfBuilder);
                 dom.downloadPdfBtn.innerHTML = originalButtonText;
                 dom.downloadPdfBtn.disabled = false;
