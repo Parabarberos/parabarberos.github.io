@@ -32,7 +32,7 @@
             </div>
         </header>
 
-        <!-- VISTA DE SOLICITANTE (SIN CAMBIOS) -->
+        <!-- VISTA DE SOLICITANTE -->
         <div id="requesterView" class="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start" style="display: none;">
             <div class="lg:col-span-2 bg-white p-6 rounded-xl shadow-lg">
                 <h2 class="text-2xl font-semibold mb-4 text-gray-800 border-b pb-3">Nueva solicitud de traslado</h2>
@@ -81,7 +81,7 @@
             </div>
         </div>
 
-        <!-- VISTA DE ADMINISTRADOR (SIN CAMBIOS) -->
+        <!-- VISTA DE ADMINISTRADOR -->
         <div id="adminView" class="space-y-8" style="display: none;">
             <div id="productManagementCard" class="bg-white p-6 rounded-xl shadow-lg" style="display: none;">
                 <h2 class="text-2xl font-semibold mb-4 text-gray-800 border-b pb-3">Gestión de Productos</h2>
@@ -140,7 +140,7 @@
             </div>
         </div>
         
-        <!-- VISTA DE REVISOR (SIN CAMBIOS) -->
+        <!-- VISTA DE REVISOR -->
         <div id="reviewerView" class="space-y-8" style="display: none;">
             <div class="bg-white p-6 rounded-xl shadow-lg">
                 <h2 class="text-2xl font-semibold mb-4 text-gray-800 border-b pb-3">Pendientes de Revisión</h2>
@@ -211,8 +211,10 @@
                             </div>
                         </div>
                         <div class="col-span-2 lg:col-span-1 bg-white p-6 rounded-xl shadow-lg border border-gray-200">
-                            <h3 class="text-xl font-semibold text-gray-800 mb-4 text-center">Top 5 Productos Más Solicitados</h3>
-                            <div class="relative h-80">
+                            <!-- CAMBIO HTML 1: Título del gráfico -->
+                            <h3 class="text-xl font-semibold text-gray-800 mb-4 text-center">Top 50 Productos Más Solicitados</h3>
+                            <!-- CAMBIO HTML 2: Contenedor del gráfico con ID y sin altura fija -->
+                            <div id="topProductsChartContainer" class="relative">
                                 <canvas id="topProductsChart"></canvas>
                             </div>
                         </div>
@@ -250,7 +252,7 @@
             apiKey: "AIzaSyDzJjtmK0XNo94KarKVJ5juuBnSoKqbtbo",
             authDomain: "parabarberos-traslados-v2.firebaseapp.com",
             projectId: "parabarberos-traslados-v2",
-            storageBucket: "parabarberos-traslados-v2.firebasestorage.app",
+            storageBucket: "parabarberos-traslados-v2.appspot.com",
             messagingSenderId: "939654956238",
             appId: "1:939654956238:web:454d07ae95f81bab267c9f",
             measurementId: "G-28PM922YL1"
@@ -1088,7 +1090,7 @@
         }
 
         // ==================================================================
-        // INICIO DE LÓGICA PARA INFORMES GERENCIALES
+        // INICIO DE LÓGICA PARA INFORMES GERENCIALES (TOTALMENTE ACTUALIZADA)
         // ==================================================================
         function destroyCharts() {
             Object.values(charts).forEach(chart => chart.destroy());
@@ -1140,7 +1142,8 @@
             destroyCharts();
             generateAllReports(lastFilteredRequests);
         }
-                function generateAllReports(data) {
+
+        function generateAllReports(data) {
             const today = new Date().toLocaleDateString('es-CO', { year: 'numeric', month: 'long', day: 'numeric' });
             dom.reportDateSubtitle.textContent = `Generado el: ${today}`;
             
@@ -1151,7 +1154,6 @@
 
             const chartOptions = { responsive: true, maintainAspectRatio: false, animation: false };
 
-            // Cálculo del gráfico de estados (este es robusto)
             const statusCounts = data.reduce((acc, req) => {
                 const status = translateStatus(req.status, req);
                 acc[status] = (acc[status] || 0) + 1;
@@ -1162,13 +1164,10 @@
                 options: chartOptions
             });
 
-            // --- INICIO DE CORRECCIONES ---
-
-            // Cálculo de productos con verificación de datos
+            // --- CAMBIO JAVASCRIPT 1: CÁLCULO DE PRODUCTOS ROBUSTO Y HASTA 50 ---
             const productCounts = data.reduce((acc, req) => {
-                if (req.items && Array.isArray(req.items)) { // VERIFICA si 'items' existe y es un array
+                if (req.items && Array.isArray(req.items)) {
                     req.items.forEach(item => {
-                        // VERIFICA si 'item' y sus propiedades necesarias existen
                         if (item && item.productName && typeof item.quantity === 'number') {
                             acc[item.productName] = (acc[item.productName] || 0) + item.quantity;
                         }
@@ -1176,15 +1175,23 @@
                 }
                 return acc;
             }, {});
-            const sortedProducts = Object.entries(productCounts).sort((a, b) => b[1] - a[1]).slice(0, 5);
+            const sortedProducts = Object.entries(productCounts).sort((a, b) => b[1] - a[1]).slice(0, 50);
+
+            // --- CAMBIO JAVASCRIPT 2: ALTURA DINÁMICA DEL GRÁFICO DE PRODUCTOS ---
+            const topProductsContainer = document.getElementById('topProductsChartContainer');
+            if (topProductsContainer) {
+                const dynamicHeight = Math.min(1200, Math.max(300, sortedProducts.length * 40));
+                topProductsContainer.style.height = `${dynamicHeight}px`;
+            }
+
             charts.topProductsChart = new Chart(dom.topProductsChart, {
-                type: 'bar', data: { labels: sortedProducts.map(p => p[0].slice(0, 20) + '...'), datasets: [{ label: 'Unidades Solicitadas', data: sortedProducts.map(p => p[1]), backgroundColor: '#1f2937' }] },
+                type: 'bar', data: { labels: sortedProducts.map(p => p[0].slice(0, 25) + (p[0].length > 25 ? '...' : '')), datasets: [{ label: 'Unidades Solicitadas', data: sortedProducts.map(p => p[1]), backgroundColor: '#1f2937' }] },
                 options: { ...chartOptions, indexAxis: 'y', plugins: { legend: { display: false } } }
             });
 
-            // Cálculo de bodegas con verificación de datos
+            // --- CÁLCULOS ROBUSTOS PARA OTROS GRÁFICOS ---
             const warehouseCounts = data.reduce((acc, req) => {
-                if (req.toWarehouse) { // VERIFICA si 'toWarehouse' existe
+                if (req.toWarehouse) {
                     acc[req.toWarehouse] = (acc[req.toWarehouse] || 0) + 1;
                 }
                 return acc;
@@ -1194,11 +1201,10 @@
                 options: chartOptions
             });
             
-            // Cálculo de cumplimiento con verificación de datos
             const fulfillmentData = data.filter(r => r.status.startsWith('completed')).reduce((acc, req) => {
-                if(req.items && Array.isArray(req.items)) { // VERIFICA
+                if(req.items && Array.isArray(req.items)) {
                     req.items.forEach(item => {
-                        if (item) { // VERIFICA
+                        if (item) {
                             acc.sent += (item.sentQuantity || 0);
                             acc.received += (item.receivedQuantity || 0);
                         }
@@ -1214,11 +1220,10 @@
                 options: chartOptions
             });
 
-            // Cálculo de solicitadas vs enviadas con verificación de datos
             const requestedVsSentData = data.reduce((acc, req) => {
-                if(req.items && Array.isArray(req.items)) { // VERIFICA
+                if(req.items && Array.isArray(req.items)) {
                     req.items.forEach(item => {
-                        if(item) { // VERIFICA
+                        if(item) {
                             acc.requested += (item.quantity || 0);
                             acc.sent += (item.sentQuantity || 0);
                         }
@@ -1233,8 +1238,6 @@
                 ]},
                 options: chartOptions
             });
-            
-            // --- FIN DE CORRECCIONES ---
         }
         
         async function downloadPdfReport() {
@@ -1249,13 +1252,17 @@
             for (const id in charts) {
                 const originalCanvas = document.getElementById(id);
                 const clonedCanvas = clone.querySelector(`#${id}`);
-                if (originalCanvas && clonedCanvas) {
-                    const imageUrl = originalCanvas.toDataURL('image/png');
+                if (originalCanvas && clonedCanvas && charts[id]) {
+                     // --- CAMBIO JAVASCRIPT 3: MEJORA DE CAPTURA DE IMAGEN PARA PDF ---
+                    const imageUrl = charts[id].toBase64Image();
                     const img = new Image();
                     img.src = imageUrl;
                     img.style.width = '100%';
                     img.style.height = 'auto';
-                    clonedCanvas.parentNode.replaceChild(img, clonedCanvas);
+                    
+                    if (clonedCanvas.parentNode) {
+                       clonedCanvas.parentNode.replaceChild(img, clonedCanvas);
+                    }
                 }
             }
 
@@ -1291,7 +1298,7 @@
                 margin: 10,
                 filename: `Informe_Gerencial_${today}.pdf`,
                 image: { type: 'jpeg', quality: 0.98 },
-                html2canvas: { scale: 2, useCORS: true },
+                html2canvas: { scale: 2, useCORS: true, logging: true },
                 jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
             };
 
