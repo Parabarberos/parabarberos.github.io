@@ -1257,7 +1257,7 @@
                 options: chartOptions
             });
         }
-                async function downloadPdfReport() {
+                        async function downloadPdfReport() {
             // 1. Recopilar todos los datos necesarios para el informe
             const reportTitle = "Informe Gerencial de Traslados";
             const reportSubtitle = document.getElementById('reportDateSubtitle').textContent;
@@ -1272,7 +1272,6 @@
                 "Con Novedad": '#f59e0b',
                 "Canceladas": '#ef4444'
             };
-            // Se toman los datos completos para el PDF, independientemente de la vista en la UI
             const productCounts = lastFilteredRequests.reduce((acc, req) => {
                 if (req.items && Array.isArray(req.items)) {
                     req.items.forEach(item => {
@@ -1294,7 +1293,7 @@
                 topProductsChart: {
                     title: 'Top 50 Productos Más Solicitados',
                     headers: ['Producto', 'Unidades Solicitadas'],
-                    data: fullSortedProducts // Usar la lista completa para la tabla
+                    data: fullSortedProducts
                 },
                 warehouseChart: {
                     title: 'Volumen por Bodega Destino',
@@ -1363,7 +1362,8 @@
                     </div>`;
 
             // 3. Crear una página para cada gráfico y otra para su tabla
-            for (const chartId in chartDataForPdf) {
+            const pages = Object.keys(chartDataForPdf);
+            pages.forEach((chartId, index) => {
                 const item = chartDataForPdf[chartId];
                 
                 // Página del Gráfico
@@ -1373,16 +1373,17 @@
                         <img src="${charts[chartId].toBase64Image()}" class="chart-image">
                     </div>`;
 
-                // Página de la Tabla
+                // Página de la Tabla (La última página no necesita un salto de página después)
                 pdfHtml += `
-                    <div class="pdf-page">
+                    <div class="pdf-page" style="${index === pages.length - 1 ? 'page-break-after: auto;' : ''}">
                         <h2 class="chart-title">${item.title} - Datos Detallados</h2>
                         <table class="data-table">
                             <thead><tr>${item.headers.map(h => `<th>${h}</th>`).join('')}</tr></thead>
                             <tbody>${item.data.map(row => `<tr>${row.map(cell => `<td>${cell}</td>`).join('')}</tr>`).join('')}</tbody>
                         </table>
                     </div>`;
-            }
+            });
+
 
             pdfHtml += `</body></html>`;
 
