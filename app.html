@@ -1258,10 +1258,8 @@
             });
         }
         
-        async function downloadPdfReport() {
-            // --- INICIO DE LA NUEVA LÓGICA DE PDF ---
-
-            // 1. Recopilar todos los datos necesarios
+                async function downloadPdfReport() {
+            // 1. Recopilar datos y crear un 'lienzo' de HTML para el PDF.
             const reportTitle = "Informe Gerencial de Traslados";
             const reportSubtitle = document.getElementById('reportDateSubtitle').textContent;
             const kpis = {
@@ -1275,7 +1273,6 @@
                 "Con Novedad": '#f59e0b',
                 "Canceladas": '#ef4444'
             };
-
             const productCounts = lastFilteredRequests.reduce((acc, req) => {
                 if (req.items && Array.isArray(req.items)) {
                     req.items.forEach(item => {
@@ -1316,96 +1313,33 @@
                 }
             };
             
-            // 2. Construir el HTML para el PDF desde cero
+            // 2. Construir el HTML con estilos elegantes para el PDF
             let pdfHtml = `
                 <html>
                 <head>
                     <style>
-                        body { font-family: Arial, sans-serif; color: #333; }
+                        body { font-family: Arial, sans-serif; color: #374151; }
                         .pdf-page {
                             page-break-after: always;
                             width: 100%;
-                            height: 277mm; /* A4 height minus margins */
+                            height: 277mm; /* Altura de A4 menos márgenes */
+                            padding: 20mm 15mm;
+                            box-sizing: border-box;
                             display: flex;
                             flex-direction: column;
                             align-items: center;
-                            justify-content: center;
+                            justify-content: flex-start; /* Alinea el contenido arriba */
                         }
-                        .pdf-header { text-align: center; margin-bottom: 40px; }
-                        .pdf-header h1 { font-size: 28px; margin-bottom: 5px; }
-                        .pdf-header p { font-size: 14px; color: #666; }
-                        .kpi-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px 40px; text-align: center; }
-                        .kpi-item h3 { font-size: 14px; color: #666; font-weight: normal; margin-bottom: 5px; }
+                        .cover-page { justify-content: center; } /* Centra solo la portada */
+                        .pdf-header { text-align: center; margin-bottom: 50px; width: 100%; }
+                        .pdf-header h1 { font-size: 28px; margin-bottom: 8px; color: #111827; }
+                        .pdf-header p { font-size: 14px; color: #6B7280; }
+                        .kpi-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 25px 50px; text-align: center; }
+                        .kpi-item h3 { font-size: 14px; color: #6B7280; font-weight: normal; margin-bottom: 5px; text-transform: uppercase; }
                         .kpi-item p { font-size: 32px; font-weight: bold; margin: 0; }
-                        .chart-title { font-size: 20px; font-weight: 600; text-align: center; margin-bottom: 20px; }
+                        .chart-title { font-size: 22px; font-weight: 600; text-align: center; margin-bottom: 25px; color: #111827; }
                         .chart-image { max-width: 180mm; max-height: 220mm; display: block; margin: auto; }
-                        .data-table { width: 100%; border-collapse: collapse; font-size: 12px; }
-                        .data-table th, .data-table td { border: 1px solid #DEE2E6; padding: 10px; text-align: left; }
-                        .data-table th { background-color: #F8F9FA; font-weight: bold; }
-                        .data-table tr:nth-child(even) { background-color: #F8F9FA; }
-                    </style>
-                </head>
-                <body>
-                    <!-- Página 1: Portada -->
-                    <div class="pdf-page">
-                        <div class="pdf-header">
-                            <h1>${reportTitle}</h1>
-                            <p>${reportSubtitle}</p>
-                        </div>
-                        <div class="kpi-grid">
-                            ${Object.entries(kpis).map(([key, value]) => `
-                                <div class="kpi-item">
-                                    <h3>${key}</h3>
-                                    <p style="color: ${kpiColors[key] || '#333'};">${value}</p>
-                                </div>
-                            `).join('')}
-                        </div>
-                    </div>`;
-
-            // 3. Crear una página para cada gráfico y otra para su tabla
-            for (const chartId in chartDataForPdf) {
-                const item = chartDataForPdf[chartId];
-                
-                // Página del Gráfico
-                pdfHtml += `
-                    <div class="pdf-page">
-                        <h2 class="chart-title">${item.title}</h2>
-                        <img src="${charts[chartId].toBase64Image()}" class="chart-image">
-                    </div>`;
-
-                // Página de la Tabla
-                pdfHtml += `
-                    <div class="pdf-page">
-                        <h2 class="chart-title">${item.title} - Datos</h2>
-                        <table class="data-table">
-                            <thead><tr>${item.headers.map(h => `<th>${h}</th>`).join('')}</tr></thead>
-                            <tbody>${item.data.map(row => `<tr>${row.map(cell => `<td>${cell}</td>`).join('')}</tr>`).join('')}</tbody>
-                        </table>
-                    </div>`;
-            }
-
-            pdfHtml += `</body></html>`;
-
-            // 4. Renderizar el PDF
-            const pdfElement = document.createElement('div');
-            pdfElement.innerHTML = pdfHtml;
-
-            const today = new Date().toISOString().slice(0, 10);
-            const opt = {
-                margin: 10,
-                filename: `Informe_Gerencial_${today}.pdf`,
-                image: { type: 'jpeg', quality: 0.98 },
-                html2canvas: { scale: 2, useCORS: true },
-                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-            };
-
-            try {
-                await html2pdf().from(pdfElement).set(opt).save();
-            } catch (error) {
-                console.error("Error al generar el PDF:", error);
-                alert("Ocurrió un error al generar el PDF.");
-            }
-        }
+                        .data-table { width: 10
 
         function exportManagerReport() {
             const dataToExport = lastFilteredRequests.length > 0 ? lastFilteredRequests : allTransferRequests;
