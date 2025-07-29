@@ -156,7 +156,7 @@
             </div>
         </div>
         
-        <!-- VISTA GERENCIAL (TOTALMENTE ACTUALIZADA) -->
+        <!-- VISTA GERENCIAL -->
         <div id="managerView" class="space-y-8" style="display: none;">
             <div class="bg-white p-6 rounded-xl shadow-lg">
                 <h2 class="text-2xl font-semibold mb-4 text-gray-800 border-b pb-3">Panel de Informes Gerenciales</h2>
@@ -1158,7 +1158,7 @@
 
             const chartOptions = { responsive: true, maintainAspectRatio: false, animation: { duration: 0 } };
 
-            // GRÁFICO 1: Estado de Solicitudes (Robusto)
+            // GRÁFICO 1: Estado de Solicitudes
             const statusCounts = data.reduce((acc, req) => {
                 const status = translateStatus(req.status, req);
                 acc[status] = (acc[status] || 0) + 1;
@@ -1169,7 +1169,7 @@
                 options: chartOptions
             });
 
-            // GRÁFICO 2: Top Productos (Interactivo y Robusto)
+            // GRÁFICO 2: Top Productos (Interactivo)
             const productCounts = data.reduce((acc, req) => {
                 if (req.items && Array.isArray(req.items)) {
                     req.items.forEach(item => {
@@ -1205,7 +1205,7 @@
                 options: { ...chartOptions, indexAxis: 'y', plugins: { legend: { display: false } } }
             });
 
-            // GRÁFICO 3: Volumen por Bodega (Robusto)
+            // GRÁFICO 3: Volumen por Bodega
             const warehouseCounts = data.reduce((acc, req) => {
                 if (req.toWarehouse) {
                     acc[req.toWarehouse] = (acc[req.toWarehouse] || 0) + 1;
@@ -1217,7 +1217,7 @@
                 options: chartOptions
             });
             
-            // GRÁFICO 4: Tasa de Cumplimiento (Robusto)
+            // GRÁFICO 4: Tasa de Cumplimiento
             const fulfillmentData = data.filter(r => r.status.startsWith('completed')).reduce((acc, req) => {
                 if(req.items && Array.isArray(req.items)) {
                     req.items.forEach(item => {
@@ -1237,7 +1237,7 @@
                 options: chartOptions
             });
 
-            // GRÁFICO 5: Solicitadas vs Enviadas (Robusto)
+            // GRÁFICO 5: Solicitadas vs Enviadas
             const requestedVsSentData = data.reduce((acc, req) => {
                 if(req.items && Array.isArray(req.items)) {
                     req.items.forEach(item => {
@@ -1258,109 +1258,152 @@
             });
         }
         
-        function createDataTable(title, headers, rows) {
-            let tableHTML = `<div style="padding: 10mm; box-sizing: border-box; width: 100%;">
-                <h3 style="font-size: 18px; font-weight: 600; text-align: center; margin-bottom: 15px; font-family: Arial, sans-serif;">${title} - Datos</h3>
-                <table style="width: 100%; border-collapse: collapse; font-size: 10px; font-family: Arial, sans-serif;">
-                    <thead>
-                        <tr style="background-color: #F3F4F6;">
-                            ${headers.map(h => `<th style="border: 1px solid #DEE2E6; padding: 8px; text-align: left; font-weight: 600;">${h}</th>`).join('')}
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${rows.map(row => `
-                            <tr>
-                                ${row.map(cell => `<td style="border: 1px solid #DEE2E6; padding: 8px;">${cell}</td>`).join('')}
-                            </tr>
-                        `).join('')}
-                    </tbody>
-                </table>
-            </div>`;
-            return tableHTML;
-        }
-
         async function downloadPdfReport() {
-            const reportElement = document.getElementById('reportContent');
-            const clone = reportElement.cloneNode(true);
+            // --- INICIO DE LA NUEVA LÓGICA DE PDF ---
+
+            // 1. Recopilar todos los datos necesarios
+            const reportTitle = "Informe Gerencial de Traslados";
+            const reportSubtitle = document.getElementById('reportDateSubtitle').textContent;
+            const kpis = {
+                "Total Solicitudes": dom.kpiTotalRequests.textContent,
+                "Completadas": dom.kpiCompleted.textContent,
+                "Con Novedad": dom.kpiWithNovelty.textContent,
+                "Canceladas": dom.kpiCancelled.textContent,
+            };
+            const kpiColors = {
+                "Completadas": '#22c55e',
+                "Con Novedad": '#f59e0b',
+                "Canceladas": '#ef4444'
+            };
+
+            const productCounts = lastFilteredRequests.reduce((acc, req) => {
+                if (req.items && Array.isArray(req.items)) {
+                    req.items.forEach(item => {
+                        if (item && item.productName && typeof item.quantity === 'number') {
+                            acc[item.productName] = (acc[item.productName] || 0) + item.quantity;
+                        }
+                    });
+                }
+                return acc;
+            }, {});
+            const fullSortedProducts = Object.entries(productCounts).sort((a, b) => b[1] - a[1]).slice(0, 50);
+
+            const chartDataForPdf = {
+                statusChart: {
+                    title: 'Estado de Solicitudes',
+                    headers: ['Estado', 'Cantidad'],
+                    data: Object.entries(charts.statusChart.data.datasets[0].data).map(([i, v]) => [charts.statusChart.data.labels[i], v])
+                },
+                topProductsChart: {
+                    title: 'Top 50 Productos Más Solicitados',
+                    headers: ['Producto', 'Unidades Solicitadas'],
+                    data: fullSortedProducts
+                },
+                warehouseChart: {
+                    title: 'Volumen por Bodega Destino',
+                    headers: ['Bodega', 'Nº de Solicitudes'],
+                    data: Object.entries(charts.warehouseChart.data.datasets[0].data).map(([i, v]) => [charts.warehouseChart.data.labels[i], v])
+                },
+                fulfillmentChart: {
+                    title: 'Tasa de Cumplimiento',
+                    headers: ['Concepto', 'Total Unidades'],
+                    data: [['Unidades Enviadas', charts.fulfillmentChart.data.datasets[0].data[0]], ['Unidades Recibidas', charts.fulfillmentChart.data.datasets[1].data[0]]]
+                },
+                requestedVsSentChart: {
+                    title: 'Unidades Solicitadas vs. Enviadas',
+                    headers: ['Concepto', 'Total Unidades'],
+                    data: [['Unidades Solicitadas', charts.requestedVsSentChart.data.datasets[0].data[0]], ['Unidades Enviadas', charts.requestedVsSentChart.data.datasets[1].data[0]]]
+                }
+            };
             
-            const originalChartsGrid = clone.querySelector('.grid.lg\\:grid-cols-2');
-            if(originalChartsGrid) originalChartsGrid.innerHTML = '';
+            // 2. Construir el HTML para el PDF desde cero
+            let pdfHtml = `
+                <html>
+                <head>
+                    <style>
+                        body { font-family: Arial, sans-serif; color: #333; }
+                        .pdf-page {
+                            page-break-after: always;
+                            width: 100%;
+                            height: 277mm; /* A4 height minus margins */
+                            display: flex;
+                            flex-direction: column;
+                            align-items: center;
+                            justify-content: center;
+                        }
+                        .pdf-header { text-align: center; margin-bottom: 40px; }
+                        .pdf-header h1 { font-size: 28px; margin-bottom: 5px; }
+                        .pdf-header p { font-size: 14px; color: #666; }
+                        .kpi-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px 40px; text-align: center; }
+                        .kpi-item h3 { font-size: 14px; color: #666; font-weight: normal; margin-bottom: 5px; }
+                        .kpi-item p { font-size: 32px; font-weight: bold; margin: 0; }
+                        .chart-title { font-size: 20px; font-weight: 600; text-align: center; margin-bottom: 20px; }
+                        .chart-image { max-width: 180mm; max-height: 220mm; display: block; margin: auto; }
+                        .data-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+                        .data-table th, .data-table td { border: 1px solid #DEE2E6; padding: 10px; text-align: left; }
+                        .data-table th { background-color: #F8F9FA; font-weight: bold; }
+                        .data-table tr:nth-child(even) { background-color: #F8F9FA; }
+                    </style>
+                </head>
+                <body>
+                    <!-- Página 1: Portada -->
+                    <div class="pdf-page">
+                        <div class="pdf-header">
+                            <h1>${reportTitle}</h1>
+                            <p>${reportSubtitle}</p>
+                        </div>
+                        <div class="kpi-grid">
+                            ${Object.entries(kpis).map(([key, value]) => `
+                                <div class="kpi-item">
+                                    <h3>${key}</h3>
+                                    <p style="color: ${kpiColors[key] || '#333'};">${value}</p>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>`;
 
-            const kpisContainer = clone.querySelector('.grid.md\\:grid-cols-4');
-            if(kpisContainer) kpisContainer.style.pageBreakAfter = 'always';
-
-            const productCountsForPdf = Object.entries(charts.topProductsChart.data.datasets[0].data)
-                .map(([index, value]) => [charts.topProductsChart.data.labels[index].replace('...', ''), value]);
-
-            const pages = [
-                { id: 'statusChart', title: 'Estado de Solicitudes', headers: ['Estado', 'Cantidad'], data: Object.entries(charts.statusChart.data.datasets[0].data).map(([i, v]) => [charts.statusChart.data.labels[i], v]) },
-                { id: 'topProductsChart', title: 'Top 50 Productos Más Solicitados', headers: ['Producto', 'Unidades'], data: productCountsForPdf },
-                { id: 'warehouseChart', title: 'Volumen por Bodega Destino', headers: ['Bodega', 'Solicitudes'], data: Object.entries(charts.warehouseChart.data.datasets[0].data).map(([i, v]) => [charts.warehouseChart.data.labels[i], v]) },
-                { id: 'fulfillmentChart', title: 'Tasa de Cumplimiento', headers: ['Concepto', 'Unidades'], data: [['Unidades Enviadas', charts.fulfillmentChart.data.datasets[0].data[0]], ['Unidades Recibidas', charts.fulfillmentChart.data.datasets[1].data[0]]] },
-                { id: 'requestedVsSentChart', title: 'Unidades Solicitadas vs. Enviadas', headers: ['Concepto', 'Unidades'], data: [['Unidades Solicitadas', charts.requestedVsSentChart.data.datasets[0].data[0]], ['Unidades Enviadas', charts.requestedVsSentChart.data.datasets[1].data[0]]] },
-            ];
-
-            pages.forEach((page) => {
-                // Página para el Gráfico
-                const chartPage = document.createElement('div');
-                chartPage.style.pageBreakBefore = 'always';
-                chartPage.style.width = '100%';
-                chartPage.style.height = '277mm'; // Altura aprox de A4 menos márgenes
-                chartPage.style.display = 'flex';
-                chartPage.style.flexDirection = 'column';
-                chartPage.style.justifyContent = 'center';
-                chartPage.style.alignItems = 'center';
+            // 3. Crear una página para cada gráfico y otra para su tabla
+            for (const chartId in chartDataForPdf) {
+                const item = chartDataForPdf[chartId];
                 
-                const chartTitle = document.createElement('h3');
-                chartTitle.textContent = page.title;
-                chartTitle.style.fontSize = '18px';
-                chartTitle.style.fontWeight = '600';
-                chartTitle.style.textAlign = 'center';
-                chartTitle.style.marginBottom = '15px';
-                chartTitle.style.fontFamily = 'Arial, sans-serif';
+                // Página del Gráfico
+                pdfHtml += `
+                    <div class="pdf-page">
+                        <h2 class="chart-title">${item.title}</h2>
+                        <img src="${charts[chartId].toBase64Image()}" class="chart-image">
+                    </div>`;
 
-                const chartImg = new Image();
-                chartImg.src = charts[page.id].toBase64Image();
-                chartImg.style.maxWidth = '180mm';
-                chartImg.style.maxHeight = '220mm';
-                
-                chartPage.appendChild(chartTitle);
-                chartPage.appendChild(chartImg);
-                originalChartsGrid.appendChild(chartPage);
+                // Página de la Tabla
+                pdfHtml += `
+                    <div class="pdf-page">
+                        <h2 class="chart-title">${item.title} - Datos</h2>
+                        <table class="data-table">
+                            <thead><tr>${item.headers.map(h => `<th>${h}</th>`).join('')}</tr></thead>
+                            <tbody>${item.data.map(row => `<tr>${row.map(cell => `<td>${cell}</td>`).join('')}</tr>`).join('')}</tbody>
+                        </table>
+                    </div>`;
+            }
 
-                // Página para la Tabla
-                const tablePage = document.createElement('div');
-                tablePage.style.pageBreakBefore = 'always';
-                tablePage.innerHTML = createDataTable(page.title, page.headers, page.data);
-                originalChartsGrid.appendChild(tablePage);
-            });
-            
-            const pdfContainer = document.createElement('div');
-            pdfContainer.style.position = 'fixed';
-            pdfContainer.style.top = '-9999px';
-            pdfContainer.style.left = '-9999px'; 
-            pdfContainer.style.width = '210mm';
-            clone.style.backgroundColor = 'white';
-            clone.style.padding = '0';
-            pdfContainer.appendChild(clone);
-            document.body.appendChild(pdfContainer);
+            pdfHtml += `</body></html>`;
+
+            // 4. Renderizar el PDF
+            const pdfElement = document.createElement('div');
+            pdfElement.innerHTML = pdfHtml;
 
             const today = new Date().toISOString().slice(0, 10);
             const opt = {
                 margin: 10,
                 filename: `Informe_Gerencial_${today}.pdf`,
                 image: { type: 'jpeg', quality: 0.98 },
-                html2canvas: { scale: 2, useCORS: true, logging: true },
+                html2canvas: { scale: 2, useCORS: true },
                 jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
             };
 
             try {
-                await html2pdf().from(clone).set(opt).save();
+                await html2pdf().from(pdfElement).set(opt).save();
             } catch (error) {
                 console.error("Error al generar el PDF:", error);
                 alert("Ocurrió un error al generar el PDF.");
-            } finally {
-                document.body.removeChild(pdfContainer);
             }
         }
 
