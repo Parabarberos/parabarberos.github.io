@@ -1257,7 +1257,7 @@
                 options: chartOptions
             });
         }
-                        async function downloadPdfReport() {
+                                async function downloadPdfReport() {
             // 1. Recopilar todos los datos necesarios para el informe
             const reportTitle = "Informe Gerencial de Traslados";
             const reportSubtitle = document.getElementById('reportDateSubtitle').textContent;
@@ -1272,6 +1272,7 @@
                 "Con Novedad": '#f59e0b',
                 "Canceladas": '#ef4444'
             };
+            // Se toman los datos completos para el PDF, independientemente de la vista en la UI
             const productCounts = lastFilteredRequests.reduce((acc, req) => {
                 if (req.items && Array.isArray(req.items)) {
                     req.items.forEach(item => {
@@ -1293,7 +1294,7 @@
                 topProductsChart: {
                     title: 'Top 50 Productos Más Solicitados',
                     headers: ['Producto', 'Unidades Solicitadas'],
-                    data: fullSortedProducts
+                    data: fullSortedProducts // Usar la lista completa para la tabla
                 },
                 warehouseChart: {
                     title: 'Volumen por Bodega Destino',
@@ -1318,8 +1319,8 @@
                 <head>
                     <style>
                         body { font-family: Arial, sans-serif; color: #374151; }
+                        /* <-- CAMBIO CLAVE: Se elimina 'page-break-after' de la clase principal */
                         .pdf-page {
-                            page-break-after: always; /* Clave para la paginación correcta */
                             width: 100%;
                             height: 277mm; /* Altura de A4 menos márgenes */
                             padding: 20mm 15mm;
@@ -1345,7 +1346,7 @@
                     </style>
                 </head>
                 <body>
-                    <!-- Página 1: Portada -->
+                    <!-- Página 1: Portada (sin salto de página antes) -->
                     <div class="pdf-page cover-page">
                         <div class="pdf-header">
                             <h1>${reportTitle}</h1>
@@ -1362,28 +1363,28 @@
                     </div>`;
 
             // 3. Crear una página para cada gráfico y otra para su tabla
-            const pages = Object.keys(chartDataForPdf);
-            pages.forEach((chartId, index) => {
+            for (const chartId in chartDataForPdf) {
                 const item = chartDataForPdf[chartId];
                 
                 // Página del Gráfico
+                // <-- CAMBIO CLAVE: Se añade 'page-break-before: always;' para forzar una nueva página
                 pdfHtml += `
-                    <div class="pdf-page">
+                    <div class="pdf-page" style="page-break-before: always;">
                         <h2 class="chart-title">${item.title}</h2>
                         <img src="${charts[chartId].toBase64Image()}" class="chart-image">
                     </div>`;
 
-                // Página de la Tabla (La última página no necesita un salto de página después)
+                // Página de la Tabla
+                // <-- CAMBIO CLAVE: Se añade 'page-break-before: always;' para forzar una nueva página
                 pdfHtml += `
-                    <div class="pdf-page" style="${index === pages.length - 1 ? 'page-break-after: auto;' : ''}">
+                    <div class="pdf-page" style="page-break-before: always;">
                         <h2 class="chart-title">${item.title} - Datos Detallados</h2>
                         <table class="data-table">
                             <thead><tr>${item.headers.map(h => `<th>${h}</th>`).join('')}</tr></thead>
                             <tbody>${item.data.map(row => `<tr>${row.map(cell => `<td>${cell}</td>`).join('')}</tr>`).join('')}</tbody>
                         </table>
                     </div>`;
-            });
-
+            }
 
             pdfHtml += `</body></html>`;
 
@@ -1401,7 +1402,10 @@
             };
 
             try {
-                await html2pdf().from(pdfElement).set(opt).save();
+                // Se añade un pequeño retraso para asegurar que las imágenes de los gráficos se rendericen completamente
+                setTimeout(async () => {
+                    await html2pdf().from(pdfElement).set(opt).save();
+                }, 500);
             } catch (error) {
                 console.error("Error al generar el PDF:", error);
                 alert("Ocurrió un error al generar el PDF.");
