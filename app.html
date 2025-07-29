@@ -1257,13 +1257,8 @@
                 options: chartOptions
             });
         }
-                async function downloadPdfReport() {
-            // Se muestra un mensaje de carga para que el usuario sepa que se está procesando.
-            const originalButtonText = dom.downloadPdfBtn.innerHTML;
-            dom.downloadPdfBtn.innerHTML = `<span>Generando...</span>`;
-            dom.downloadPdfBtn.disabled = true;
-
-            // 1. Recopilar todos los datos necesarios para el informe
+                        async function downloadPdfReport() {
+            // 1. Recopilar datos (sin cambios)
             const reportTitle = "Informe Gerencial de Traslados";
             const reportSubtitle = document.getElementById('reportDateSubtitle').textContent;
             const kpis = {
@@ -1277,7 +1272,6 @@
                 "Con Novedad": '#f59e0b',
                 "Canceladas": '#ef4444'
             };
-            
             const productCounts = lastFilteredRequests.reduce((acc, req) => {
                 if (req.items && Array.isArray(req.items)) {
                     req.items.forEach(item => {
@@ -1318,13 +1312,13 @@
                 }
             };
             
-            // 2. Construir el HTML del PDF con un diseño profesional
+            // 2. Construir el HTML del PDF
             let pdfHtml = `
                 <html>
                 <head>
                     <style>
                         body { font-family: Arial, sans-serif; color: #374151; }
-                        /* Se elimina CUALQUIER regla de page-break de aquí */
+                        /* --- CAMBIO 1: SE ELIMINA CUALQUIER REGLA DE page-break-* DE AQUÍ --- */
                         .pdf-page {
                             width: 100%;
                             padding: 20mm 15mm;
@@ -1332,13 +1326,15 @@
                             display: flex;
                             flex-direction: column;
                             align-items: center;
-                            justify-content: flex-start;
+                            justify-content: flex-start; /* Alinea contenido arriba */
                         }
-                        .cover-page { height: 277mm; justify-content: center; }
-                        .pdf-header { text-align: center; margin-bottom: 50px; width: 100%; }
-                        .pdf-header h1 { font-size: 28px; margin-bottom: 8px; color: #111827; }
-                        .pdf-header p { font-size: 14px; color: #6B7280; }
-                        .kpi-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 25px 50px; text-align: center; }
+                        .cover-page {
+                            height: 277mm; /* La portada sí necesita altura para centrarse */
+                            justify-content: center;
+                        }
+                        .pdf-header h1 { font-size: 28px; margin-bottom: 8px; color: #111827; text-align: center; }
+                        .pdf-header p { font-size: 14px; color: #6B7280; text-align: center; }
+                        .kpi-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 25px 50px; text-align: center; margin-top: 50px; }
                         .kpi-item h3 { font-size: 14px; color: #6B7280; font-weight: normal; margin-bottom: 5px; text-transform: uppercase; }
                         .kpi-item p { font-size: 32px; font-weight: bold; margin: 0; }
                         .chart-title { font-size: 22px; font-weight: 600; text-align: center; margin-bottom: 25px; color: #111827; }
@@ -1378,26 +1374,14 @@
                     </div>`;
 
                 // Página de la Tabla con la clase para el salto
-                const chunkSize = 25; // Dividir tablas largas en trozos de 25 filas
-                const dataChunks = [];
-                for (let i = 0; i < item.data.length; i += chunkSize) {
-                    dataChunks.push(item.data.slice(i, i + chunkSize));
-                }
-
-                dataChunks.forEach((chunk, index) => {
-                    const pageTitle = dataChunks.length > 1 
-                        ? `${item.title} - Datos Detallados (Página ${index + 1})` 
-                        : `${item.title} - Datos Detallados`;
-                    
-                    pdfHtml += `
-                        <div class="pdf-page pdf-section-break">
-                            <h2 class="chart-title">${pageTitle}</h2>
-                            <table class="data-table">
-                                <thead><tr>${item.headers.map(h => `<th>${h}</th>`).join('')}</tr></thead>
-                                <tbody>${chunk.map(row => `<tr>${row.map(cell => `<td>${cell}</td>`).join('')}</tr>`).join('')}</tbody>
-                            </table>
-                        </div>`;
-                });
+                pdfHtml += `
+                    <div class="pdf-page pdf-section-break">
+                        <h2 class="chart-title">${item.title} - Datos Detallados</h2>
+                        <table class="data-table">
+                            <thead><tr>${item.headers.map(h => `<th>${h}</th>`).join('')}</tr></thead>
+                            <tbody>${item.data.map(row => `<tr>${row.map(cell => `<td>${cell}</td>`).join('')}</tr>`).join('')}</tbody>
+                        </table>
+                    </div>`;
             }
 
             pdfHtml += `</body></html>`;
@@ -1406,9 +1390,9 @@
             pdfElement.innerHTML = pdfHtml;
             const today = new Date().toISOString().slice(0, 10);
 
-            // --- LA PARTE QUE REGULA TODO ---
+            // --- CAMBIO 2: Aquí está la parte que regula el salto ---
             const opt = {
-                margin: 0, // El padding ya está en el CSS
+                margin: 10,
                 filename: `Informe_Gerencial_${today}.pdf`,
                 image: { type: 'jpeg', quality: 0.98 },
                 html2canvas: { scale: 2, useCORS: true },
@@ -1422,10 +1406,6 @@
             } catch (error) {
                 console.error("Error al generar el PDF:", error);
                 alert("Ocurrió un error al generar el PDF.");
-            } finally {
-                // Restaurar el botón
-                dom.downloadPdfBtn.innerHTML = originalButtonText;
-                dom.downloadPdfBtn.disabled = false;
             }
         }
 
