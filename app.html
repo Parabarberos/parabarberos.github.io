@@ -11,7 +11,6 @@
     <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-firestore-compat.js"></script>
     <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- Librería de PDF actualizada a la versión más reciente y estable -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 </head>
 <body class="bg-gray-100 font-sans">
@@ -1098,7 +1097,9 @@
         // INICIO DE LÓGICA PARA INFORMES GERENCIALES
         // ==================================================================
         function destroyCharts() {
-            Object.values(charts).forEach(chart => chart.destroy());
+            Object.values(charts).forEach(chart => {
+                if (chart) chart.destroy();
+            });
             charts = {};
         }
 
@@ -1245,79 +1246,60 @@
         }
         
         async function downloadPdfReport() {
+            const reportContent = document.getElementById('reportContent');
+            if (!reportContent) {
+                alert('No se encontró el contenido del informe para generar el PDF.');
+                return;
+            }
+
             const originalButtonText = dom.downloadPdfBtn.innerHTML;
             dom.downloadPdfBtn.innerHTML = `<span><svg class="animate-spin -ml-1 mr-3 h-5 w-5 inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>Generando...</span>`;
             dom.downloadPdfBtn.disabled = true;
 
-            try {
-                const reportTitle = "Informe Gerencial de Traslados";
-                const reportSubtitle = document.getElementById('reportDateSubtitle').textContent;
-                const kpis = {
-                    "Total Solicitudes": dom.kpiTotalRequests.textContent, "Completadas": dom.kpiCompleted.textContent,
-                    "Con Novedad": dom.kpiWithNovelty.textContent, "Canceladas": dom.kpiCancelled.textContent,
-                };
-                const kpiColors = { "Completadas": '#22c55e', "Con Novedad": '#f59e0b', "Canceladas": '#ef4444' };
-                const productCounts = lastFilteredRequests.reduce((acc, req) => {
-                    if (req.items && Array.isArray(req.items)) {
-                        req.items.forEach(item => {
-                            if (item && item.productName && typeof item.quantity === 'number') {
-                                acc[item.productName] = (acc[item.productName] || 0) + item.quantity;
-                            }
-                        });
-                    }
-                    return acc;
-                }, {});
-                const fullSortedProducts = Object.entries(productCounts).sort((a, b) => b[1] - a[1]).slice(0, 50);
+            // Clonar el elemento para no modificar la vista en vivo
+            const contentToPrint = reportContent.cloneNode(true);
+            
+            // Añadir el clon al DOM de forma invisible para que se computen los estilos
+            contentToPrint.style.position = 'absolute';
+            contentToPrint.style.left = '-9999px';
+            contentToPrint.style.width = '210mm'; // Ancho de A4
+            document.body.appendChild(contentToPrint);
 
-                const chartDataForPdf = {
-                    statusChart: { title: 'Estado de Solicitudes', headers: ['Estado', 'Cantidad'], data: Object.entries(charts.statusChart.data.datasets[0].data).map(([i, v]) => [charts.statusChart.data.labels[i], v]) },
-                    topProductsChart: { title: 'Top 50 Productos Más Solicitados', headers: ['Producto', 'Unidades Solicitadas'], data: fullSortedProducts },
-                    warehouseChart: { title: 'Volumen por Bodega Destino', headers: ['Bodega', 'Nº de Solicitudes'], data: Object.entries(charts.warehouseChart.data.datasets[0].data).map(([i, v]) => [charts.warehouseChart.data.labels[i], v]) },
-                    fulfillmentChart: { title: 'Tasa de Cumplimiento', headers: ['Concepto', 'Total Unidades'], data: [['Unidades Enviadas', charts.fulfillmentChart.data.datasets[0].data[0]], ['Unidades Recibidas', charts.fulfillmentChart.data.datasets[1].data[0]]] },
-                    requestedVsSentChart: { title: 'Unidades Solicitadas vs. Enviadas', headers: ['Concepto', 'Total Unidades'], data: [['Unidades Solicitadas', charts.requestedVsSentChart.data.datasets[0].data[0]], ['Unidades Enviadas', charts.requestedVsSentChart.data.datasets[1].data[0]]] }
-                };
-                
-                const pdfContainer = document.createElement('div');
-                document.body.appendChild(pdfContainer);
-
-                let finalHtml = '<html><head><style>body { font-family: Arial, sans-serif; color: #374151; } .page { page-break-after: always; width: 210mm; min-height: 297mm; padding: 20mm 15mm; box-sizing: border-box; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; } table { width: 100%; border-collapse: collapse; font-size: 10px; } th, td { border: 1px solid #ddd; padding: 6px; text-align: left; } th { background-color: #f2f2f2; } img { max-width: 180mm; max-height: 200mm; display: block; margin: auto; } h1 { font-size: 24px; text-align:center; } h2 { font-size: 18px; text-align:center; } .kpi-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px 40px; text-align: center; margin: 40px auto; } .kpi-item h3 { font-size: 12px; color: #6B7280; font-weight: normal; margin-bottom: 5px; } .kpi-item p { font-size: 28px; font-weight: bold; margin: 0; }</style></head><body>';
-                
-                finalHtml += `<div class="page"><h1>${reportTitle}</h1><h2>${reportSubtitle}</h2><div class="kpi-grid">${Object.entries(kpis).map(([key, value]) => `<div><h3>${key}</h3><p style="color: ${kpiColors[key] || '#111827'};">${value}</p></div>`).join('')}</div></div>`;
-
-                for (const chartId in chartDataForPdf) {
-                    const item = chartDataForPdf[chartId];
-                    finalHtml += `<div class="page"><h2>${item.title}</h2><img src="${charts[chartId].toBase64Image()}"></div>`;
-                    
-                    const chunkSize = 35;
-                    for (let i = 0; i < item.data.length; i += chunkSize) {
-                        const chunk = item.data.slice(i, i + chunkSize);
-                        const pageTitle = item.data.length > chunkSize ? `${item.title} - Datos (${Math.floor(i / chunkSize) + 1})` : `${item.title} - Datos`;
-                        finalHtml += `<div class="page"><h2>${pageTitle}</h2><table><thead><tr>${item.headers.map(h => `<th>${h}</th>`).join('')}</tr></thead><tbody>${chunk.map(row => `<tr>${row.map(cell => `<td>${cell}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
-                    }
+            // Reemplazar los canvas con imágenes estáticas para una exportación fiable
+            const originalCanvases = reportContent.querySelectorAll('canvas');
+            const clonedCanvases = contentToPrint.querySelectorAll('canvas');
+            
+            clonedCanvases.forEach((canvas, index) => {
+                const originalCanvas = originalCanvases[index];
+                const chartInstance = Chart.getChart(originalCanvas);
+                if (chartInstance) {
+                    const img = new Image();
+                    img.src = chartInstance.toBase64Image();
+                    img.style.maxWidth = '100%';
+                    img.style.height = 'auto';
+                    img.style.display = 'block';
+                    canvas.parentNode.replaceChild(img, canvas);
                 }
-                finalHtml += '</body></html>';
+            });
 
-                pdfContainer.innerHTML = finalHtml;
+            const today = new Date().toISOString().slice(0, 10);
+            const opt = {
+                margin: [15, 15, 15, 15],
+                filename: `Informe_Gerencial_${today}.pdf`,
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { scale: 2, useCORS: true, letterRendering: true },
+                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            };
 
-                const today = new Date().toISOString().slice(0, 10);
-                const opt = {
-                    margin: 0,
-                    filename: `Informe_Gerencial_${today}.pdf`,
-                    image: { type: 'jpeg', quality: 0.98 },
-                    html2canvas: { scale: 2, useCORS: true, logging: false },
-                    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-                };
-
-                await html2pdf().from(pdfContainer).set(opt).save();
-
+            try {
+                await html2pdf().from(contentToPrint).set(opt).save();
             } catch (error) {
                 console.error("Error al generar el PDF:", error);
-                alert("Ocurrió un error al generar el PDF. Por favor, inténtelo de nuevo.");
+                alert("Ocurrió un error al generar el PDF.");
             } finally {
-                const pdfContainer = document.querySelector('body > div:last-child');
-                 if (pdfContainer && pdfContainer.innerHTML.includes('page-break-after')) {
-                    document.body.removeChild(pdfContainer);
-                }
+                // Limpiar el clon del DOM
+                document.body.removeChild(contentToPrint);
+                // Restaurar el botón
                 dom.downloadPdfBtn.innerHTML = originalButtonText;
                 dom.downloadPdfBtn.disabled = false;
             }
@@ -1391,6 +1373,7 @@
             if (dom.searchInput) dom.searchInput.addEventListener('input', () => renderProducts(allProducts.filter(p => p.name.toLowerCase().includes(dom.searchInput.value.toLowerCase()))));
             if (dom.productFile) dom.productFile.addEventListener('change', () => { dom.fileNameDisplay.textContent = dom.productFile.files.length > 0 ? dom.productFile.files[0].name : 'Ningún archivo seleccionado.'; dom.uploadStatus.textContent = ''; });
             
+            // CORREGIDO: Se ajustó el nombre del ID 'adminActiveDateTo'
             ['requesterSearchId', 'requesterDateFrom', 'requesterDateTo', 'adminActiveSearchId', 'adminActiveDateFrom', 'adminActiveDateTo', 'adminHistorySearchId', 'adminHistoryDateFrom', 'adminHistoryDateTo', 'reviewerSearchId', 'reviewerDateFrom', 'reviewerDateTo'].forEach(id => {
                 const element = dom[id];
                 if (element) {
@@ -1410,7 +1393,7 @@
             transfersCollection.orderBy("timestamp", "desc").onSnapshot(snapshot => {
                 allTransferRequests = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                 renderAllSections();
-                 if ((currentUserData.role === 'manager' || currentUserData.role === 'admin') && dom.reportContainer && dom.reportContainer.style.display === 'block') {
+                 if ((currentUserData.role === 'manager') && dom.reportContainer.style.display === 'block') {
                     handleReportGeneration();
                 }
             }, error => console.error("Error al conectar: ", error));
