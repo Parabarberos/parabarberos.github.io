@@ -4,20 +4,21 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TRASLADOS ENTRE BODEGAS PARABARBEROS S.A.S.</title>
-    <link rel="icon" type="image/jpeg" href="https://parabarberos.github.io/1.jpg">
+    <link rel="icon" type="image/jpeg" href="https://parabarberos.github.io/2.jpg">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-firestore-compat.js"></script>
     <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.9.3/html2pdf.bundle.min.js"></script>
+    <!-- Librería de PDF actualizada a la versión más reciente y estable -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 </head>
 <body class="bg-gray-100 font-sans">
     <div class="container mx-auto p-4 md:p-8">
         <header class="mb-12 text-center">
             <div class="inline-block p-2 bg-white rounded-full shadow-lg mx-auto mb-6 border-4 border-gray-200">
-                <img src="https://parabarberos.github.io/1.jpg" alt="Logo Parabarberos" class="h-24 w-24 md:h-32 md:w-32 rounded-full">
+                <img src="https://parabarberos.github.io/2.jpg" alt="Logo Parabarberos" class="h-24 w-24 md:h-32 md:w-32 rounded-full">
             </div>
             <h1 class="text-4xl md:text-5xl font-extrabold text-gray-800 tracking-tight">TRASLADOS ENTRE BODEGAS</h1>
             <div id="userInfo" class="mt-8 flex justify-center items-center gap-4" style="display: none;">
@@ -203,32 +204,37 @@
                     </div>
                     
                     <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 pt-8">
-                        <div class="col-span-2 lg:col-span-1 bg-white p-6 rounded-xl shadow-lg border border-gray-200">
+                        <div class="col-span-2 lg:col-span-1 bg-white p-6 rounded-xl shadow-lg border border-gray-200" style="page-break-inside: avoid; break-inside: avoid;">
+
                             <h3 class="text-xl font-semibold text-gray-800 mb-4 text-center">Estado de Solicitudes</h3>
                             <div class="relative h-80">
                                 <canvas id="statusChart"></canvas>
                             </div>
                         </div>
-                        <div class="col-span-2 lg:col-span-1 bg-white p-6 rounded-xl shadow-lg border border-gray-200">
+                        <div class="col-span-2 lg:col-span-1 bg-white p-6 rounded-xl shadow-lg border border-gray-200" style="page-break-inside: avoid; break-inside: avoid;">
+
                             <h3 class="text-xl font-semibold text-gray-800 mb-4 text-center">Top 50 Productos Más Solicitados</h3>
                             <div id="topProductsChartContainer" class="relative">
                                 <canvas id="topProductsChart"></canvas>
                             </div>
                             <div id="topProductsToggleContainer" class="text-center mt-4"></div>
                         </div>
-                        <div class="col-span-2 lg:col-span-1 bg-white p-6 rounded-xl shadow-lg border border-gray-200">
+                        <div class="col-span-2 lg:col-span-1 bg-white p-6 rounded-xl shadow-lg border border-gray-200" style="page-break-inside: avoid; break-inside: avoid;">
+
                             <h3 class="text-xl font-semibold text-gray-800 mb-4 text-center">Volumen por Bodega Destino</h3>
                             <div class="relative h-80">
                                 <canvas id="warehouseChart"></canvas>
                             </div>
                         </div>
-                        <div class="col-span-2 lg:col-span-1 bg-white p-6 rounded-xl shadow-lg border border-gray-200">
+                        <div class="col-span-2 lg:col-span-1 bg-white p-6 rounded-xl shadow-lg border border-gray-200" style="page-break-inside: avoid; break-inside: avoid;">
+
                             <h3 class="text-xl font-semibold text-gray-800 mb-4 text-center">Tasa de Cumplimiento (Unidades Recibidas)</h3>
                             <div class="relative h-80">
                                 <canvas id="fulfillmentChart"></canvas>
                             </div>
                         </div>
-                        <div class="col-span-2 lg:col-span-1 bg-white p-6 rounded-xl shadow-lg border border-gray-200">
+                        <div class="col-span-2 lg:col-span-1 bg-white p-6 rounded-xl shadow-lg border border-gray-200" style="page-break-inside: avoid; break-inside: avoid;">
+
                             <h3 class="text-xl font-semibold text-gray-800 mb-4 text-center">Unidades Solicitadas vs. Enviadas</h3>
                             <div class="relative h-80">
                                 <canvas id="requestedVsSentChart"></canvas>
@@ -278,7 +284,7 @@
         let allProducts = [], currentTransferItems = [], allTransferRequests = [], currentUserData = null;
         let charts = {};
         let lastFilteredRequests = [];
-        let isTopProductsChartExpanded = false; // Estado para el gráfico de productos
+        let isTopProductsChartExpanded = false;
         const expandedRequestsState = new Set();
         const sectionDisplayCounts = {};
         const INITIAL_DISPLAY_COUNT = 2;
@@ -406,6 +412,7 @@
 
             if (role === 'admin') {
                 dom.adminView.style.display = 'block';
+                // dom.managerView.style.display = 'block'; // <<< MODIFICACIÓN: Se comenta esta línea para ocultar la vista gerencial al admin
                 if (dom.productManagementCard) dom.productManagementCard.style.display = 'block';
             } else if (role === 'reviewer') {
                 dom.reviewerView.style.display = 'block';
@@ -1089,7 +1096,7 @@
         }
 
         // ==================================================================
-        // INICIO DE LÓGICA PARA INFORMES GERENCIALES (TOTALMENTE ACTUALIZADA)
+        // INICIO DE LÓGICA PARA INFORMES GERENCIALES
         // ==================================================================
         function destroyCharts() {
             Object.values(charts).forEach(chart => chart.destroy());
@@ -1144,7 +1151,7 @@
 
         function toggleTopProductsView() {
             isTopProductsChartExpanded = !isTopProductsChartExpanded;
-            handleReportGeneration(); // Vuelve a generar los informes con la nueva vista
+            handleReportGeneration();
         }
 
         function generateAllReports(data) {
@@ -1158,7 +1165,6 @@
 
             const chartOptions = { responsive: true, maintainAspectRatio: false, animation: { duration: 0 } };
 
-            // GRÁFICO 1: Estado de Solicitudes
             const statusCounts = data.reduce((acc, req) => {
                 const status = translateStatus(req.status, req);
                 acc[status] = (acc[status] || 0) + 1;
@@ -1169,7 +1175,6 @@
                 options: chartOptions
             });
 
-            // GRÁFICO 2: Top Productos (Interactivo)
             const productCounts = data.reduce((acc, req) => {
                 if (req.items && Array.isArray(req.items)) {
                     req.items.forEach(item => {
@@ -1183,13 +1188,10 @@
             const sortedProducts = Object.entries(productCounts).sort((a, b) => b[1] - a[1]).slice(0, 50);
             
             const productsToShow = isTopProductsChartExpanded ? sortedProducts : sortedProducts.slice(0, 10);
-
             const topProductsContainer = document.getElementById('topProductsChartContainer');
             if (topProductsContainer) {
-                const dynamicHeight = Math.max(300, productsToShow.length * 40);
-                topProductsContainer.style.height = `${dynamicHeight}px`;
+                topProductsContainer.style.height = `${Math.max(300, productsToShow.length * 40)}px`;
             }
-
             const toggleContainer = document.getElementById('topProductsToggleContainer');
             toggleContainer.innerHTML = '';
             if (sortedProducts.length > 10) {
@@ -1205,11 +1207,8 @@
                 options: { ...chartOptions, indexAxis: 'y', plugins: { legend: { display: false } } }
             });
 
-            // GRÁFICO 3: Volumen por Bodega
             const warehouseCounts = data.reduce((acc, req) => {
-                if (req.toWarehouse) {
-                    acc[req.toWarehouse] = (acc[req.toWarehouse] || 0) + 1;
-                }
+                if (req.toWarehouse) { acc[req.toWarehouse] = (acc[req.toWarehouse] || 0) + 1; }
                 return acc;
             }, {});
             charts.warehouseChart = new Chart(dom.warehouseChart, {
@@ -1217,16 +1216,10 @@
                 options: chartOptions
             });
             
-            // GRÁFICO 4: Tasa de Cumplimiento
             const fulfillmentData = data.filter(r => r.status.startsWith('completed')).reduce((acc, req) => {
-                if(req.items && Array.isArray(req.items)) {
-                    req.items.forEach(item => {
-                        if (item) {
-                            acc.sent += (item.sentQuantity || 0);
-                            acc.received += (item.receivedQuantity || 0);
-                        }
-                    });
-                }
+                if(req.items) req.items.forEach(item => {
+                    acc.sent += (item.sentQuantity || 0); acc.received += (item.receivedQuantity || 0);
+                });
                 return acc;
             }, { sent: 0, received: 0 });
             charts.fulfillmentChart = new Chart(dom.fulfillmentChart, {
@@ -1237,16 +1230,10 @@
                 options: chartOptions
             });
 
-            // GRÁFICO 5: Solicitadas vs Enviadas
             const requestedVsSentData = data.reduce((acc, req) => {
-                if(req.items && Array.isArray(req.items)) {
-                    req.items.forEach(item => {
-                        if(item) {
-                            acc.requested += (item.quantity || 0);
-                            acc.sent += (item.sentQuantity || 0);
-                        }
-                    });
-                }
+                if(req.items) req.items.forEach(item => {
+                    acc.requested += (item.quantity || 0); acc.sent += (item.sentQuantity || 0);
+                });
                 return acc;
             }, { requested: 0, sent: 0 });
             charts.requestedVsSentChart = new Chart(dom.requestedVsSentChart, {
@@ -1257,119 +1244,174 @@
                 options: chartOptions
             });
         }
-                async function downloadPdfReport() {
-            const originalButtonText = dom.downloadPdfBtn.innerHTML;
-            dom.downloadPdfBtn.innerHTML = `<span><svg class="animate-spin -ml-1 mr-3 h-5 w-5 inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>Generando...</span>`;
-            dom.downloadPdfBtn.disabled = true;
+        async function downloadPdfReport() {
+    const reportTitle = "Informe Gerencial de Traslados";
+    const reportSubtitle = document.getElementById('reportDateSubtitle').textContent;
 
-            try {
-                // 1. Recopilar todos los datos necesarios
-                const reportTitle = "Informe Gerencial de Traslados";
-                const reportSubtitle = document.getElementById('reportDateSubtitle').textContent;
-                const kpis = {
-                    "Total Solicitudes": dom.kpiTotalRequests.textContent, "Completadas": dom.kpiCompleted.textContent,
-                    "Con Novedad": dom.kpiWithNovelty.textContent, "Canceladas": dom.kpiCancelled.textContent,
-                };
-                const kpiColors = { "Completadas": '#22c55e', "Con Novedad": '#f59e0b', "Canceladas": '#ef4444' };
-                const productCounts = lastFilteredRequests.reduce((acc, req) => {
-                    if (req.items && Array.isArray(req.items)) {
-                        req.items.forEach(item => {
-                            if (item && item.productName && typeof item.quantity === 'number') {
-                                acc[item.productName] = (acc[item.productName] || 0) + item.quantity;
-                            }
-                        });
-                    }
-                    return acc;
-                }, {});
-                const fullSortedProducts = Object.entries(productCounts).sort((a, b) => b[1] - a[1]).slice(0, 50);
+    const kpis = {
+        "Total Solicitudes": dom.kpiTotalRequests.textContent,
+        "Completadas": dom.kpiCompleted.textContent,
+        "Con Novedad": dom.kpiWithNovelty.textContent,
+        "Canceladas": dom.kpiCancelled.textContent,
+    };
 
-                const chartDataForPdf = {
-                    statusChart: { title: 'Estado de Solicitudes', headers: ['Estado', 'Cantidad'], data: Object.entries(charts.statusChart.data.datasets[0].data).map(([i, v]) => [charts.statusChart.data.labels[i], v]) },
-                    topProductsChart: { title: 'Top 50 Productos Más Solicitados', headers: ['Producto', 'Unidades Solicitadas'], data: fullSortedProducts },
-                    warehouseChart: { title: 'Volumen por Bodega Destino', headers: ['Bodega', 'Nº de Solicitudes'], data: Object.entries(charts.warehouseChart.data.datasets[0].data).map(([i, v]) => [charts.warehouseChart.data.labels[i], v]) },
-                    fulfillmentChart: { title: 'Tasa de Cumplimiento', headers: ['Concepto', 'Total Unidades'], data: [['Unidades Enviadas', charts.fulfillmentChart.data.datasets[0].data[0]], ['Unidades Recibidas', charts.fulfillmentChart.data.datasets[1].data[0]]] },
-                    requestedVsSentChart: { title: 'Unidades Solicitadas vs. Enviadas', headers: ['Concepto', 'Total Unidades'], data: [['Unidades Solicitadas', charts.requestedVsSentChart.data.datasets[0].data[0]], ['Unidades Enviadas', charts.requestedVsSentChart.data.datasets[1].data[0]]] }
-                };
-                
-                // 2. Crear un contenedor invisible para renderizar cada página individualmente
-                const pdfBuilder = document.createElement('div');
-                pdfBuilder.style.position = 'absolute';
-                pdfBuilder.style.left = '-9999px';
-                pdfBuilder.style.top = '0';
-                pdfBuilder.style.fontFamily = 'Arial, sans-serif';
-                pdfBuilder.style.color = '#374151';
-                document.body.appendChild(pdfBuilder);
+    const kpiColors = {
+        "Completadas": '#22c55e',
+        "Con Novedad": '#f59e0b',
+        "Canceladas": '#ef4444'
+    };
 
-                const createPageElement = (content) => {
-                    const page = document.createElement('div');
-                    page.style.width = '210mm';
-                    page.style.minHeight = '297mm';
-                    page.style.padding = '20mm 15mm';
-                    page.style.boxSizing = 'border-box';
-                    page.style.display = 'flex';
-                    page.style.flexDirection = 'column';
-                    page.style.alignItems = 'center';
-                    page.style.justifyContent = 'flex-start';
-                    page.innerHTML = content;
-                    return page;
-                };
-
-                const pages = [];
-
-                // Página 1: Portada
-                pages.push(createPageElement(`
-                    <div style="display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100%;">
-                        <div style="text-align: center; margin-bottom: 50px;"><h1 style="font-size: 28px; margin-bottom: 8px; color: #111827;">${reportTitle}</h1><p style="font-size: 14px; color: #6B7280;">${reportSubtitle}</p></div>
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 25px 50px; text-align: center;">${Object.entries(kpis).map(([key, value]) => `<div class="kpi-item">
-                            <h3 style="font-size: 14px; color: #6B7280; font-weight: normal; margin-bottom: 5px; text-transform: uppercase;">${key}</h3>
-                            <p style="font-size: 32px; font-weight: bold; margin: 0; color: ${kpiColors[key] || '#111827'};">${value}</p>
-                        </div>`).join('')}</div>
-                    </div>`));
-
-                // Crear el resto de páginas
-                for (const chartId in chartDataForPdf) {
-                    const item = chartDataForPdf[chartId];
-                    // Página del Gráfico
-                    pages.push(createPageElement(`<h2 style="font-size: 22px; font-weight: 600; text-align: center; margin-bottom: 25px; color: #111827;">${item.title}</h2><img src="${charts[chartId].toBase64Image()}" style="max-width: 180mm; max-height: 220mm; display: block; margin: auto;">`));
-                    
-                    // Páginas de la Tabla (divididas si es necesario)
-                    const chunkSize = 25;
-                    for (let i = 0; i < item.data.length; i += chunkSize) {
-                        const chunk = item.data.slice(i, i + chunkSize);
-                        const pageTitle = item.data.length > chunkSize ? `${item.title} - Datos Detallados (pág. ${Math.floor(i / chunkSize) + 1})` : `${item.title} - Datos Detallados`;
-                        pages.push(createPageElement(`<h2 style="font-size: 22px; font-weight: 600; text-align: center; margin-bottom: 25px; color: #111827;">${pageTitle}</h2><table style="width: 100%; border-collapse: collapse; font-size: 12px;"><thead><tr>${item.headers.map(h => `<th style="border: 1px solid #DEE2E6; padding: 10px; text-align: left; background-color: #F8F9FA; font-weight: bold;">${h}</th>`).join('')}</tr></thead><tbody>${chunk.map(row => `<tr style="background-color: ${chunk.indexOf(row) % 2 === 0 ? '#FFFFFF' : '#F8F9FA'};">${row.map(cell => `<td style="border: 1px solid #DEE2E6; padding: 10px;">${cell}</td>`).join('')}</tr>`).join('')}</tbody></table>`));
-                    }
+    const productCounts = lastFilteredRequests.reduce((acc, req) => {
+        if (req.items && Array.isArray(req.items)) {
+            req.items.forEach(item => {
+                if (item && item.productName && typeof item.quantity === 'number') {
+                    acc[item.productName] = (acc[item.productName] || 0) + item.quantity;
                 }
-                
-                // 3. Configurar y ejecutar html2pdf secuencialmente
-                const today = new Date().toISOString().slice(0, 10);
-                const opt = {
-                    margin: 0, filename: `Informe_Gerencial_${today}.pdf`,
-                    image: { type: 'jpeg', quality: 0.98 },
-                    html2canvas: { scale: 2, useCORS: true, logging: false },
-                    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-                };
-
-                let worker = html2pdf().set(opt).from(pages[0]);
-                for (let i = 1; i < pages.length; i++) {
-                    worker = worker.addPage().from(pages[i]);
-                }
-                await worker.save();
-
-            } catch (error) {
-                console.error("Error detallado al generar el PDF:", error);
-                alert("Ocurrió un error al generar el PDF. Por favor, inténtelo de nuevo.");
-            } finally {
-                // Limpiar siempre, incluso si hay un error
-                const pdfBuilder = document.querySelector('body > div[style*="left: -9999px"]');
-                if (pdfBuilder) {
-                    document.body.removeChild(pdfBuilder);
-                }
-                dom.downloadPdfBtn.innerHTML = originalButtonText;
-                dom.downloadPdfBtn.disabled = false;
-            }
+            });
         }
+        return acc;
+    }, {});
+    const fullSortedProducts = Object.entries(productCounts).sort((a, b) => b[1] - a[1]).slice(0, 50);
 
+    const chartDataForPdf = {
+        statusChart: {
+            title: 'Estado de Solicitudes',
+            headers: ['Estado', 'Cantidad'],
+            data: Object.entries(charts.statusChart.data.datasets[0].data).map(([i, v]) => [charts.statusChart.data.labels[i], v])
+        },
+        topProductsChart: {
+            title: 'Top 50 Productos Más Solicitados',
+            headers: ['Producto', 'Unidades Solicitadas'],
+            data: fullSortedProducts
+        },
+        warehouseChart: {
+            title: 'Volumen por Bodega Destino',
+            headers: ['Bodega', 'Nº de Solicitudes'],
+            data: Object.entries(charts.warehouseChart.data.datasets[0].data).map(([i, v]) => [charts.warehouseChart.data.labels[i], v])
+        },
+        fulfillmentChart: {
+            title: 'Tasa de Cumplimiento',
+            headers: ['Concepto', 'Total Unidades'],
+            data: [['Unidades Enviadas', charts.fulfillmentChart.data.datasets[0].data[0]], ['Unidades Recibidas', charts.fulfillmentChart.data.datasets[1].data[0]]]
+        },
+        requestedVsSentChart: {
+            title: 'Unidades Solicitadas vs. Enviadas',
+            headers: ['Concepto', 'Total Unidades'],
+            data: [['Unidades Solicitadas', charts.requestedVsSentChart.data.datasets[0].data[0]], ['Unidades Enviadas', charts.requestedVsSentChart.data.datasets[1].data[0]]]
+        }
+    };
+
+    // 1. Construcción del HTML con estilos mejorados para el control de saltos de página
+    let pdfHtml = `
+    <html><head><style>
+        body { font-family: Arial, sans-serif; color: #374151; margin: 0; padding: 0; }
+        .pdf-page {
+    width: 100%;
+    padding: 20mm 15mm;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+.pdf-page:not(:last-of-type) {
+    page-break-after: always;
+}
+        .cover-page {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+        .pdf-header h1 { font-size: 28px; margin-bottom: 8px; color: #111827; text-align: center; }
+        .pdf-header p { font-size: 14px; color: #6B7280; text-align: center; }
+        .kpi-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 25px 50px; text-align: center; margin-top: 50px; }
+        .kpi-item h3 { font-size: 14px; color: #6B7280; font-weight: normal; margin-bottom: 5px; text-transform: uppercase; }
+        .kpi-item p { font-size: 32px; font-weight: bold; margin: 0; }
+        .chart-title { font-size: 22px; font-weight: 600; text-align: center; margin-bottom: 25px; color: #111827; }
+        .pdf-content-block {
+            break-inside: avoid; /* Propiedad moderna para evitar cortes */
+            page-break-inside: avoid; /* Propiedad antigua para mayor compatibilidad */
+        }
+        .chart-image {
+    max-width: 180mm;
+    max-height: 160mm; /* Puedes reducir la altura máxima para dar más aire */
+    object-fit: contain;
+}
+        .data-table { width: 100%; border-collapse: collapse; font-size: 12px; table-layout: fixed; word-wrap: break-word; }
+        .data-table th, .data-table td { border: 1px solid #DEE2E6; padding: 10px; text-align: left; }
+        .data-table th { background-color: #F8F9FA; font-weight: bold; }
+        .data-table tr:nth-child(even) { background-color: #F8F9FA; }
+    </style></head><body>
+
+    <div class="pdf-page cover-page">
+        <div class="pdf-header">
+            <h1>${reportTitle}</h1>
+            <p>${reportSubtitle}</p>
+        </div>
+        <div class="kpi-grid">
+            ${Object.entries(kpis).map(([key, value]) => `
+                <div class="kpi-item">
+                    <h3>${key}</h3>
+                    <p style="color: ${kpiColors[key] || '#111827'};">${value}</p>
+                </div>
+            `).join('')}
+        </div>
+    </div>`;
+
+    for (const chartId in chartDataForPdf) {
+        const item = chartDataForPdf[chartId];
+        const chartImage = charts[chartId].toBase64Image();
+
+        // Contenedor para el gráfico
+        pdfHtml += `
+        <div class="pdf-page">
+            <div class="pdf-content-block">
+                <h2 class="chart-title">${item.title}</h2>
+                <img src="${chartImage}" class="chart-image">
+            </div>
+        </div>`;
+
+        // Contenedor para la tabla de datos detallados
+        pdfHtml += `
+        <div class="pdf-page">
+            <div class="pdf-content-block">
+                <h2 class="chart-title">${item.title} - Datos Detallados</h2>
+                <table class="data-table">
+                    <thead><tr>${item.headers.map(h => `<th>${h}</th>`).join('')}</tr></thead>
+                    <tbody>${item.data.map(row => `<tr>${row.map(cell => `<td>${cell}</td>`).join('')}</tr>`).join('')}</tbody>
+                </table>
+            </div>
+        </div>`;
+    }
+
+    pdfHtml += `</body></html>`;
+
+    // Se eliminó el último page-break para evitar una página en blanco al final
+    const finalHtml = pdfHtml.replace(/page-break-after: always;(?=[^<]*<\/body>)/, "");
+    const pdfElement = document.createElement('div');
+    pdfElement.innerHTML = finalHtml;
+    document.body.appendChild(pdfElement);
+
+    const today = new Date().toISOString().slice(0, 10);
+    const opt = {
+        margin: [15, 15, 15, 15], // [top, left, bottom, right] en mm
+        filename: `Informe_Gerencial_${today}.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true, letterRendering: true },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    };
+
+    try {
+        await html2pdf().from(pdfElement).set(opt).save();
+    } catch (error) {
+        console.error("Error al generar el PDF:", error);
+        alert("Ocurrió un error al generar el PDF.");
+    } finally {
+        pdfElement.remove();
+    }
+}
         function exportManagerReport() {
             const dataToExport = lastFilteredRequests.length > 0 ? lastFilteredRequests : allTransferRequests;
              if (dataToExport.length === 0) {
@@ -1415,7 +1457,7 @@
             setupUIForUser();
             allProducts = await loadAndTransformProducts();
             
-            if(currentUserData.role === 'requester'){
+            if(currentUserData.role === 'requester' || currentUserData.role === 'admin'){
                 renderProducts(allProducts);
                 renderCurrentTransfer();
             }
@@ -1424,12 +1466,12 @@
                 document.getElementById('deliveryDate').valueAsDate = new Date();
             }
             
-            const warehouseOptions = ['Punto de venta Cali centro', 'Punto de venta Cali sur', 'Punto de venta Pasto', 'Punto de venta Tulua', 'Punto de venta Medellin'];
+            const warehouseOptions = ['Bodega Cali Centro', 'Bodega Cali Sur', 'Bodega Pasto', 'Bodega Tulua', 'Bodega Medellín'];
             const originWarehouseOptions = ['Bodega Principal', ...warehouseOptions];
             
-            if(dom.fromWarehouse) dom.fromWarehouse.innerHTML = '<option value="" selected disabled>-- Seleccione una bodega --</option>' + 
+            if(dom.fromWarehouse) dom.fromWarehouse.innerHTML = '<option value="" selected disabled>-- Seleccione --</option>' + 
                                           originWarehouseOptions.map(w => `<option value="${w}">${w}</option>`).join('');
-            if(dom.toWarehouse) dom.toWarehouse.innerHTML = '<option value="" selected disabled>-- Seleccione una bodega --</option>' + 
+            if(dom.toWarehouse) dom.toWarehouse.innerHTML = '<option value="" selected disabled>-- Seleccione --</option>' + 
                                         warehouseOptions.map(w => `<option value="${w}">${w}</option>`).join('');
             
             if (dom.exportExcelBtn) dom.exportExcelBtn.addEventListener('click', exportManagerReport);
@@ -1438,11 +1480,9 @@
             if (dom.searchInput) dom.searchInput.addEventListener('input', () => renderProducts(allProducts.filter(p => p.name.toLowerCase().includes(dom.searchInput.value.toLowerCase()))));
             if (dom.productFile) dom.productFile.addEventListener('change', () => { dom.fileNameDisplay.textContent = dom.productFile.files.length > 0 ? dom.productFile.files[0].name : 'Ningún archivo seleccionado.'; dom.uploadStatus.textContent = ''; });
             
-            ['requesterSearchId', 'requesterDateFrom', 'requesterDateTo', 'adminActiveSearchId', 'adminActiveDateFrom', 'adminActiveDateTo', 'adminHistorySearchId', 'adminHistoryDateFrom', 'adminHistoryDateTo', 'reviewerSearchId', 'reviewerDateFrom', 'reviewerDateTo'].forEach(id => {
+            ['requesterSearchId', 'requesterDateFrom', 'requesterDateTo', 'adminActiveSearchId', 'adminActiveDateFrom', 'adminActiveTo', 'adminHistorySearchId', 'adminHistoryDateFrom', 'adminHistoryDateTo', 'reviewerSearchId', 'reviewerDateFrom', 'reviewerDateTo'].forEach(id => {
                 const element = dom[id];
-                if (element) {
-                    element.addEventListener('input', renderAllSections);
-                }
+                if (element) { element.addEventListener('input', renderAllSections); }
             });
 
             if (dom.reportTimeRange) {
