@@ -568,7 +568,6 @@
                         // --- MANEJO ESPECIAL PARA TOP 50 PRODUCTOS ---
                         // Página 1: Solo el gráfico (es muy alto)
                         const chartPageContent = `<h2 style="${titleStyle}">${item.title}</h2><img src="${charts[chartId].toBase64Image()}" style="max-width: 180mm; max-height: 240mm; display: block;">`;
-                        htmlContent += createPageWrapper(chartPageContent);
 
                         // Páginas Siguientes: Solo la tabla de datos, paginada y compacta
                         const chunkSize = 40;
@@ -1256,7 +1255,7 @@
                     
                     // Página del Gráfico con título más cercano
                     // SE REDUJO margin-bottom de 25px a 15px
-                    const chartPageContent = `<h2 style="font-size: 22px; font-weight: 600; text-align: center; margin-bottom: 15px; color: #111827;">${item.title}</h2><img src="${charts[chartId].toBase64Image()}" style="max-width: 180mm; max-height: 220mm; display: block; margin: auto;">`;
+                    const chartPageContent = `<h2 style="font-size: 22px; font-weight: 600; text-align: center; margin: 0 0 15px 0; color: #111827;">${item.title}</h2><img src="${charts[chartId].toBase64Image()}" style="max-width: 180mm; max-height: 220mm; display: block; margin: auto;">`;
                     htmlContent += createPageWrapper(chartPageContent);
 
                     // Páginas de las Tablas de Datos
@@ -1276,23 +1275,23 @@
                               </table>`;
                             htmlContent += createPageWrapper(tablePageContent);
                         }
-                    } else {
-                        // --- MANEJO ESTÁNDAR PARA LAS OTRAS TABLAS ---
-                        const chunkSize = 25; 
-                        for (let i = 0; i < item.data.length; i += chunkSize) {
-                            const chunk = item.data.slice(i, i + chunkSize);
-                            const pageTitle = item.data.length > chunkSize ? `${item.title} - Datos (pág. ${Math.floor(i / chunkSize) + 1})` : `${item.title} - Datos`;
-                            
-                             // SE REDUJO margin-bottom de 25px a 15px
-                             const tablePageContent = `
-                              <h2 style="font-size: 22px; font-weight: 600; text-align: center; margin-bottom: 15px; color: #111827;">${pageTitle}</h2>
-                              <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
-                                <thead><tr>${item.headers.map(h => `<th style="border: 1px solid #DEE2E6; padding: 10px; text-align: left; background-color: #F8F9FA; font-weight: bold;">${h}</th>`).join('')}</tr></thead>
-                                <tbody>${chunk.map((row, rowIndex) => `<tr style="background-color: ${rowIndex % 2 === 0 ? '#FFFFFF' : '#F8F9FA'};">${row.map(cell => `<td style="border: 1px solid #DEE2E6; padding: 10px;">${cell}</td>`).join('')}</tr>`).join('')}</tbody>
-                              </table>`;
-                            htmlContent += createPageWrapper(tablePageContent);
-                        }
                     }
+                    else {
+    // --- MANEJO ESTÁNDAR CORREGIDO (GRÁFICO Y TABLA JUNTOS) ---
+
+    // 1. Primero, creamos solo el HTML de la tabla, SIN título.
+    const tableHtml = `
+      <table style="width: 100%; max-width: 180mm; margin-top: 25px; border-collapse: collapse; font-size: 12px;">
+        <thead><tr>${item.headers.map(h => `<th style="border: 1px solid #DEE2E6; padding: 8px; text-align: left; background-color: #F8F9FA; font-weight: bold;">${h}</th>`).join('')}</tr></thead>
+        <tbody>${item.data.map((row, rowIndex) => `<tr style="background-color: ${rowIndex % 2 === 0 ? '#FFFFFF' : '#F8F9FA'};">${row.map(cell => `<td style="border: 1px solid #DEE2E6; padding: 8px;">${cell}</td>`).join('')}</tr>`).join('')}</tbody>
+      </table>`;
+
+    // 2. Ahora, unimos el contenido del gráfico (que ya tiene título) con la tabla que acabamos de crear.
+    const combinedPageContent = chartPageContent + tableHtml;
+    
+    // 3. Y creamos UNA SOLA PÁGINA con todo el contenido combinado.
+    htmlContent += createPageWrapper(combinedPageContent);
+}
                 }
                 
                 pdfContainer.innerHTML = htmlContent;
