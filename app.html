@@ -1257,7 +1257,6 @@
                 options: chartOptions
             });
         }
-
         async function downloadPdfReport() {
             const originalButtonText = dom.downloadPdfBtn.innerHTML;
             dom.downloadPdfBtn.innerHTML = `<span><svg class="animate-spin -ml-1 mr-3 h-5 w-5 inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>Generando...</span>`;
@@ -1314,18 +1313,38 @@
                 for (const chartId in chartDataForPdf) {
                     const item = chartDataForPdf[chartId];
                     
-                    // A. Generar SIEMPRE la página con el gráfico
-                    const chartPageContent = `<h2 style="font-size: 22px; font-weight: 600; text-align: center; margin-bottom: 25px; color: #111827;">${item.title}</h2><img src="${charts[chartId].toBase64Image()}" style="max-width: 180mm; max-height: 220mm; display: block; margin: auto;">`;
+                    // Página del Gráfico con título más cercano
+                    // SE REDUJO margin-bottom de 25px a 15px
+                    const chartPageContent = `<h2 style="font-size: 22px; font-weight: 600; text-align: center; margin-bottom: 15px; color: #111827;">${item.title}</h2><img src="${charts[chartId].toBase64Image()}" style="max-width: 180mm; max-height: 220mm; display: block; margin: auto;">`;
                     htmlContent += createPageWrapper(chartPageContent);
 
-                    // B. Generar las páginas de tabla de datos SOLAMENTE si NO es el gráfico de productos
-                    if (chartId !== 'topProductsChart') {
+                    // Páginas de las Tablas de Datos
+                    if (chartId === 'topProductsChart') {
+                        // --- MANEJO ESPECIAL PARA LA TABLA DE PRODUCTOS (COMPACTA) ---
+                        const chunkSize = 40; 
+                        for (let i = 0; i < item.data.length; i += chunkSize) {
+                            const chunk = item.data.slice(i, i + chunkSize);
+                            const pageTitle = item.data.length > chunkSize ? `${item.title} - Datos (pág. ${Math.floor(i / chunkSize) + 1})` : `${item.title} - Datos`;
+                            
+                            // SE REDUJO margin-bottom de 15px a 10px y se usan estilos compactos
+                            const tablePageContent = `
+                              <h2 style="font-size: 20px; font-weight: 600; text-align: center; margin-bottom: 10px; color: #111827;">${pageTitle}</h2>
+                              <table style="width: 100%; border-collapse: collapse; font-size: 10px;">
+                                <thead><tr>${item.headers.map(h => `<th style="border: 1px solid #DEE2E6; padding: 6px 8px; text-align: left; background-color: #F8F9FA; font-weight: bold;">${h}</th>`).join('')}</tr></thead>
+                                <tbody>${chunk.map((row, rowIndex) => `<tr style="background-color: ${rowIndex % 2 === 0 ? '#FFFFFF' : '#F8F9FA'};">${row.map(cell => `<td style="border: 1px solid #DEE2E6; padding: 6px 8px;">${cell}</td>`).join('')}</tr>`).join('')}</tbody>
+                              </table>`;
+                            htmlContent += createPageWrapper(tablePageContent);
+                        }
+                    } else {
+                        // --- MANEJO ESTÁNDAR PARA LAS OTRAS TABLAS ---
                         const chunkSize = 25; 
                         for (let i = 0; i < item.data.length; i += chunkSize) {
                             const chunk = item.data.slice(i, i + chunkSize);
                             const pageTitle = item.data.length > chunkSize ? `${item.title} - Datos (pág. ${Math.floor(i / chunkSize) + 1})` : `${item.title} - Datos`;
+                            
+                             // SE REDUJO margin-bottom de 25px a 15px
                              const tablePageContent = `
-                              <h2 style="font-size: 22px; font-weight: 600; text-align: center; margin-bottom: 25px; color: #111827;">${pageTitle}</h2>
+                              <h2 style="font-size: 22px; font-weight: 600; text-align: center; margin-bottom: 15px; color: #111827;">${pageTitle}</h2>
                               <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
                                 <thead><tr>${item.headers.map(h => `<th style="border: 1px solid #DEE2E6; padding: 10px; text-align: left; background-color: #F8F9FA; font-weight: bold;">${h}</th>`).join('')}</tr></thead>
                                 <tbody>${chunk.map((row, rowIndex) => `<tr style="background-color: ${rowIndex % 2 === 0 ? '#FFFFFF' : '#F8F9FA'};">${row.map(cell => `<td style="border: 1px solid #DEE2E6; padding: 10px;">${cell}</td>`).join('')}</tr>`).join('')}</tbody>
