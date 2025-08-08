@@ -1257,6 +1257,7 @@
                 options: chartOptions
             });
         }
+
         async function downloadPdfReport() {
             const originalButtonText = dom.downloadPdfBtn.innerHTML;
             dom.downloadPdfBtn.innerHTML = `<span><svg class="animate-spin -ml-1 mr-3 h-5 w-5 inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>Generando...</span>`;
@@ -1297,14 +1298,8 @@
                 // 2. Construir el HTML del PDF
                 let htmlContent = '';
 
-                // Wrapper para páginas estándar (portada, gráficos, tablas cortas)
-                const createStandardPageWrapper = (content) => {
+                const createPageWrapper = (content) => {
                     return `<div style="width: 210mm; min-height: 290mm; padding: 20mm 15mm; box-sizing: border-box; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; page-break-after: always;">${content}</div>`;
-                };
-                
-                // Wrapper para páginas de tablas densas (la de productos) con menos espaciado
-                const createDenseTablePageWrapper = (content) => {
-                    return `<div style="width: 210mm; min-height: 290mm; padding: 15mm; box-sizing: border-box; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; page-break-after: always;">${content}</div>`;
                 };
 
                 // Página 1: Portada
@@ -1313,37 +1308,18 @@
                         <div style="text-align: center; margin-bottom: 50px;"><h1 style="font-size: 28px; margin-bottom: 8px; color: #111827;">${reportTitle}</h1><p style="font-size: 14px; color: #6B7280;">${reportSubtitle}</p></div>
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 25px 50px; text-align: center;">${Object.entries(kpis).map(([key, value]) => `<div><h3 style="font-size: 14px; color: #6B7280; font-weight: normal; margin-bottom: 5px; text-transform: uppercase;">${key}</h3><p style="font-size: 32px; font-weight: bold; margin: 0; color: ${kpiColors[key] || '#111827'};">${value}</p></div>`).join('')}</div>
                     </div>`;
-                htmlContent += createStandardPageWrapper(coverPageContent);
+                htmlContent += createPageWrapper(coverPageContent);
                 
                 // Crear páginas de gráficos y tablas
                 for (const chartId in chartDataForPdf) {
                     const item = chartDataForPdf[chartId];
                     
-                    // Página del Gráfico (todos usan el wrapper estándar)
+                    // A. Generar SIEMPRE la página con el gráfico
                     const chartPageContent = `<h2 style="font-size: 22px; font-weight: 600; text-align: center; margin-bottom: 25px; color: #111827;">${item.title}</h2><img src="${charts[chartId].toBase64Image()}" style="max-width: 180mm; max-height: 220mm; display: block; margin: auto;">`;
-                    htmlContent += createStandardPageWrapper(chartPageContent);
+                    htmlContent += createPageWrapper(chartPageContent);
 
-                    // Páginas de las Tablas de Datos
-                    if (chartId === 'topProductsChart') {
-                        // --- MANEJO ESPECIAL PARA LA TABLA DE PRODUCTOS ---
-                        const chunkSize = 40; // Aumentamos el número de filas por página
-                        for (let i = 0; i < item.data.length; i += chunkSize) {
-                            const chunk = item.data.slice(i, i + chunkSize);
-                            const pageTitle = item.data.length > chunkSize ? `${item.title} - Datos (pág. ${Math.floor(i / chunkSize) + 1})` : `${item.title} - Datos`;
-                            
-                            // HTML de la tabla con estilos más compactos
-                            const tablePageContent = `
-                              <h2 style="font-size: 20px; font-weight: 600; text-align: center; margin-bottom: 15px; color: #111827;">${pageTitle}</h2>
-                              <table style="width: 100%; border-collapse: collapse; font-size: 10px;">
-                                <thead><tr>${item.headers.map(h => `<th style="border: 1px solid #DEE2E6; padding: 6px 8px; text-align: left; background-color: #F8F9FA; font-weight: bold;">${h}</th>`).join('')}</tr></thead>
-                                <tbody>${chunk.map((row, rowIndex) => `<tr style="background-color: ${rowIndex % 2 === 0 ? '#FFFFFF' : '#F8F9FA'};">${row.map(cell => `<td style="border: 1px solid #DEE2E6; padding: 6px 8px;">${cell}</td>`).join('')}</tr>`).join('')}</tbody>
-                              </table>`;
-                            
-                            // Usamos el wrapper DENSO para estas páginas
-                            htmlContent += createDenseTablePageWrapper(tablePageContent);
-                        }
-                    } else {
-                        // --- MANEJO ESTÁNDAR PARA LAS OTRAS TABLAS ---
+                    // B. Generar las páginas de tabla de datos SOLAMENTE si NO es el gráfico de productos
+                    if (chartId !== 'topProductsChart') {
                         const chunkSize = 25; 
                         for (let i = 0; i < item.data.length; i += chunkSize) {
                             const chunk = item.data.slice(i, i + chunkSize);
@@ -1354,8 +1330,7 @@
                                 <thead><tr>${item.headers.map(h => `<th style="border: 1px solid #DEE2E6; padding: 10px; text-align: left; background-color: #F8F9FA; font-weight: bold;">${h}</th>`).join('')}</tr></thead>
                                 <tbody>${chunk.map((row, rowIndex) => `<tr style="background-color: ${rowIndex % 2 === 0 ? '#FFFFFF' : '#F8F9FA'};">${row.map(cell => `<td style="border: 1px solid #DEE2E6; padding: 10px;">${cell}</td>`).join('')}</tr>`).join('')}</tbody>
                               </table>`;
-                            // Usamos el wrapper ESTÁNDAR
-                            htmlContent += createStandardPageWrapper(tablePageContent);
+                            htmlContent += createPageWrapper(tablePageContent);
                         }
                     }
                 }
@@ -1375,7 +1350,6 @@
                 dom.downloadPdfBtn.disabled = false;
             }
         }
-
         function exportManagerReport() {
             const dataToExport = lastFilteredRequests.length > 0 ? lastFilteredRequests : allTransferRequests;
              if (dataToExport.length === 0) {
