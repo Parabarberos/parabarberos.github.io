@@ -505,104 +505,174 @@
                 div.appendChild(button);
             }
         }
-        async function downloadPdfReport() {
-            const originalButtonText = dom.downloadPdfBtn.innerHTML;
-            dom.downloadPdfBtn.innerHTML = `<span><svg class="animate-spin -ml-1 mr-3 h-5 w-5 inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>Generando...</span>`;
-            dom.downloadPdfBtn.disabled = true;
+        
+        function createRequestCard(req, role) {
+            const isExpanded = expandedRequestsState.has(req.id);
+            const card = document.createElement('div');
+            card.className = `p-4 rounded-lg shadow-sm flex flex-col ${getRequestStatusColor(req.status, req)}`;
+            card.id = `card-${req.id}`;
 
-            const pdfContainer = document.createElement('div');
-            pdfContainer.style.fontFamily = 'Arial, sans-serif';
-            pdfContainer.style.color = '#374151';
+            const hasItems = req.items && req.items.length > 0;
+            const allNtItemsChecked = hasItems && req.status === 'pending_nt_active' && req.items.every(item => item.nt_checked);
+            const hasNtNumber = req.status === 'pending_nt_active' && req.ntNumber && req.ntNumber.trim() !== '';
+            const canProceedFromNt = allNtItemsChecked && hasNtNumber;
+            const allReviewItemsChecked = hasItems && req.status === 'processing_partial_items' && req.items.every(item => item.nt_checked === true);
 
-            try {
-                // 1. Recopilar datos (Sin cambios)
-                const reportTitle = "Informe Gerencial de Traslados";
-                const reportSubtitle = document.getElementById('reportDateSubtitle').textContent;
-                const kpis = {
-                    "Total Solicitudes": dom.kpiTotalRequests.textContent, "Completadas": dom.kpiCompleted.textContent,
-                    "Con Novedad": dom.kpiWithNovelty.textContent, "Canceladas": dom.kpiCancelled.textContent,
-                };
-                const kpiColors = { "Completadas": '#22c55e', "Con Novedad": '#f59e0b', "Canceladas": '#ef4444' };
-                const productCounts = lastFilteredRequests.reduce((acc, req) => {
-                    if (req.items && Array.isArray(req.items)) {
-                        req.items.forEach(item => {
-                            if (item && item.productName && typeof item.quantity === 'number') {
-                                acc[item.productName] = (acc[item.productName] || 0) + item.quantity;
-                            }
-                        });
+            const itemsHtml = hasItems ? (req.items || []).map((item, index) => {
+                let quantityDisplay;
+                if (req.status === 'pending_nt_active') {
+                    quantityDisplay = `Cantidad a Enviar: <b>${item.sentQuantity ?? item.quantity}</b>`;
+                } else {
+                    quantityDisplay = `Solicitado: <b>${item.quantity}</b>`;
+                    if (item.sentQuantity !== undefined) {
+                         quantityDisplay += ` | Enviado: <b>${item.sentQuantity}</b>`;
                     }
-                    return acc;
-                }, {});
-                const fullSortedProducts = Object.entries(productCounts).sort((a, b) => b[1] - a[1]).slice(0, 50);
-                const chartDataForPdf = {
-                    statusChart: { title: 'Estado de Solicitudes', headers: ['Estado', 'Cantidad'], data: Object.entries(charts.statusChart.data.datasets[0].data).map(([i, v]) => [charts.statusChart.data.labels[i], v]) },
-                    topProductsChart: { title: 'Top 50 Productos Más Solicitados', headers: ['Producto', 'Unidades Solicitadas'], data: fullSortedProducts },
-                    warehouseChart: { title: 'Volumen por Bodega Destino', headers: ['Bodega', 'Nº de Solicitudes'], data: Object.entries(charts.warehouseChart.data.datasets[0].data).map(([i, v]) => [charts.warehouseChart.data.labels[i], v]) },
-                    fulfillmentChart: { title: 'Tasa de Cumplimiento', headers: ['Concepto', 'Total Unidades'], data: [['Unidades Enviadas', charts.fulfillmentChart.data.datasets[0].data[0]], ['Unidades Recibidas', charts.fulfillmentChart.data.datasets[1].data[0]]] },
-                    requestedVsSentChart: { title: 'Unidades Solicitadas vs. Enviadas', headers: ['Concepto', 'Total Unidades'], data: [['Unidades Solicitadas', charts.requestedVsSentChart.data.datasets[0].data[0]], ['Unidades Enviadas', charts.requestedVsSentChart.data.datasets[1].data[0]]] }
-                };
-                let htmlContent = '';
-                const createPageWrapper = (content) => {
-                    return `<div style="width: 210mm; min-height: 290mm; padding: 20mm 15mm; box-sizing: border-box; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; page-break-after: always;">${content}</div>`;
-                };
-                const coverPageContent = `
-                    <div style="display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100%;">
-                        <div style="text-align: center; margin-bottom: 50px;"><h1 style="font-size: 28px; margin-bottom: 8px; color: #111827;">${reportTitle}</h1><p style="font-size: 14px; color: #6B7280;">${reportSubtitle}</p></div>
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 25px 50px; text-align: center;">${Object.entries(kpis).map(([key, value]) => `<div><h3 style="font-size: 14px; color: #6B7280; font-weight: normal; margin-bottom: 5px; text-transform: uppercase;">${key}</h3><p style="font-size: 32px; font-weight: bold; margin: 0; color: ${kpiColors[key] || '#111827'};">${value}</p></div>`).join('')}</div>
-                    </div>`;
-                htmlContent += createPageWrapper(coverPageContent);
+                    if (item.receivedQuantity !== undefined) {
+                        const color = item.receivedQuantity !== item.sentQuantity ? 'text-red-600' : 'text-green-700';
+                        quantityDisplay += ` | Recibido: <b class="${color}">${item.receivedQuantity}</b>`;
+                    }
+                }
+
+                const receptionInput = (role === 'requester' && req.status === 'shipped') ? `<div class="flex items-center"><label class="text-xs mr-2">Recibido:</label><input type="number" value="${item.sentQuantity}" data-request-id="${req.id}" data-item-index="${index}" class="reception-qty-input w-16 p-1 border rounded-md text-center text-sm"></div>` : '';
                 
-                for (const chartId in chartDataForPdf) {
-                    const item = chartDataForPdf[chartId];
-                    const titleStyle = `font-size: 22px; font-weight: 600; text-align: center; margin: 0 0 15px 0; color: #111827;`;
-
-                    if (chartId === 'topProductsChart') {
-                        const chartPageContent = `<h2 style="${titleStyle}">${item.title}</h2><img src="${charts[chartId].toBase64Image()}" style="max-width: 140mm; max-height: 200mm; display: block;">`;
-                        htmlContent += createPageWrapper(chartPageContent);
-
-                        const chunkSize = 40;
-                        for (let i = 0; i < item.data.length; i += chunkSize) {
-                            const chunk = item.data.slice(i, i + chunkSize);
-                            const pageTitle = item.data.length > chunkSize ? `${item.title} - Datos (pág. ${Math.floor(i / chunkSize) + 1})` : `${item.title} - Datos`;
-                            const tablePageContent = `
-                              <h2 style="font-size: 20px; font-weight: 600; text-align: center; margin: 0 0 10px 0; color: #111827;">${pageTitle}</h2>
-                              <table style="width: 100%; border-collapse: collapse; font-size: 10px;">
-                                <thead><tr>${item.headers.map(h => `<th style="border: 1px solid #DEE2E6; padding: 6px 8px; text-align: left; background-color: #F8F9FA; font-weight: bold;">${h}</th>`).join('')}</tr></thead>
-                                <tbody>${chunk.map((row, rowIndex) => `<tr style="background-color: ${rowIndex % 2 === 0 ? '#FFFFFF' : '#F8F9FA'};">${row.map(cell => `<td style="border: 1px solid #DEE2E6; padding: 6px 8px;">${cell}</td>`).join('')}</tr>`).join('')}</tbody>
-                              </table>`;
-                            htmlContent += createPageWrapper(tablePageContent);
-                        }
-                    } else {
-                        // --- MANEJO ESTÁNDAR PARA LOS DEMÁS INFORMES (GRÁFICO + TABLA JUNTOS) ---
-                        const tableHtml = `
-                          <table style="width: 100%; max-width: 180mm; margin-top: 25px; border-collapse: collapse; font-size: 12px;">
-                            <thead><tr>${item.headers.map(h => `<th style="border: 1px solid #DEE2E6; padding: 8px; text-align: left; background-color: #F8F9FA; font-weight: bold;">${h}</th>`).join('')}</tr></thead>
-                            <tbody>${item.data.map((row, rowIndex) => `<tr style="background-color: ${rowIndex % 2 === 0 ? '#FFFFFF' : '#F8F9FA'};">${row.map(cell => `<td style="border: 1px solid #DEE2E6; padding: 8px;">${cell}</td>`).join('')}</tr>`).join('')}</tbody>
-                          </table>`;
-
-                        const combinedPageContent = `
-                          <h2 style="${titleStyle}">${item.title}</h2>
-                          <img src="${charts[chartId].toBase64Image()}" style="max-width: 180mm; max-height: 160mm; display: block;">
-                          ${tableHtml}
-                        `;
-                        htmlContent += createPageWrapper(combinedPageContent);
+                let adminControls = '';
+                let itemBgColor = 'bg-white';
+                if (role === 'admin' || role === 'reviewer') {
+                    if (req.status === 'processing_partial_items') {
+                        adminControls += `<input type="number" value="${item.sentQuantity ?? item.quantity}" data-request-id="${req.id}" data-item-index="${index}" class="admin-qty-input w-20 p-1 border rounded-md text-center">`;
+                        adminControls += `<input type="checkbox" ${item.nt_checked ? 'checked' : ''} data-request-id="${req.id}" data-item-index="${index}" class="nt-checkbox h-5 w-5 rounded border-gray-300 text-blue-600 cursor-pointer">`;
+                        itemBgColor = item.nt_checked ? 'bg-green-100' : 'bg-red-100'; 
+                    } else if (req.status === 'pending_nt_active') {
+                        adminControls += `<input type="checkbox" ${item.nt_checked ? 'checked' : ''} data-request-id="${req.id}" data-item-index="${index}" class="nt-checkbox h-5 w-5 rounded border-gray-300 text-blue-600 cursor-pointer">`;
+                        itemBgColor = item.nt_checked ? 'bg-green-100' : 'bg-red-100';
                     }
                 }
                 
-                pdfContainer.innerHTML = htmlContent;
+                return `<li class="p-2 rounded-md border ${itemBgColor} flex justify-between items-center text-sm" data-item-row-id="${req.id}-${index}"><div><span class="font-medium text-gray-800">${item.productName}</span><div class="text-xs text-gray-600">${quantityDisplay}</div></div><div class="flex items-center gap-2">${receptionInput}${adminControls}</div></li>`;
+            }).join('') : '<p class="text-sm text-gray-500 italic">No hay artículos.</p>';
 
-                // 3. Configurar y ejecutar html2pdf (Sin cambios)
-                const today = new Date().toISOString().slice(0, 10);
-                const opt = { margin: 0, filename: `Informe_Gerencial_Traslados_${today}.pdf`, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, useCORS: true, logging: false }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } };
-                await html2pdf().set(opt).from(pdfContainer).save();
+            let contentHtml = '';
+            if (role === 'admin' || role === 'reviewer') {
+                let actionButtonsHtml = '';
 
-            } catch (error) {
-                console.error("Error detallado al generar el PDF:", error);
-                alert("Ocurrió un error al generar el PDF. Por favor, inténtelo de nuevo.");
-            } finally {
-                dom.downloadPdfBtn.innerHTML = originalButtonText;
-                dom.downloadPdfBtn.disabled = false;
+                if (req.status === 'pending') {
+                    actionButtonsHtml += `<button data-request-id="${req.id}" data-action="start_processing" class="action-btn flex-1 bg-gray-800 hover:bg-black text-white font-bold py-2 px-3 rounded-md">Iniciar Revisión</button>`;
+                }
+                if (req.status.startsWith('processing')) {
+                    contentHtml += `<div class="mt-4"><label for="adminNotes-${req.id}" class="text-sm font-medium">Nota de Revisión:</label><textarea id="adminNotes-${req.id}" rows="2" class="w-full mt-1 border rounded-md p-2">${req.adminNotes || ''}</textarea><button data-request-id="${req.id}" data-action="save_admin_note" class="action-btn mt-1 text-xs bg-gray-700 px-3 py-1.5 rounded-md text-white">Guardar Nota</button></div>`;
+                    actionButtonsHtml += `<button data-request-id="${req.id}" data-action="finalize_processing" class="action-btn bg-teal-600 hover:bg-teal-700 text-white font-bold py-2 px-3 rounded-md disabled:bg-gray-400 disabled:cursor-not-allowed" ${!allReviewItemsChecked ? 'disabled' : ''}>Finalizar Revisión</button>`;
+                }
+                if (role === 'admin') {
+                    if (req.status === 'pending_nt_start') {
+                        actionButtonsHtml += `<button data-request-id="${req.id}" data-action="start_nt_preparation" class="action-btn bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-3 rounded-md">Iniciar Preparación NT</button>`;
+                    }
+                    if (req.status === 'pending_nt_active') {
+                        contentHtml += `<div class="mt-4 space-y-2"><label for="ntNumber-${req.id}" class="text-sm font-medium">Nº Nota de Traslado (Obligatorio):</label><input type="text" id="ntNumber-${req.id}" data-request-id="${req.id}" value="${req.ntNumber || ''}" class="nt-number-input w-full mt-1 border rounded-md p-2"></div>`;
+                        actionButtonsHtml += `<button data-request-id="${req.id}" data-action="return_to_pending" class="action-btn bg-yellow-600 hover:bg-yellow-700 text-white text-xs font-semibold py-2 px-3 rounded-md">Devolver</button>`;
+                        actionButtonsHtml += `<button data-request-id="${req.id}" data-action="ready_to_ship" class="action-btn bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold py-2 px-3 rounded-md disabled:bg-gray-400" ${!canProceedFromNt ? 'disabled' : ''}>Listo para Enviar</button>`;
+                    }
+                }
+
+                if (['pending', 'processing_partial_items', 'pending_nt_start', 'pending_nt_active'].includes(req.status)) {
+                    actionButtonsHtml += `<button data-request-id="${req.id}" data-action="cancel" class="action-btn bg-red-700 hover:bg-red-800 text-white font-bold py-2 px-3 rounded-md">Cancelar</button>`;
+                }
+
+                if (actionButtonsHtml) {
+                    contentHtml += `<div class="mt-4 border-t pt-4 flex justify-end gap-2 flex-wrap">${actionButtonsHtml}</div>`;
+                }
+
+                if (role === 'admin') {
+                    if (req.status === 'ready_to_ship') {
+                        contentHtml += `<div class="mt-4 space-y-2"><label for="shippingNotes-${req.id}" class="text-sm font-medium">Obs. de Envío (Opcional):</label><textarea id="shippingNotes-${req.id}" rows="2" class="w-full mt-1 border rounded-md p-2">${req.shippingNotes || ''}</textarea><button data-request-id="${req.id}" data-action="save_shipping_note" class="action-btn mt-1 text-xs bg-gray-700 px-3 py-1.5 rounded-md text-white">Guardar Nota</button></div>`;
+                        contentHtml += `<div class="mt-4"><button data-request-id="${req.id}" data-action="proceed_to_shipping" class="action-btn w-full bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-2 px-3 rounded-md">Proceder a Envío</button></div>`;
+                    }
+                    if (req.status === 'shipping_details') {
+                        contentHtml += `<div class="mt-4 space-y-3 p-3 bg-gray-100 rounded-lg border"><p class="font-semibold">¿Tiene guía?</p><div class="flex items-center gap-x-4"><label><input type="radio" name="hasTracking-${req.id}" value="yes" class="tracking-option"> Sí</label><label><input type="radio" name="hasTracking-${req.id}" value="no" class="tracking-option" checked> No</label></div><div id="trackingNumberDiv-${req.id}" class="hidden mt-2"><label for="trackingNumber-${req.id}" class="block text-sm font-medium">Nº de Guía:</label><input type="text" id="trackingNumber-${req.id}" class="w-full mt-1 border rounded-md p-2"></div></div>`;
+                        contentHtml += `<div class="mt-4"><button data-request-id="${req.id}" data-action="finalize_shipment" class="action-btn w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-3 rounded-md">Marcar como Enviado</button></div>`;
+                    }
+                    if (req.status === 'completed_incomplete') {
+                        contentHtml += `<div class="mt-4"><button data-request-id="${req.id}" data-action="start_novelty_review" class="action-btn w-full bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2 px-3 rounded-md">Iniciar Revisión de Novedad</button></div>`;
+                    }
+                    if (req.status === 'novelty_review') {
+                        contentHtml += `<div id="noveltyForm-${req.id}" class="mt-4 p-4 bg-gray-100 border-t-2 space-y-4"><h5 class="font-bold text-lg">Gestionar Novedad</h5><div><label class="block text-sm font-medium">Causa:</label><select id="noveltyReason-${req.id}" data-request-id="${req.id}" class="novelty-input mt-1 block w-full p-2 border rounded-md"><option value="" selected disabled>-- Seleccione --</option><option value="Error de empaque">Error de empaque</option><option value="Perdida en transporte">Pérdida en transporte</option><option value="Otro">Otro</option></select></div><div id="noveltyOtherDiv-${req.id}" class="hidden"><label for="noveltyOtherReason-${req.id}" class="block text-sm font-medium">Especifique:</label><input type="text" id="noveltyOtherReason-${req.id}" data-request-id="${req.id}" class="novelty-input mt-1 block w-full p-2 border rounded-md"></div><div><label for="noveltySolution-${req.id}" class="block text-sm font-medium">Solución:</label><textarea id="noveltySolution-${req.id}" data-request-id="${req.id}" rows="3" class="novelty-input mt-1 block w-full p-2 border rounded-md"></textarea></div><button data-request-id="${req.id}" data-action="finalize_novelty" class="action-btn w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-3 rounded-md disabled:bg-gray-400" disabled>Finalizar Novedad</button></div>`;
+                    }
+                }
             }
+
+            if (role === 'requester' && req.status === 'shipped') {
+                contentHtml += `<div class="mt-4 border-t-2 pt-4 space-y-3"><h5 class="font-bold text-md">Confirmar recepción</h5><div><label class="block text-sm font-medium">Obs. de recepción:</label><textarea id="receptionNotes-${req.id}" rows="2" class="w-full mt-1 border rounded-md p-2"></textarea></div><button data-request-id="${req.id}" data-action="finalize_reception" class="action-btn w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-3 rounded-md">Finalizar Recepción</button></div>`;
+            }
+
+            const reqDate = req.deliveryDate ? new Date(req.deliveryDate + 'T00:00:00').toLocaleDateString('es-CO', { year: 'numeric', month: 'long', day: 'numeric' }) : 'No especificada';
+            const creationDate = req.timestamp ? new Date(req.timestamp.seconds * 1000).toLocaleString('es-CO', { dateStyle: 'short', timeStyle: 'short' }) : '';
+            
+            const requesterButtons = (role === 'requester' && req.status === 'pending') 
+                ? `<div class="flex flex-col gap-1">
+                       <button data-request-id="${req.id}" data-action="edit_my_request" class="action-btn bg-blue-600 text-white text-xs px-2 py-1 rounded-md">Editar</button>
+                       <button data-request-id="${req.id}" data-action="cancel" class="action-btn bg-red-600 text-white text-xs px-2 py-1 rounded-md">Cancelar</button>
+                   </div>` 
+                : '';
+
+            const infoBoxesHtml = `
+                <div class="space-y-1 mt-2">
+                    ${req.requesterNotes ? `<div class="p-2 bg-white rounded-md border text-xs"><p class="font-semibold text-gray-700">Nota Solicitante:</p><p class="italic text-gray-800">"${req.requesterNotes}"</p></div>` : ''}
+                    ${req.adminNotes ? `<div class="p-2 bg-white rounded-md border text-xs"><p class="font-semibold text-gray-700">Nota Admin (Revisión):</p><p class="italic text-gray-800">"${req.adminNotes}"</p></div>` : ''}
+                    ${req.ntNumber ? `<div class="p-2 bg-white rounded-md border text-xs"><p class="font-semibold text-gray-700">Nº Nota de Traslado:</p><p class="font-bold text-gray-900">${req.ntNumber}</p></div>` : ''}
+                    ${req.shippingNotes ? `<div class="p-2 bg-white rounded-md border text-xs"><p class="font-semibold text-gray-700">Obs. de Envío:</p><p class="italic text-gray-800">"${req.shippingNotes}"</p></div>` : ''}
+                    ${req.shippingInfo ? `<div class="p-2 bg-white rounded-md border text-xs"><p class="font-semibold text-gray-700">Guía de Envío:</p><p class="font-bold text-gray-900">${req.shippingInfo.hasTracking ? req.shippingInfo.trackingNumber : 'Sin guía'}</p></div>` : ''}
+                    ${(req.reception && req.reception.notes) ? `<div class="p-2 bg-white rounded-md border text-xs"><p class="font-semibold text-gray-700">Obs. de Recepción:</p><p class="italic text-gray-800">"${req.reception.notes}"</p></div>` : ''}
+                    ${req.novelty ? `<div class="p-2 bg-yellow-100 rounded-md border border-yellow-300 text-xs"><p class="font-semibold text-yellow-800">Detalle de Novedad:</p><p class="text-gray-800"><b>Causa:</b> ${req.novelty.reason}</p><p class="italic text-gray-800"><b>Solución:</b> "${req.novelty.solution}"</p></div>` : ''}
+                </div>`;
+            
+            card.innerHTML = `
+                <div class="flex justify-between items-start">
+                    <div>
+                        <h4 class="font-semibold text-lg">${req.requesterName}</h4>
+                        <p class="text-sm text-gray-600">Para: <strong>${req.toWarehouse}</strong></p>
+                        <p class="text-xs text-gray-400">ID: ${req.id} | Creada: ${creationDate}</p>
+                        <p class="text-sm mt-1">Fecha: <b>${reqDate}</b></p>
+                        <span class="inline-block mt-2 px-2 py-1 text-xs font-bold rounded-full bg-gray-200 text-gray-800">${translateStatus(req.status, req)}</span>
+                    </div>
+                    ${requesterButtons}
+                </div>
+                <div id="details-${req.id}" class="flex-grow ${isExpanded ? '' : 'hidden'} mt-4 pt-4 border-t">
+                    ${infoBoxesHtml}
+                    <h5 class="font-bold text-gray-700 mt-4 mb-2">Items:</h5>
+                    <ul class="space-y-2">${itemsHtml}</ul> 
+                    ${contentHtml}
+                </div>
+                <div class="text-center mt-2"><button data-request-id="${req.id}" class="toggle-details-btn text-sm font-semibold text-blue-600 hover:text-blue-800">Ver ${isExpanded ? 'menos' : 'más'}</button></div>
+            `;
+            
+            card.querySelectorAll('.action-btn').forEach(b => b.onclick = handleAdminAction);
+            card.querySelectorAll('.toggle-details-btn').forEach(b => b.onclick = handleToggleDetails);
+            card.querySelectorAll('.admin-qty-input').forEach(i => i.onchange = handleAdminQuantityChange);
+            card.querySelectorAll('.reception-qty-input').forEach(i => i.onchange = () => {});
+            card.querySelectorAll('.tracking-option').forEach(r => r.onchange = handleTrackingOptionChange);
+            
+            card.querySelectorAll('.nt-checkbox').forEach(c => {
+                c.oninput = () => {
+                    const reqStatus = allTransferRequests.find(r => r.id === c.dataset.requestId)?.status;
+                    if (reqStatus === 'pending_nt_active') {
+                        validateNtForm(c.dataset.requestId);
+                    } else if (reqStatus === 'processing_partial_items') {
+                        const allChecked = Array.from(document.querySelectorAll(`#card-${c.dataset.requestId} .nt-checkbox`)).every(cb => cb.checked);
+                        const finalizeBtn = document.querySelector(`#card-${c.dataset.requestId} button[data-action="finalize_processing"]`);
+                        if(finalizeBtn) finalizeBtn.disabled = !allChecked;
+                    }
+                };
+                c.onchange = handleNtCheckboxChange;
+            });
+            card.querySelectorAll('.nt-number-input').forEach(i => {
+                i.oninput = () => validateNtForm(i.dataset.requestId);
+                i.onchange = handleNtNumberInput;
+            });
+
+            card.querySelectorAll('.novelty-input').forEach(i => {
+                i.oninput = () => validateNoveltyForm(i.dataset.requestId);
+            });
+            
+            return card;
         }
 
         async function handleAdminAction(event) {
@@ -1187,17 +1257,13 @@
                 options: chartOptions
             });
         }
-        async function downloadPdfReport() {
+                async function downloadPdfReport() {
             const originalButtonText = dom.downloadPdfBtn.innerHTML;
             dom.downloadPdfBtn.innerHTML = `<span><svg class="animate-spin -ml-1 mr-3 h-5 w-5 inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>Generando...</span>`;
             dom.downloadPdfBtn.disabled = true;
 
-            const pdfContainer = document.createElement('div');
-            pdfContainer.style.fontFamily = 'Arial, sans-serif';
-            pdfContainer.style.color = '#374151';
-
             try {
-                // 1. Recopilar datos (sin cambios)
+                // 1. Recopilar todos los datos necesarios
                 const reportTitle = "Informe Gerencial de Traslados";
                 const reportSubtitle = document.getElementById('reportDateSubtitle').textContent;
                 const kpis = {
@@ -1216,6 +1282,7 @@
                     return acc;
                 }, {});
                 const fullSortedProducts = Object.entries(productCounts).sort((a, b) => b[1] - a[1]).slice(0, 50);
+
                 const chartDataForPdf = {
                     statusChart: { title: 'Estado de Solicitudes', headers: ['Estado', 'Cantidad'], data: Object.entries(charts.statusChart.data.datasets[0].data).map(([i, v]) => [charts.statusChart.data.labels[i], v]) },
                     topProductsChart: { title: 'Top 50 Productos Más Solicitados', headers: ['Producto', 'Unidades Solicitadas'], data: fullSortedProducts },
@@ -1224,81 +1291,85 @@
                     requestedVsSentChart: { title: 'Unidades Solicitadas vs. Enviadas', headers: ['Concepto', 'Total Unidades'], data: [['Unidades Solicitadas', charts.requestedVsSentChart.data.datasets[0].data[0]], ['Unidades Enviadas', charts.requestedVsSentChart.data.datasets[1].data[0]]] }
                 };
                 
-                // 2. Construir el HTML del PDF
-                let htmlContent = '';
+                // 2. Crear un contenedor invisible para renderizar cada página individualmente
+                const pdfBuilder = document.createElement('div');
+                pdfBuilder.style.position = 'absolute';
+                pdfBuilder.style.left = '-9999px';
+                pdfBuilder.style.top = '0';
+                pdfBuilder.style.fontFamily = 'Arial, sans-serif';
+                pdfBuilder.style.color = '#374151';
+                document.body.appendChild(pdfBuilder);
 
-                const createPageWrapper = (content) => {
-                    return `<div style="width: 210mm; min-height: 290mm; padding: 20mm 15mm; box-sizing: border-box; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; page-break-after: always;">${content}</div>`;
+                const createPageElement = (content) => {
+                    const page = document.createElement('div');
+                    page.style.width = '210mm';
+                    page.style.minHeight = '297mm';
+                    page.style.padding = '20mm 15mm';
+                    page.style.boxSizing = 'border-box';
+                    page.style.display = 'flex';
+                    page.style.flexDirection = 'column';
+                    page.style.alignItems = 'center';
+                    page.style.justifyContent = 'flex-start';
+                    page.innerHTML = content;
+                    return page;
                 };
 
+                const pages = [];
+
                 // Página 1: Portada
-                const coverPageContent = `
+                pages.push(createPageElement(`
                     <div style="display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100%;">
                         <div style="text-align: center; margin-bottom: 50px;"><h1 style="font-size: 28px; margin-bottom: 8px; color: #111827;">${reportTitle}</h1><p style="font-size: 14px; color: #6B7280;">${reportSubtitle}</p></div>
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 25px 50px; text-align: center;">${Object.entries(kpis).map(([key, value]) => `<div><h3 style="font-size: 14px; color: #6B7280; font-weight: normal; margin-bottom: 5px; text-transform: uppercase;">${key}</h3><p style="font-size: 32px; font-weight: bold; margin: 0; color: ${kpiColors[key] || '#111827'};">${value}</p></div>`).join('')}</div>
-                    </div>`;
-                htmlContent += createPageWrapper(coverPageContent);
-                
-                // Crear páginas de gráficos y tablas
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 25px 50px; text-align: center;">${Object.entries(kpis).map(([key, value]) => `<div class="kpi-item">
+                            <h3 style="font-size: 14px; color: #6B7280; font-weight: normal; margin-bottom: 5px; text-transform: uppercase;">${key}</h3>
+                            <p style="font-size: 32px; font-weight: bold; margin: 0; color: ${kpiColors[key] || '#111827'};">${value}</p>
+                        </div>`).join('')}</div>
+                    </div>`));
+
+                // Crear el resto de páginas
                 for (const chartId in chartDataForPdf) {
                     const item = chartDataForPdf[chartId];
+                    // Página del Gráfico
+                    pages.push(createPageElement(`<h2 style="font-size: 22px; font-weight: 600; text-align: center; margin-bottom: 25px; color: #111827;">${item.title}</h2><img src="${charts[chartId].toBase64Image()}" style="max-width: 180mm; max-height: 220mm; display: block; margin: auto;">`));
                     
-                    // Página del Gráfico con título más cercano
-                    // SE REDUJO margin-bottom de 25px a 15px
-                    const chartPageContent = `<h2 style="font-size: 22px; font-weight: 600; text-align: center; margin-bottom: 15px; color: #111827;">${item.title}</h2><img src="${charts[chartId].toBase64Image()}" style="max-width: 180mm; max-height: 220mm; display: block; margin: auto;">`;
-                    htmlContent += createPageWrapper(chartPageContent);
-
-                    // Páginas de las Tablas de Datos
-                    if (chartId === 'topProductsChart') {
-                        // --- MANEJO ESPECIAL PARA LA TABLA DE PRODUCTOS (COMPACTA) ---
-                        const chunkSize = 40; 
-                        for (let i = 0; i < item.data.length; i += chunkSize) {
-                            const chunk = item.data.slice(i, i + chunkSize);
-                            const pageTitle = item.data.length > chunkSize ? `${item.title} - Datos (pág. ${Math.floor(i / chunkSize) + 1})` : `${item.title} - Datos`;
-                            
-                            // SE REDUJO margin-bottom de 15px a 10px y se usan estilos compactos
-                            const tablePageContent = `
-                              <h2 style="font-size: 20px; font-weight: 600; text-align: center; margin-bottom: 10px; color: #111827;">${pageTitle}</h2>
-                              <table style="width: 100%; border-collapse: collapse; font-size: 10px;">
-                                <thead><tr>${item.headers.map(h => `<th style="border: 1px solid #DEE2E6; padding: 6px 8px; text-align: left; background-color: #F8F9FA; font-weight: bold;">${h}</th>`).join('')}</tr></thead>
-                                <tbody>${chunk.map((row, rowIndex) => `<tr style="background-color: ${rowIndex % 2 === 0 ? '#FFFFFF' : '#F8F9FA'};">${row.map(cell => `<td style="border: 1px solid #DEE2E6; padding: 6px 8px;">${cell}</td>`).join('')}</tr>`).join('')}</tbody>
-                              </table>`;
-                            htmlContent += createPageWrapper(tablePageContent);
-                        }
-                    } else {
-                        // --- MANEJO ESTÁNDAR PARA LAS OTRAS TABLAS ---
-                        const chunkSize = 25; 
-                        for (let i = 0; i < item.data.length; i += chunkSize) {
-                            const chunk = item.data.slice(i, i + chunkSize);
-                            const pageTitle = item.data.length > chunkSize ? `${item.title} - Datos (pág. ${Math.floor(i / chunkSize) + 1})` : `${item.title} - Datos`;
-                            
-                             // SE REDUJO margin-bottom de 25px a 15px
-                             const tablePageContent = `
-                              <h2 style="font-size: 22px; font-weight: 600; text-align: center; margin-bottom: 15px; color: #111827;">${pageTitle}</h2>
-                              <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
-                                <thead><tr>${item.headers.map(h => `<th style="border: 1px solid #DEE2E6; padding: 10px; text-align: left; background-color: #F8F9FA; font-weight: bold;">${h}</th>`).join('')}</tr></thead>
-                                <tbody>${chunk.map((row, rowIndex) => `<tr style="background-color: ${rowIndex % 2 === 0 ? '#FFFFFF' : '#F8F9FA'};">${row.map(cell => `<td style="border: 1px solid #DEE2E6; padding: 10px;">${cell}</td>`).join('')}</tr>`).join('')}</tbody>
-                              </table>`;
-                            htmlContent += createPageWrapper(tablePageContent);
-                        }
+                    // Páginas de la Tabla (divididas si es necesario)
+                    const chunkSize = 25;
+                    for (let i = 0; i < item.data.length; i += chunkSize) {
+                        const chunk = item.data.slice(i, i + chunkSize);
+                        const pageTitle = item.data.length > chunkSize ? `${item.title} - Datos Detallados (pág. ${Math.floor(i / chunkSize) + 1})` : `${item.title} - Datos Detallados`;
+                        pages.push(createPageElement(`<h2 style="font-size: 22px; font-weight: 600; text-align: center; margin-bottom: 25px; color: #111827;">${pageTitle}</h2><table style="width: 100%; border-collapse: collapse; font-size: 12px;"><thead><tr>${item.headers.map(h => `<th style="border: 1px solid #DEE2E6; padding: 10px; text-align: left; background-color: #F8F9FA; font-weight: bold;">${h}</th>`).join('')}</tr></thead><tbody>${chunk.map(row => `<tr style="background-color: ${chunk.indexOf(row) % 2 === 0 ? '#FFFFFF' : '#F8F9FA'};">${row.map(cell => `<td style="border: 1px solid #DEE2E6; padding: 10px;">${cell}</td>`).join('')}</tr>`).join('')}</tbody></table>`));
                     }
                 }
                 
-                pdfContainer.innerHTML = htmlContent;
-
-                // 3. Configurar y ejecutar html2pdf (sin cambios)
+                // 3. Configurar y ejecutar html2pdf secuencialmente
                 const today = new Date().toISOString().slice(0, 10);
-                const opt = { margin: 0, filename: `Informe_Gerencial_Traslados_${today}.pdf`, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, useCORS: true, logging: false }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } };
-                await html2pdf().set(opt).from(pdfContainer).save();
+                const opt = {
+                    margin: 0, filename: `Informe_Gerencial_${today}.pdf`,
+                    image: { type: 'jpeg', quality: 0.98 },
+                    html2canvas: { scale: 2, useCORS: true, logging: false },
+                    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+                };
+
+                let worker = html2pdf().set(opt).from(pages[0]);
+                for (let i = 1; i < pages.length; i++) {
+                    worker = worker.addPage().from(pages[i]);
+                }
+                await worker.save();
 
             } catch (error) {
                 console.error("Error detallado al generar el PDF:", error);
                 alert("Ocurrió un error al generar el PDF. Por favor, inténtelo de nuevo.");
             } finally {
+                // Limpiar siempre, incluso si hay un error
+                const pdfBuilder = document.querySelector('body > div[style*="left: -9999px"]');
+                if (pdfBuilder) {
+                    document.body.removeChild(pdfBuilder);
+                }
                 dom.downloadPdfBtn.innerHTML = originalButtonText;
                 dom.downloadPdfBtn.disabled = false;
             }
         }
+
         function exportManagerReport() {
             const dataToExport = lastFilteredRequests.length > 0 ? lastFilteredRequests : allTransferRequests;
              if (dataToExport.length === 0) {
