@@ -9,6 +9,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-storage-compat.js"></script>
     <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.9.3/html2pdf.bundle.min.js"></script>
@@ -244,6 +245,7 @@
         </div>
     </div>
 <script>
+   
     document.addEventListener('DOMContentLoaded', () => {
         // --- CONFIGURACIÓN DE FIREBASE (PRODUCCIÓN) ---
         const firebaseConfig = {
@@ -273,7 +275,6 @@
             'yohnatanlopez.parabarberos@gmail.com': ['Gerencia', 'manager'],
             'jhonnysalazar.parabarberos@gmail.com': ['Gerencia', 'manager'],
         };
-        
         // --- ESTADO GLOBAL DE LA APLICACIÓN ---
         let allProducts = [], currentTransferItems = [], allTransferRequests = [], currentUserData = null;
         let charts = {};
@@ -506,7 +507,7 @@
             }
         }
         
-        function createRequestCard(req, role) {
+                function createRequestCard(req, role) {
             const isExpanded = expandedRequestsState.has(req.id);
             const card = document.createElement('div');
             card.className = `p-4 rounded-lg shadow-sm flex flex-col ${getRequestStatusColor(req.status, req)}`;
@@ -599,9 +600,22 @@
                 }
             }
 
+            // --- INICIO DE LA MODIFICACIÓN 1 ---
             if (role === 'requester' && req.status === 'shipped') {
-                contentHtml += `<div class="mt-4 border-t-2 pt-4 space-y-3"><h5 class="font-bold text-md">Confirmar recepción</h5><div><label class="block text-sm font-medium">Obs. de recepción:</label><textarea id="receptionNotes-${req.id}" rows="2" class="w-full mt-1 border rounded-md p-2"></textarea></div><button data-request-id="${req.id}" data-action="finalize_reception" class="action-btn w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-3 rounded-md">Finalizar Recepción</button></div>`;
+                contentHtml += `<div class="mt-4 border-t-2 pt-4 space-y-3">
+                    <h5 class="font-bold text-md">Confirmar recepción</h5>
+                    <div>
+                        <label class="block text-sm font-medium">Evidencia (imágenes/videos):</label>
+                        <input type="file" id="evidence-${req.id}" multiple accept="image/*,video/*" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-red-50 file:text-red-700 hover:file:bg-red-100 cursor-pointer">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium">Obs. de recepción:</label>
+                        <textarea id="receptionNotes-${req.id}" rows="2" class="w-full mt-1 border rounded-md p-2"></textarea>
+                    </div>
+                    <button data-request-id="${req.id}" data-action="finalize_reception" class="action-btn w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-3 rounded-md">Finalizar Recepción</button>
+                </div>`;
             }
+            // --- FIN DE LA MODIFICACIÓN 1 ---
 
             const reqDate = req.deliveryDate ? new Date(req.deliveryDate + 'T00:00:00').toLocaleDateString('es-CO', { year: 'numeric', month: 'long', day: 'numeric' }) : 'No especificada';
             const creationDate = req.timestamp ? new Date(req.timestamp.seconds * 1000).toLocaleString('es-CO', { dateStyle: 'short', timeStyle: 'short' }) : '';
@@ -613,6 +627,7 @@
                    </div>` 
                 : '';
 
+            // --- INICIO DE LA MODIFICACIÓN 2 ---
             const infoBoxesHtml = `
                 <div class="space-y-1 mt-2">
                     ${req.requesterNotes ? `<div class="p-2 bg-white rounded-md border text-xs"><p class="font-semibold text-gray-700">Nota Solicitante:</p><p class="italic text-gray-800">"${req.requesterNotes}"</p></div>` : ''}
@@ -621,8 +636,25 @@
                     ${req.shippingNotes ? `<div class="p-2 bg-white rounded-md border text-xs"><p class="font-semibold text-gray-700">Obs. de Envío:</p><p class="italic text-gray-800">"${req.shippingNotes}"</p></div>` : ''}
                     ${req.shippingInfo ? `<div class="p-2 bg-white rounded-md border text-xs"><p class="font-semibold text-gray-700">Guía de Envío:</p><p class="font-bold text-gray-900">${req.shippingInfo.hasTracking ? req.shippingInfo.trackingNumber : 'Sin guía'}</p></div>` : ''}
                     ${(req.reception && req.reception.notes) ? `<div class="p-2 bg-white rounded-md border text-xs"><p class="font-semibold text-gray-700">Obs. de Recepción:</p><p class="italic text-gray-800">"${req.reception.notes}"</p></div>` : ''}
+                    ${(req.reception && req.reception.evidence && req.reception.evidence.length > 0) ? `
+                        <div class="p-2 bg-white rounded-md border text-xs">
+                            <p class="font-semibold text-gray-700">Evidencia de Recepción:</p>
+                            <div class="mt-2 grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
+                                ${req.reception.evidence.map(file => `
+                                    <a href="${file.url}" target="_blank" rel="noopener noreferrer" title="${file.name}" class="block">
+                                        ${file.type.startsWith('image/') ? 
+                                            `<img src="${file.url}" alt="${file.name}" class="w-full h-16 object-cover rounded-md border hover:opacity-80">` : 
+                                            `<div class="w-full h-16 bg-gray-200 rounded-md flex items-center justify-center border hover:bg-gray-300" title="Ver video: ${file.name}">
+                                                <svg class="w-8 h-8 text-gray-600" fill="currentColor" viewBox="0 0 20 20"><path d="M4 3.222v13.556l11-6.778-11-6.778z"></path></svg>
+                                            </div>`
+                                        }
+                                    </a>
+                                `).join('')}
+                            </div>
+                        </div>` : ''}
                     ${req.novelty ? `<div class="p-2 bg-yellow-100 rounded-md border border-yellow-300 text-xs"><p class="font-semibold text-yellow-800">Detalle de Novedad:</p><p class="text-gray-800"><b>Causa:</b> ${req.novelty.reason}</p><p class="italic text-gray-800"><b>Solución:</b> "${req.novelty.solution}"</p></div>` : ''}
                 </div>`;
+            // --- FIN DE LA MODIFICACIÓN 2 ---
             
             card.innerHTML = `
                 <div class="flex justify-between items-start">
@@ -674,6 +706,28 @@
             
             return card;
         }
+        async function uploadReceptionEvidence(requestId, files) {
+            if (!files || files.length === 0) return [];
+            
+            const uploadPromises = Array.from(files).map(file => {
+                // Crear una referencia única para cada archivo
+                const filePath = `reception_evidence/${requestId}/${Date.now()}-${file.name}`;
+                const ref = storage.ref(filePath);
+                
+                // Subir el archivo y obtener la URL de descarga
+                return ref.put(file).then(snapshot => 
+                    snapshot.ref.getDownloadURL().then(url => ({
+                        url,
+                        name: file.name,
+                        type: file.type
+                    }))
+                );
+            });
+
+            // Esperar a que todas las subidas terminen
+            return Promise.all(uploadPromises);
+        }
+
 
         async function handleAdminAction(event) {
             const button = event.currentTarget;
@@ -924,42 +978,65 @@
             if (currentUserData) dom.requesterName.value = currentUserData.name;
             document.getElementById('deliveryDate').valueAsDate = new Date();
         }
-
+        
         async function handleFinalizeReception(event) {
             const button = event.currentTarget;
             const requestId = button.dataset.requestId;
-            button.disabled = true; button.textContent = 'Procesando...';
+            button.disabled = true; 
+            button.textContent = 'Procesando...';
             
             const receptionNotes = document.getElementById(`receptionNotes-${requestId}`).value;
+            const evidenceFiles = document.getElementById(`evidence-${requestId}`).files;
             const qtyInputs = document.querySelectorAll(`.reception-qty-input[data-request-id="${requestId}"]`);
             const reqRef = transfersCollection.doc(requestId);
             
-            const doc = await reqRef.get();
-            if (!doc.exists) return;
-            let items = doc.data().items;
-            let isComplete = true;
-            
-            qtyInputs.forEach((input) => {
-                const index = parseInt(input.dataset.itemIndex, 10);
-                const receivedQty = parseInt(input.value, 10);
-                if (items[index]) {
-                    items[index].receivedQuantity = receivedQty;
-                    if (receivedQty !== items[index].sentQuantity) {
-                        isComplete = false;
+            try {
+                // Subir archivos de evidencia primero
+                const uploadedEvidence = await uploadReceptionEvidence(requestId, evidenceFiles);
+
+                const doc = await reqRef.get();
+                if (!doc.exists) throw new Error("Documento no encontrado");
+
+                let items = doc.data().items;
+                let isComplete = true;
+                
+                qtyInputs.forEach((input) => {
+                    const index = parseInt(input.dataset.itemIndex, 10);
+                    const receivedQty = parseInt(input.value, 10);
+                    if (items[index]) {
+                        items[index].receivedQuantity = receivedQty;
+                        if (receivedQty !== items[index].sentQuantity) {
+                            isComplete = false;
+                        }
                     }
-                }
-            });
-            
-            const newStatus = isComplete ? 'completed' : 'completed_incomplete';
-            await reqRef.update({ 
-                status: newStatus, 
-                items, 
-                reception: { 
+                });
+                
+                const newStatus = isComplete ? 'completed' : 'completed_incomplete';
+                
+                // Construir el objeto de recepción
+                const receptionData = { 
                     notes: receptionNotes, 
                     timestamp: firebase.firestore.FieldValue.serverTimestamp(), 
                     finalizedBy: currentUserData.user.email 
-                } 
-            });
+                };
+                
+                // Añadir la evidencia solo si se subieron archivos
+                if (uploadedEvidence.length > 0) {
+                    receptionData.evidence = uploadedEvidence;
+                }
+                
+                await reqRef.update({ 
+                    status: newStatus, 
+                    items, 
+                    reception: receptionData
+                });
+                
+            } catch (error) {
+                console.error("Error al finalizar la recepción:", error);
+                alert("Ocurrió un error al procesar la recepción. Por favor, revisa la consola e inténtalo de nuevo.");
+                button.disabled = false;
+                button.textContent = 'Finalizar Recepción';
+            }
         }
         
         function generateCustomId() {
