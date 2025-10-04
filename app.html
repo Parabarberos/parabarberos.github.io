@@ -32,7 +32,6 @@
             </div>
         </header>
 
-        <!-- VISTA DE SOLICITANTE -->
         <div id="requesterView" class="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start" style="display: none;">
             <div class="lg:col-span-2 bg-white p-6 rounded-xl shadow-lg">
                 <h2 class="text-2xl font-semibold mb-4 text-gray-800 border-b pb-3">Nueva solicitud de traslado</h2>
@@ -81,7 +80,6 @@
             </div>
         </div>
 
-        <!-- VISTA DE ADMINISTRADOR -->
         <div id="adminView" class="space-y-8" style="display: none;">
             <div id="productManagementCard" class="bg-white p-6 rounded-xl shadow-lg" style="display: none;">
                 <h2 class="text-2xl font-semibold mb-4 text-gray-800 border-b pb-3">Gestión de Productos</h2>
@@ -140,7 +138,6 @@
             </div>
         </div>
         
-        <!-- VISTA DE REVISOR -->
         <div id="reviewerView" class="space-y-8" style="display: none;">
             <div class="bg-white p-6 rounded-xl shadow-lg">
                 <h2 class="text-2xl font-semibold mb-4 text-gray-800 border-b pb-3">Pendientes de Revisión</h2>
@@ -157,7 +154,6 @@
             </div>
         </div>
         
-        <!-- VISTA GERENCIAL -->
         <div id="managerView" class="space-y-8" style="display: none;">
             <div class="bg-white p-6 rounded-xl shadow-lg">
                 <h2 class="text-2xl font-semibold mb-4 text-gray-800 border-b pb-3">Panel de Informes Gerenciales</h2>
@@ -508,7 +504,7 @@
             }
         }
         
-                function createRequestCard(req, role) {
+        function createRequestCard(req, role) {
             const isExpanded = expandedRequestsState.has(req.id);
             const card = document.createElement('div');
             card.className = `p-4 rounded-lg shadow-sm flex flex-col ${getRequestStatusColor(req.status, req)}`;
@@ -578,6 +574,12 @@
                 if (['pending', 'processing_partial_items', 'pending_nt_start', 'pending_nt_active'].includes(req.status)) {
                     actionButtonsHtml += `<button data-request-id="${req.id}" data-action="cancel" class="action-btn bg-red-700 hover:bg-red-800 text-white font-bold py-2 px-3 rounded-md">Cancelar</button>`;
                 }
+                
+                // === INICIO DE MODIFICACIÓN ===
+                if (req.status === 'cancelled') {
+                    actionButtonsHtml += `<button data-request-id="${req.id}" data-action="reactivate" class="action-btn bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-3 rounded-md">Reactivar</button>`;
+                }
+                // === FIN DE MODIFICACIÓN ===
 
                 if (actionButtonsHtml) {
                     contentHtml += `<div class="mt-4 border-t pt-4 flex justify-end gap-2 flex-wrap">${actionButtonsHtml}</div>`;
@@ -586,11 +588,21 @@
                 if (role === 'admin') {
                     if (req.status === 'ready_to_ship') {
                         contentHtml += `<div class="mt-4 space-y-2"><label for="shippingNotes-${req.id}" class="text-sm font-medium">Obs. de Envío (Opcional):</label><textarea id="shippingNotes-${req.id}" rows="2" class="w-full mt-1 border rounded-md p-2">${req.shippingNotes || ''}</textarea><button data-request-id="${req.id}" data-action="save_shipping_note" class="action-btn mt-1 text-xs bg-gray-700 px-3 py-1.5 rounded-md text-white">Guardar Nota</button></div>`;
-                        contentHtml += `<div class="mt-4"><button data-request-id="${req.id}" data-action="proceed_to_shipping" class="action-btn w-full bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-2 px-3 rounded-md">Proceder a Envío</button></div>`;
+                        // === INICIO DE MODIFICACIÓN ===
+                        contentHtml += `<div class="mt-4 flex gap-2">
+                                          <button data-request-id="${req.id}" data-action="return_to_pending" class="action-btn bg-yellow-600 hover:bg-yellow-700 text-white text-xs font-semibold py-2 px-3 rounded-md">Devolver</button>
+                                          <button data-request-id="${req.id}" data-action="proceed_to_shipping" class="action-btn flex-grow bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-2 px-3 rounded-md">Proceder a Envío</button>
+                                       </div>`;
+                        // === FIN DE MODIFICACIÓN ===
                     }
                     if (req.status === 'shipping_details') {
                         contentHtml += `<div class="mt-4 space-y-3 p-3 bg-gray-100 rounded-lg border"><p class="font-semibold">¿Tiene guía?</p><div class="flex items-center gap-x-4"><label><input type="radio" name="hasTracking-${req.id}" value="yes" class="tracking-option"> Sí</label><label><input type="radio" name="hasTracking-${req.id}" value="no" class="tracking-option" checked> No</label></div><div id="trackingNumberDiv-${req.id}" class="hidden mt-2"><label for="trackingNumber-${req.id}" class="block text-sm font-medium">Nº de Guía:</label><input type="text" id="trackingNumber-${req.id}" class="w-full mt-1 border rounded-md p-2"></div></div>`;
-                        contentHtml += `<div class="mt-4"><button data-request-id="${req.id}" data-action="finalize_shipment" class="action-btn w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-3 rounded-md">Marcar como Enviado</button></div>`;
+                        // === INICIO DE MODIFICACIÓN ===
+                        contentHtml += `<div class="mt-4 flex gap-2">
+                                          <button data-request-id="${req.id}" data-action="return_to_pending" class="action-btn bg-yellow-600 hover:bg-yellow-700 text-white text-xs font-semibold py-2 px-3 rounded-md">Devolver</button>
+                                          <button data-request-id="${req.id}" data-action="finalize_shipment" class="action-btn flex-grow bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-3 rounded-md">Marcar como Enviado</button>
+                                       </div>`;
+                        // === FIN DE MODIFICACIÓN ===
                     }
                     if (req.status === 'completed_incomplete') {
                         contentHtml += `<div class="mt-4"><button data-request-id="${req.id}" data-action="start_novelty_review" class="action-btn w-full bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2 px-3 rounded-md">Iniciar Revisión de Novedad</button></div>`;
@@ -601,7 +613,6 @@
                 }
             }
 
-            // --- INICIO DE LA MODIFICACIÓN 1 ---
             if (role === 'requester' && req.status === 'shipped') {
                 contentHtml += `<div class="mt-4 border-t-2 pt-4 space-y-3">
                     <h5 class="font-bold text-md">Confirmar recepción</h5>
@@ -616,7 +627,6 @@
                     <button data-request-id="${req.id}" data-action="finalize_reception" class="action-btn w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-3 rounded-md">Finalizar Recepción</button>
                 </div>`;
             }
-            // --- FIN DE LA MODIFICACIÓN 1 ---
 
             const reqDate = req.deliveryDate ? new Date(req.deliveryDate + 'T00:00:00').toLocaleDateString('es-CO', { year: 'numeric', month: 'long', day: 'numeric' }) : 'No especificada';
             const creationDate = req.timestamp ? new Date(req.timestamp.seconds * 1000).toLocaleString('es-CO', { dateStyle: 'short', timeStyle: 'short' }) : '';
@@ -628,7 +638,6 @@
                    </div>` 
                 : '';
 
-            // --- INICIO DE LA MODIFICACIÓN 2 ---
             const infoBoxesHtml = `
                 <div class="space-y-1 mt-2">
                     ${req.requesterNotes ? `<div class="p-2 bg-white rounded-md border text-xs"><p class="font-semibold text-gray-700">Nota Solicitante:</p><p class="italic text-gray-800">"${req.requesterNotes}"</p></div>` : ''}
@@ -655,7 +664,6 @@
                         </div>` : ''}
                     ${req.novelty ? `<div class="p-2 bg-yellow-100 rounded-md border border-yellow-300 text-xs"><p class="font-semibold text-yellow-800">Detalle de Novedad:</p><p class="text-gray-800"><b>Causa:</b> ${req.novelty.reason}</p><p class="italic text-gray-800"><b>Solución:</b> "${req.novelty.solution}"</p></div>` : ''}
                 </div>`;
-            // --- FIN DE LA MODIFICACIÓN 2 ---
             
             card.innerHTML = `
                 <div class="flex justify-between items-start">
@@ -711,11 +719,9 @@
             if (!files || files.length === 0) return [];
             
             const uploadPromises = Array.from(files).map(file => {
-                // Crear una referencia única para cada archivo
                 const filePath = `reception_evidence/${requestId}/${Date.now()}-${file.name}`;
                 const ref = storage.ref(filePath);
                 
-                // Subir el archivo y obtener la URL de descarga
                 return ref.put(file).then(snapshot => 
                     snapshot.ref.getDownloadURL().then(url => ({
                         url,
@@ -725,10 +731,8 @@
                 );
             });
 
-            // Esperar a que todas las subidas terminen
             return Promise.all(uploadPromises);
         }
-
 
         async function handleAdminAction(event) {
             const button = event.currentTarget;
@@ -764,7 +768,7 @@
                     }
                 },
                 return_to_pending: async () => {
-                    if (confirm("¿Devolver a revisión? Se borrarán los datos de los pasos posteriores.")) {
+                    if (confirm("¿Está seguro de que desea devolver esta solicitud a 'Pendiente de Revisión'? Se borrarán todos los datos de los pasos posteriores (revisión, NT, envío).")) {
                         const docToReset = await reqRef.get();
                         if (docToReset.exists) {
                             const resetItems = docToReset.data().items.map(({ productId, productName, quantity }) => ({ productId, productName, quantity }));
@@ -807,7 +811,14 @@
                     if (confirm("¿Está seguro de que desea cancelar esta solicitud?")) {
                         updateData = { status: 'cancelled' };
                     }
+                },
+                // === INICIO DE MODIFICACIÓN ===
+                reactivate: () => {
+                    if (confirm("¿Está seguro de que desea reactivar esta solicitud? Pasará a 'Pendiente de Revisión'.")) {
+                        updateData = { status: 'pending' };
+                    }
                 }
+                // === FIN DE MODIFICACIÓN ===
             };
             
             const result = await actions[action]?.();
@@ -992,7 +1003,6 @@
             const reqRef = transfersCollection.doc(requestId);
             
             try {
-                // Subir archivos de evidencia primero
                 const uploadedEvidence = await uploadReceptionEvidence(requestId, evidenceFiles);
 
                 const doc = await reqRef.get();
@@ -1014,14 +1024,12 @@
                 
                 const newStatus = isComplete ? 'completed' : 'completed_incomplete';
                 
-                // Construir el objeto de recepción
                 const receptionData = { 
                     notes: receptionNotes, 
                     timestamp: firebase.firestore.FieldValue.serverTimestamp(), 
                     finalizedBy: currentUserData.user.email 
                 };
                 
-                // Añadir la evidencia solo si se subieron archivos
                 if (uploadedEvidence.length > 0) {
                     receptionData.evidence = uploadedEvidence;
                 }
