@@ -268,6 +268,7 @@
             'parabarberossedepasto@gmail.com': ['Punto de venta Pasto', 'requester'],
             'parabarberossedetulua@gmail.com': ['Punto de venta Tulua', 'requester'],
             'parabarberossedemedellin@gmail.com': ['Punto de venta Medellin', 'requester'],
+            'parabarberossedebogota@gmail.com': ['Punto de venta Bogota', 'requester'],
             'separador.parabarberos@gmail.com': ['Revisor Bodega', 'reviewer'],
             'yohnatanlopez.parabarberos@gmail.com': ['Gerencia', 'manager'],
             'jhonnysalazar.parabarberos@gmail.com': ['Gerencia', 'manager'],
@@ -1497,7 +1498,7 @@
                 document.getElementById('deliveryDate').valueAsDate = new Date();
             }
             
-            const warehouseOptions = ['Punto de venta Cali centro', 'Punto de venta Cali sur', 'Punto de venta Pasto', 'Punto de venta Tulua', 'Punto de venta Medellin'];
+            const warehouseOptions = ['Punto de venta Cali centro', 'Punto de venta Cali sur', 'Punto de venta Pasto', 'Punto de venta Tulua', 'Punto de venta Medellin', 'Punto de venta Bogota'];
             const originWarehouseOptions = ['Bodega Principal', ...warehouseOptions];
             
             if(dom.fromWarehouse) dom.fromWarehouse.innerHTML = '<option value="" selected disabled>-- Seleccione una bodega --</option>' + 
