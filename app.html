@@ -1509,7 +1509,20 @@
             if (dom.exportExcelBtn) dom.exportExcelBtn.addEventListener('click', exportManagerReport);
             if (dom.uploadProductsBtn) dom.uploadProductsBtn.addEventListener('click', handleProductUpload);
             if (dom.transferForm) dom.transferForm.addEventListener('submit', handleSubmitTransferForm);
-            if (dom.searchInput) dom.searchInput.addEventListener('input', () => renderProducts(allProducts.filter(p => p.name.toLowerCase().includes(dom.searchInput.value.toLowerCase()))));
+            if (dom.searchInput) const norm = (s) => String(s || '')
+  .toLowerCase()
+  .replace(/[^a-z0-9]/g, ''); // quita espacios, guiones, puntos, etc.
+
+if (dom.searchInput) {
+  dom.searchInput.addEventListener('input', () => {
+    const q = norm(dom.searchInput.value);
+    const filtered = allProducts.filter(p =>
+      norm(p.id).includes(q) || norm(p.name).includes(q)
+    );
+    renderProducts(filtered);
+  });
+}
+
             if (dom.productFile) dom.productFile.addEventListener('change', () => { dom.fileNameDisplay.textContent = dom.productFile.files.length > 0 ? dom.productFile.files[0].name : 'Ningún archivo seleccionado.'; dom.uploadStatus.textContent = ''; });
             
             ['requesterSearchId', 'requesterDateFrom', 'requesterDateTo', 'adminActiveSearchId', 'adminActiveDateFrom', 'adminActiveDateTo', 'adminHistorySearchId', 'adminHistoryDateFrom', 'adminHistoryDateTo', 'reviewerSearchId', 'reviewerDateFrom', 'reviewerDateTo'].forEach(id => {
